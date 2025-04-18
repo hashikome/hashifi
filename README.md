@@ -1,4 +1,3 @@
-```markdown
 # HashiFi 🔥📶  
 _“WiFi by the bonfire” — Secure, smart, shared access._
 
