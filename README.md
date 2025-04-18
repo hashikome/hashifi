@@ -81,7 +81,7 @@ HashiFi is currently in **private development**. Open source licensing will be c
 
 ## 🧠 Inspired By
 
-Hashikome — the tradition of sharing wisdom and stories around a bonfire.  
+Shikome — the tradition of sharing wisdom and stories around a bonfire.  
 **HashiFi** brings that spirit to the digital age, with boundaries.
 
 ---
@@ -99,4 +99,3 @@ We may consider OSS licensing in the future under SHIKOME LLC.
 “Solutions that connect and empower.”  
 Built with 🔥 by [@hashikome](https://github.com/hashikome)
 ```
----
