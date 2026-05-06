@@ -1,13 +1,13 @@
-# HashiFi 🔥📶  
+# HashiFi 🔥📶
 _“WiFi by the bonfire” — Secure, smart, shared access._
 
-**HashiFi** is a Django REST-based system for managing **time-bound, device-limited WiFi access** using QR codes and subscription logic. It is designed for individuals and small businesses (e.g. hotels, homes, coworking spaces) that share internet access and want control without constant manual password changes.
+**HashiFi** is a system for managing **time-bound, device-limited WiFi access** using QR codes, subscriptions, and captive-portal style access control. It is designed for individuals and small businesses such as hotels, homes, coworking spaces, shops, and shared compounds that want controlled internet sharing without constant manual password changes.
 
 ---
 
 ## 🏢 Company
 
-> 📢 **Developed and maintained by [SHIKOME LLC]**, a modern technology company building community-first digital solutions.  
+> 📢 **Developed and maintained by [SHIKOME TECHNOLOGY LIMITED]**, a Tanzania-registered technology company building community-first digital solutions.  
 >  
 > Website coming soon: [hashikome.com](https://hashikome.com) | [hashikome.co.tz](https://hashikome.co.tz)
 
@@ -19,11 +19,35 @@ HashiFi is currently in **private development**. Open source licensing will be c
 
 - Generate WiFi access QR codes linked to subscriptions
 - Support for daily, weekly, monthly or custom durations
-- Device locking using MAC address
+- Device/session limits with optional MAC-address binding
 - Manage access per router/location
 - Admin dashboard and REST API
 - Custom domain ready (e.g. `wifi.hashikome.com`)
 - Router redirect compatible (for captive portal style access)
+
+---
+
+## 🌐 Network Reality
+
+HashiFi is viable, but the full implementation should not depend on the basic router supplied by an ISP. Routers commonly provided by ISPs such as Vodacom, Tigo/Yas, and Airtel are best treated as internet uplinks. They usually handle the connection, WiFi name/password, and basic device management, but they should not be assumed to support custom captive portals, RADIUS accounting, per-user expiry, device limits, or external API control.
+
+The recommended setup is:
+
+```text
+Internet / SIM / Fiber
+        ↓
+ISP router
+        ↓
+HashiFi-controlled router or gateway
+        ↓
+Guest WiFi / access points
+        ↓
+Customers
+```
+
+For a real MVP, HashiFi should target routers or gateways with hotspot/captive-portal support, external portal redirects, firewall/session control, and ideally RADIUS or API access. **MikroTik RouterOS** is the preferred first target because it supports hotspot workflows, users, sessions, queues, firewall rules, scripting, API access, and RADIUS integration.
+
+Basic QR-code WiFi sharing can work with any ordinary router, but it does not reliably enforce subscriptions, expiry, device limits, or payment-based access. For more implementation detail, see [docs/network-architecture.md](docs/network-architecture.md).
 
 ---
 
@@ -36,6 +60,7 @@ HashiFi is currently in **private development**. Open source licensing will be c
 - **Deployment**: Docker Stack + Traefik Reverse Proxy
 - **Dev Environment**: Docker-integrated development (used in SHIKOME's Middleware project)
 - **Client-Side Portal**: To be added (React/Svelte/HTML)
+- **Router Target**: MikroTik first, with possible future support for OpenWrt, UniFi/Omada, pfSense, or OPNsense
 
 ---
 
@@ -89,13 +114,12 @@ Shikome — the tradition of sharing wisdom and stories around a bonfire.
 ## 📄 License
 
 Private — Not open source (yet).  
-We may consider OSS licensing in the future under SHIKOME LLC.
+We may consider OSS licensing in the future under SHIKOME TECHNOLOGY LIMITED.
 
 ---
 
 ## 🔥 Maintained by
 
-**SHIKOME LLC**  
+**SHIKOME TECHNOLOGY LIMITED**  
 “Solutions that connect and empower.”  
 Built with 🔥 by [@hashikome](https://github.com/hashikome)
-```
