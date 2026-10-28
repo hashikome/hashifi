@@ -77,8 +77,11 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   TSH; throttled speeds below the package speed) in the web.
   Evidence: `apps/web/app/admin/packages/create/page.tsx`, `[id]/edit/page.tsx`.
 - Observation: Biome's "safe" fixes rewrote the router portal pages' inline scripts (ES5
-  `function` to arrow functions), which old captive-portal browsers may not run. Restored as
-  received apart from the brand name, and excluded from Biome.
+  `function` to arrow functions). The router only stores and serves these pages; the guest's
+  browser runs them, and every browser since about 2016 runs arrow functions, so only very old
+  Android WebViews (4.4 and earlier) would fail. The seller wrote them as ES5 on purpose, so
+  they are restored as received apart from the brand name and excluded from Biome; M5 decides
+  the oldest supported browser when the portal moves to the web.
   Evidence: `git diff 45ebd53 -- apps/api/mikrotik-files`.
 - Observation: a browser smoke test of the built web against a stub API (signed-in manager,
   one venue, no portal settings) rendered printing, voucher creation, the venue map, packages,
@@ -125,15 +128,15 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Rationale: [ADR-0004](../../engineering-decisions/0004-types-without-any-or-undefined.md).
   Date/Author: 2026-10-28 / Paul
 - Decision: no HashiFi sign-in implementation; admins sign in through the shared Hashikome
-  identity service, planned as cross-product workspace work.
+  identity service, planned as cross-product workspace work. The plan is drafted before M4,
+  which depends on it; M2 and M3 do not.
   Rationale: [ADR-0005](../../engineering-decisions/0005-shared-identity.md); a third copy of
   ntumie. and Pigfarm's sign-in is the duplication the service removes.
   Date/Author: 2026-10-28 / Paul
 - Decision: lint findings in code M3 and M4 replace (Express routes, middleware, `server.ts`,
   the Drizzle layer) are warnings until those milestones remove the code, rather than typed
-  now and deleted after. The router portal pages (`apps/api/mikrotik-files/`) are device files
-  uploaded byte for byte and deliberately ES5 for captive-portal browsers: Biome does not
-  touch them.
+  now and deleted after. The router portal pages (`apps/api/mikrotik-files/`) are uploaded to
+  routers as received; Biome does not touch them.
   Rationale: kept code (`services/`, `utils/`, the web) is fixed; the rest is rewritten.
   Date/Author: 2026-10-28 / Claude
 - Decision: FSL-1.1-ALv2, Shikome Technology Limited as licensor.
@@ -201,6 +204,8 @@ A fresh migration history starts at the Prisma baseline; Drizzle and `drizzle/` 
 The seed uses invented data.
 
 ### M4 NestJS API
+
+Prerequisite: the shared identity service plan, drafted in the Hashikome workspace (ADR-0005).
 
 One NestJS module per resource (venues, routers, packages, vouchers, customers, sessions,
 analytics, revenue, portal settings, team, audit, auth). Provisioning, router sync and the
