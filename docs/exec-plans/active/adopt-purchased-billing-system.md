@@ -1,0 +1,227 @@
+# Adopt the purchased billing system as HashiFi
+
+This ExecPlan is a living document. Maintain it according to `PLANS.md`. Keep `Progress`,
+`Surprises & Discoveries`, `Decision Log` and `Outcomes & Retrospective` current as work
+proceeds.
+
+## Purpose / Big Picture
+
+Turn the purchased WiFi billing system into HashiFi on the Hashikome stack, deployed through
+the shared platform. When done, an admin onboards a reset MikroTik through the generated
+bootstrap script and automated setup, generates vouchers for a package, and a phone on that
+router's WiFi reaches the HashiFi portal, redeems a voucher and browses until the voucher
+expires. The API runs as NestJS on Bun with Prisma and the shared PostgreSQL 18, the portal
+and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Dokploy.
+
+## Progress
+
+- [x] (2026-10-28) Purchased archives inspected; checksums recorded; third parties' data
+  found in `database-backups/` and `uploads/` and excluded.
+- [x] (2026-10-28) Baseline as received: backend typecheck clean and 170/170 tests pass on
+  Bun 1.4.4 (with a placeholder `DATABASE_URL`); frontend typecheck has one known error
+  (`components/chart-area-interactive.tsx`, a Recharts overload).
+- [x] (2026-10-28) NestJS 12.3.2 smoke-tested on Bun 1.4.4: dependency injection, decorators
+  and routing work.
+- [x] (2026-10-28) Imported as received (`45ebd53`); repository scaffolded from the
+  Hashikome template; FSL-1.1-ALv2; packages renamed `@hashifi/api` and `@hashifi/web`; pnpm
+  and npm files removed.
+- [ ] M1 Toolchain and name.
+- [ ] M2 Router lab on CHR.
+- [ ] M3 Prisma schema on PostgreSQL.
+- [ ] M4 NestJS API.
+- [ ] M5 Captive portal in the web, and the security pass.
+- [ ] M6 Release pipeline and deployment.
+- [ ] M7 Live acceptance on a physical router.
+
+## Surprises & Discoveries
+
+- Observation: the backend assumes it shares a LAN with the routers. It connects to the
+  plaintext RouterOS API on port 8728 at the router's address and finds its own address by
+  matching the router's subnet (`resolveBackendUrl`, `BACKEND_LAN_URL`).
+  Evidence: `apps/api/src/services/router-provision/context.ts`, `mikrotik.ts`.
+- Observation: the walled garden admits the backend by IP address
+  (`/ip/hotspot/walled-garden/ip dst-address=<backend IP>`), which breaks behind Cloudflare,
+  whose addresses change.
+  Evidence: `apps/api/src/services/router-provision/steps.ts` (`walledGarden`),
+  `verify.ts` (`walledGardenCheck`).
+- Observation: security defects in the code as received (fixed in M4 and M5, each with a
+  regression test):
+  1. The portal's auto-reconnect returns a voucher code (the hotspot username and password)
+     to anyone supplying an active device's MAC in the query string, inside a form that
+     posts itself to an unvalidated `link-login` URL; a `javascript:` URL there runs script.
+     Evidence: `apps/api/src/routes/captive-portal.ts:120`, `renderAutoReconnect`.
+  2. Query values are placed in inline scripts with HTML escaping only (`esc`), which does
+     not escape backslashes or newlines. Not exploitable as found, but the wrong encoding.
+     Evidence: `captive-portal.ts:1149`.
+  3. `GET /api/routers/provisioning-backlog` requires sign-in but no role or venue scope,
+     so a manager sees every venue's routers. Other read routes may share this.
+     Evidence: `apps/api/src/routes/routers.ts:130`.
+  4. Router passwords are encrypted with AES-256-CBC (unauthenticated) and a published
+     fallback key when `ENCRYPTION_KEY` is unset.
+     Evidence: `apps/api/src/utils/encrypt.ts:3`.
+- Observation: the root Django `.gitignore` hid `apps/web/lib/` from the first import commit;
+  the commit was amended before publication to include it.
+  Evidence: `git check-ignore` against the old `.gitignore` (`lib/`).
+- Observation: the vendor READMEs refer to `../CLAUDE.md`, `../AGENT.md`,
+  `../ARCHITECTURE.md` and `../TEST.md`, which were not delivered. Their rules that matter
+  are restated in AGENTS.md (time zone, phone formats, copy, provisioning).
+
+## Decision Log
+
+- Decision: build from the purchased system; keep its multi-venue model.
+  Rationale: [ADR-0001](../../engineering-decisions/0001-adopt-purchased-billing-system.md).
+  Date/Author: 2026-10-28 / Paul, Claude
+- Decision: Bun, NestJS, Prisma, PostgreSQL 18, Next.js, Biome; newest stable versions pinned.
+  Rationale: [ADR-0002](../../engineering-decisions/0002-toolchain.md).
+  Date/Author: 2026-10-28 / Paul, Claude
+- Decision: the API owns logic and workflows; the portal moves to the web.
+  Rationale: [ADR-0003](../../engineering-decisions/0003-api-owns-logic-web-presents.md).
+  Date/Author: 2026-10-28 / Paul, Claude
+- Decision: vouchers first; Snippe mobile-money payments deferred.
+  Rationale: vouchers prove the router path without a payment provider.
+  Date/Author: 2026-10-28 / Paul
+- Decision: develop against MikroTik CHR (Cloud Hosted Router, free licence, 1 Mbps);
+  buy one physical board (an ARM model with built-in WiFi, not a `smips` board) before M7.
+  Rationale: a hotspot must sit on the guests' network, so production needs hardware at
+  each venue, but everything except a phone joining real WiFi can be proved on CHR.
+  Date/Author: 2026-10-28 / Paul, Claude
+- Decision: the repository stays private until M5's security fixes land, and the seller is
+  told about the flaws (and the personal data in their archive) before it becomes public.
+  Rationale: the findings below describe exploitable defects in code the seller very likely
+  still runs; publishing them with the code first would expose the seller's customers.
+  Date/Author: 2026-10-28 / Paul
+- Decision: FSL-1.1-ALv2, Shikome Technology Limited as licensor.
+  Rationale: public source without permitting a competing commercial service.
+  Date/Author: 2026-10-28 / Paul
+
+## Outcomes & Retrospective
+
+Not started beyond the import and scaffold.
+
+## Context And Orientation
+
+- `apps/api` (as received): Express 5, Drizzle on MySQL, `ws`, `routeros` (RouterOS API
+  client), `sharp` (portal images), `nodemailer` (admin sign-in codes). Entry
+  `src/server.ts`; one file per resource in `src/routes/`; `src/services/` holds
+  `router-provision/` (bootstrap script, capability probe, per-board dialect, setup steps,
+  readiness and verification), `mikrotik.ts`, `router-sync.ts`, `reconcile-daemon.ts`,
+  `expiry-daemon.ts` and `live-monitor.ts`. Tests sit beside the code as `*.test.ts`.
+  `mikrotik-files/` are the pages uploaded to routers; `mikrotik-knowledge-files/` is the
+  seller's router onboarding procedure and reference, worth keeping as runbooks.
+- `apps/web` (as received): Next.js 16 admin with shadcn components; `lib/types.ts` mirrors
+  the API's responses.
+- **CHR**: MikroTik's RouterOS as a virtual machine image, used here as the router lab.
+- **Walled garden**: hosts a hotspot lets unauthenticated guests reach (the portal and API).
+
+## Plan Of Work
+
+### M1 Toolchain and name
+
+One root `bun.lock`; Biome replaces Prettier; root scripts from the template made real.
+Dependencies moved to the newest stable releases and pinned (check `npm view <pkg>
+dist-tags`: Prisma's `latest` is a release candidate at the time of writing, so 7.10.1).
+Every "WiFi Billing" and `wifi_billing`/`wifibilling` name becomes HashiFi (UI strings,
+cookie and database names, demo addresses, router pages). In the web: remove
+`@vercel/analytics`, replace the `next-maps` GitHub dependency, fix the Recharts error and
+drop `typescript.ignoreBuildErrors`. `bun run verify` passes, with the 170 purchased tests.
+
+### M2 Router lab on CHR
+
+Run CHR locally; apply the bootstrap script and the automated setup to it. Decide, with
+evidence, and record as an ADR:
+
+- how the cloud API reaches routers behind NAT (WireGuard opened by the router, the API on
+  the encrypted API port through it);
+- how the walled garden admits the portal and API by name rather than a changing IP;
+- that `routeros` and `sharp` work under Bun.
+
+A script brings the lab up so the provisioning steps and readiness checks can be run
+against it repeatably.
+
+### M3 Prisma schema on PostgreSQL
+
+Port `apps/api/src/db/schema.ts` to `prisma/schema.prisma`: `uuid` keys, `jsonb`,
+`timestamptz`. Watch the MySQL behaviours the code may rely on:
+
+- case-insensitive comparison: voucher codes, emails and phone numbers are normalised on
+  write, or compared case-insensitively;
+- `CONVERT_TZ`/`DATE_FORMAT` in `routes/analytics.ts` (27 and 15 uses) and
+  `onDuplicateKeyUpdate` (4 uses) become PostgreSQL equivalents;
+- the UTC-on-disk, Dar es Salaam-calendar rule.
+
+A fresh migration history starts at the Prisma baseline; Drizzle and `drizzle/` are removed.
+The seed uses invented data.
+
+### M4 NestJS API
+
+One NestJS module per resource (venues, routers, packages, vouchers, customers, sessions,
+analytics, revenue, portal settings, team, audit, auth). Provisioning, router sync and the
+jobs become providers, with their tests carried over unchanged. Every query is scoped by
+role and venue (finding 3). Router secrets use AES-256-GCM with a required key (finding 4). Configuration reads each secret through one helper that prefers `<NAME>_FILE` (a Docker
+secret) over the plain variable, as ntumie.'s `apps/api/src/config/secret.ts` does, and
+validates everything at startup ([SECURITY.md](../../SECURITY.md#credentials)).
+Totals and derived figures the admin pages compute today move into the responses. Snippe
+routes and the webhook are left out (backlog). The vendor's onboarding knowledge files move
+to `docs/runbooks/`.
+
+### M5 Captive portal in the web, and the security pass
+
+The portal pages move to `apps/web`; the API exposes the portal workflows. `link-login` is
+accepted only as an `http(s)` URL whose host is a registered router or hotspot gateway;
+`mac` and `ip` are validated; no voucher code is returned for reconnection, which uses the
+router's own mechanism (MAC cookie) or a short-lived token tied to the router's request
+(findings 1 and 2). Values in scripts are JSON-encoded. A review of every public endpoint
+follows, with findings fixed or recorded.
+
+### M6 Release pipeline and deployment
+
+Dockerfiles, `verify` and `release` workflows copied from ntumie. and adapted; images in
+GHCR; the stack's sensitive values as external Docker secrets, the rest in a private env
+file, with an optional 1Password `op run` adapter that the application does not depend on; a database and role on the shared PostgreSQL through the infra repository; Dokploy
+deployment; Uptime Kuma monitors. The production domain is chosen here.
+
+### M7 Live acceptance on a physical router
+
+A physical MikroTik at Paul's home onboarded through the admin; a phone redeems a voucher,
+browses, reconnects, and is cut off at expiry.
+
+## Concrete Steps
+
+From the repository root, once M1 lands:
+
+```bash
+bun install
+bun run verify
+```
+
+Expected result: every check passes, including the 170 purchased tests.
+
+## Validation And Acceptance
+
+- `bun run verify` passes at the end of every milestone.
+- M2: the bootstrap script and automated setup turn a fresh CHR into a passing readiness
+  checklist, from the API, through the chosen tunnel.
+- M5: regression tests show the auto-reconnect never returns a voucher code, an
+  unregistered or non-http `link-login` is refused, and a manager cannot read another
+  venue's routers.
+- M7: the outcome in Purpose, on a physical router and a real phone.
+
+## Idempotence And Recovery
+
+The router setup is designed to be re-run safely (tagged configuration). CHR can be reset
+by recreating the VM. Nothing is deployed before M6, so schema changes before then start
+from a fresh database.
+
+## Artifacts And Notes
+
+- Archives: `../workspace/inbox/hashifi/` (local, not in Git). sha256:
+  backend `ba99c1e6addfe7e25ade005ace0d6923415711e95f004394d1eecfc634414a2e`, frontend
+  `35d85a47dfea041e9fcc30d596c097f308660212035bf0fb6232dac23cab45f5`. The backend archive's
+  `database-backups/` and `uploads/` hold third parties' personal data: delete them from the
+  archive copy once the structure-only dump is no longer needed for M3.
+
+## Interfaces And Dependencies
+
+- Shared platform: PostgreSQL 18, GHCR, Dokploy, Uptime Kuma (infra repository).
+- MikroTik RouterOS 7 with the hotspot package; CHR for development.
+- Snippe (later): `docs/backlog/mobile-money-payments.md`.

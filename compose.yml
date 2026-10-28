@@ -1,0 +1,15 @@
+# Local development infrastructure only. Production uses the shared platform services, so
+# match their major version (infra docs/dokploy-data-services.md), not the newest release.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: hashifi
+      POSTGRES_PASSWORD: hashifi
+      POSTGRES_DB: hashifi
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+volumes:
+  postgres-data:

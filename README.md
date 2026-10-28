@@ -1,125 +1,74 @@
 # HashiFi 🔥📶
 _“WiFi by the bonfire” — Secure, smart, shared access._
 
-**HashiFi** is a system for managing **time-bound, device-limited WiFi access** using QR codes, subscriptions, and captive-portal style access control. It is designed for individuals and small businesses such as hotels, homes, coworking spaces, shops, and shared compounds that want controlled internet sharing without constant manual password changes.
+**HashiFi** manages **time-bound, device-limited WiFi access** sold as vouchers through a
+captive portal. It is for anyone who shares an internet connection and wants control without
+changing passwords by hand: a home, and venues such as hotels, coworking spaces, shops and
+shared compounds, each with its own routers, packages and branding.
 
----
+It started with a personal problem: people asking to use the WiFi, which meant enabling and
+disabling access and tracking MAC addresses by hand, sometimes late at night.
 
-## 🏢 Company
+> **Status:** in development. HashiFi is being built from a purchased hotspot billing system
+> (Express, MySQL and a Next.js admin), now being ported to the Hashikome stack. The plan is
+> [docs/exec-plans/active/adopt-purchased-billing-system.md](docs/exec-plans/active/adopt-purchased-billing-system.md).
+> The commands below describe the target and work once its first milestone lands.
 
-> 📢 **Developed and maintained by [SHIKOME TECHNOLOGY LIMITED]**, a Tanzania-registered technology company building community-first digital solutions.  
->  
-> Website coming soon: [hashikome.com](https://hashikome.com) | [hashikome.co.tz](https://hashikome.co.tz)
-
-HashiFi is currently in **private development**. Open source licensing will be considered in the future.
-
----
-
-## 🌟 Features
-
-- Generate WiFi access QR codes linked to subscriptions
-- Support for daily, weekly, monthly or custom durations
-- Device/session limits with optional MAC-address binding
-- Manage access per router/location
-- Admin dashboard and REST API
-- Custom domain ready (e.g. `wifi.hashikome.com`)
-- Router redirect compatible (for captive portal style access)
-
----
-
-## 🌐 Network Reality
-
-HashiFi is viable, but the full implementation should not depend on the basic router supplied by an ISP. Routers commonly provided by ISPs such as Vodacom, Tigo/Yas, and Airtel are best treated as internet uplinks. They usually handle the connection, WiFi name/password, and basic device management, but they should not be assumed to support custom captive portals, RADIUS accounting, per-user expiry, device limits, or external API control.
-
-The recommended setup is:
+## How it works
 
 ```text
-Internet / SIM / Fiber
+Internet / SIM / fibre
         ↓
-ISP router
+ISP router (uplink only)
         ↓
-HashiFi-controlled router or gateway
+HashiFi-managed MikroTik (hotspot, firewall, sessions)
         ↓
-Guest WiFi / access points
-        ↓
-Customers
+Guest WiFi → captive portal → voucher → online for the package's time and devices
 ```
 
-For a real MVP, HashiFi should target routers or gateways with hotspot/captive-portal support, external portal redirects, firewall/session control, and ideally RADIUS or API access. **MikroTik RouterOS** is the preferred first target because it supports hotspot workflows, users, sessions, queues, firewall rules, scripting, API access, and RADIUS integration.
+The ISP router stays an uplink. A MikroTik router behind it enforces access, and the cloud
+backend sells packages, issues vouchers, configures each router and tracks sessions. See
+[docs/design-docs/network-architecture.md](docs/design-docs/network-architecture.md).
 
-Basic QR-code WiFi sharing can work with any ordinary router, but it does not reliably enforce subscriptions, expiry, device limits, or payment-based access. For more implementation detail, see [docs/network-architecture.md](docs/network-architecture.md).
+## Features
 
----
+- Venues, each with routers, packages and a branded captive portal
+- Packages by duration, speed, data and device limits
+- Vouchers generated in batches, printable with QR codes
+- Router onboarding: a generated bootstrap script, then automated, verifiable setup
+- Live sessions, automatic expiry, analytics and revenue
+- Admin and manager roles, with an audit log
 
-## 📦 Tech Stack
+Mobile-money payments are planned after vouchers.
 
-- **Backend**: Django + Django REST Framework
-- **Web Server**: Uvicorn (replacing Gunicorn for development and possibly production)
-- **Dependency Manager**: [uv](https://docs.astral.sh/uv/) for fast, modern Python project management
-- **Database**: PostgreSQL
-- **Deployment**: Docker Stack + Traefik Reverse Proxy
-- **Dev Environment**: Docker-integrated development (used in SHIKOME's Middleware project)
-- **Client-Side Portal**: To be added (React/Svelte/HTML)
-- **Router Target**: MikroTik first, with possible future support for OpenWrt, UniFi/Omada, pfSense, or OPNsense
+## Development
 
----
+Requirements: [Bun](https://bun.sh) and Docker (for local PostgreSQL).
 
-## 🚀 Quickstart (Development)
+```bash
+bun install
+cp .env.example .env      # then fill it in
+bun run infra:up
+bun run db:migrate
+bun run dev
+```
 
-> 💡 This project uses `uv` instead of pip or poetry for dependency management.
+`bun run verify` runs every check CI runs.
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/hashikome/hashifi.git
-   cd hashifi
-   ```
+## Layout
 
-2. Initialize the project with `uv`:
-   ```bash
-   uv venv
-   uv sync  # Install dependencies from pyproject.toml and uv.lock
-   ```
+```
+apps/api     NestJS API on Bun, Prisma and PostgreSQL
+apps/web     Next.js admin and captive portal
+docs/        design documents, decisions, plans and runbooks (start at docs/README.md)
+```
 
-3. Run the dev server with `uvicorn`:
-   ```bash
-   uv run uvicorn hashifi.asgi:application --reload
-   ```
+## Licence
 
-4. Environment config:
-   ```bash
-   cp .env.example .env
-   # Edit to match your local/dev database, etc.
-   ```
+[Functional Source License 1.1, Apache 2.0 future licence](LICENSE.md) (FSL-1.1-ALv2). You may
+use, modify and redistribute HashiFi for any purpose except offering a competing commercial
+product or service; each release becomes available under the Apache License 2.0 two years
+after it is published.
 
----
-
-## 🌐 Deployment
-
-> Production setup uses Docker Stack and Traefik with optional DNS pointing to `hashikome.com` or `hashikome.co.tz`.
-
-- App and DB run in isolated containers
-- Traefik acts as a reverse proxy, handles routing, SSL (Let's Encrypt), and service discovery
-- Backend served via **Uvicorn** directly, though a fallback to Gunicorn remains open for consideration
-- Docker-based dev environment ensures parity with production
-
----
-
-## 🧠 Inspired By
-
-Shikome — the tradition of sharing wisdom and stories around a bonfire.  
-**HashiFi** brings that spirit to the digital age, with boundaries.
-
----
-
-## 📄 License
-
-Private — Not open source (yet).  
-We may consider OSS licensing in the future under SHIKOME TECHNOLOGY LIMITED.
-
----
-
-## 🔥 Maintained by
-
-**SHIKOME TECHNOLOGY LIMITED**  
-“Solutions that connect and empower.”  
-Built with 🔥 by [@hashikome](https://github.com/hashikome)
+Developed and maintained by **Shikome Technology Limited** ([@hashikome](https://github.com/hashikome)),
+a Tanzania-registered technology company.
