@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connected</title>
+    <style>
+      :root {
+        --ground: #f4efe9;
+        --card: #ffffff;
+        --text: #1a0f0b;
+        --muted: #7a6860;
+        --subtle: #c4b0a8;
+        --accent: #e05c2b;
+        --a-light: rgba(224, 92, 43, 0.08);
+        --a-ring: rgba(224, 92, 43, 0.22);
+        --border: #e8dcd5;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100svh;
+        background: var(--ground);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        color: var(--text);
+        padding: 24px;
+        gap: 20px;
+      }
+
+      /* ── Brand mark ─────────────────────────────────── */
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        animation: fadeUp 0.35s 0.05s ease-out both;
+      }
+      .brand-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--accent);
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .brand-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: -0.015em;
+      }
+
+      /* ── Card ───────────────────────────────────────── */
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 40px 32px 36px;
+        max-width: 380px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-shadow:
+          0 1px 4px rgba(26, 15, 11, 0.05),
+          0 4px 20px rgba(26, 15, 11, 0.06);
+        animation: fadeUp 0.4s 0.12s ease-out both;
+      }
+
+      /* ── Success icon ───────────────────────────────── */
+      .icon-wrap {
+        width: 64px;
+        height: 64px;
+        position: relative;
+        margin-bottom: 22px;
+      }
+      .icon-bg {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: var(--a-light);
+        border: 1px solid var(--a-ring);
+        animation: popIn 0.4s 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      @keyframes popIn {
+        from {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .icon-check {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.25s 0.55s ease-out both;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.7);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      /* ── Text ───────────────────────────────────────── */
+      .heading {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+        color: var(--text);
+        margin-bottom: 7px;
+        animation: fadeUp 0.35s 0.4s ease-out both;
+      }
+      .sub {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.6;
+        text-align: center;
+        margin-bottom: 22px;
+        animation: fadeUp 0.35s 0.45s ease-out both;
+      }
+
+      /* ── Voucher badge ── */
+      .voucher {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--a-light);
+        border: 1px solid var(--a-ring);
+        border-radius: 7px;
+        padding: 6px 13px;
+        font-family: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: var(--accent);
+        letter-spacing: 0.06em;
+        margin-bottom: 22px;
+        animation: fadeUp 0.35s 0.5s ease-out both;
+      }
+      .voucher-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+      }
+
+      /* ── Divider ─────────────────────────────────── */
+      .divider {
+        width: 100%;
+        height: 1px;
+        background: var(--border);
+        margin-bottom: 18px;
+        animation: fadeIn 0.3s 0.55s ease-out both;
+      }
+
+      /* ── Close hint ─────────────────────────────────── */
+      .close-hint {
+        font-size: 14px;
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.65;
+        animation: fadeUp 0.35s 0.6s ease-out both;
+      }
+
+      .metric {
+        text-align: center;
+        margin: 18px 0 4px;
+      }
+
+      .metric-value {
+        font-size: 42px;
+        font-weight: 700;
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 1px;
+        line-height: 1.1;
+      }
+
+      .metric-label {
+        font-size: 12px;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+
+      .bar {
+        height: 8px;
+        width: 100%;
+        background: #e8dcd5;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .bar-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        border-radius: 999px;
+        transition: width 0.4s ease;
+      }
+
+      .bar-fill.low {
+        background: #c0392b;
+      }
+
+      #retry-btn {
+        display: block;
+        margin: 16px auto 0;
+        padding: 10px 22px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      #retry-btn:active {
+        opacity: 0.85;
+      }
+
+      /* ── Footer ─────────────────────────────────── */
+      .footer {
+        font-size: 11.5px;
+        color: var(--subtle);
+        letter-spacing: 0.02em;
+        animation: fadeIn 0.3s 0.7s ease-out both;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .brand,
+        .card,
+        .icon-bg,
+        .icon-check,
+        .heading,
+        .sub,
+        .voucher,
+        .divider,
+        .close-hint,
+        .footer {
+          animation: none;
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#fff"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+          <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+          <circle cx="12" cy="20" r="1" fill="#fff" stroke="none" />
+        </svg>
+      </div>
+      <span class="brand-name">WiFi Billing</span>
+    </div>
+
+    <div class="card">
+      <div class="icon-wrap">
+        <div class="icon-bg"></div>
+        <div class="icon-check">
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#e05c2b"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="heading" id="state-heading">Checking your connection</div>
+      <div class="sub" id="state-sub">Verifying internet access&hellip;</div>
+
+      <div class="voucher">
+        <div class="voucher-dot"></div>
+        $(username)
+      </div>
+
+      <div class="usage" id="usage-block" style="display: none">
+        <div class="divider"></div>
+
+        <div class="metric" id="time-metric" style="display: none">
+          <div class="metric-value" id="time-value">&mdash;</div>
+          <div class="metric-label" id="time-label">Time remaining</div>
+        </div>
+
+        <div class="metric" id="data-metric" style="display: none">
+          <div class="bar" id="data-bar-wrap">
+            <div class="bar-fill" id="data-bar"></div>
+          </div>
+          <div class="metric-label" id="data-label">&mdash;</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <p class="close-hint" id="state-hint">This only takes a moment.</p>
+      <button type="button" id="retry-btn" style="display: none">Check again</button>
+    </div>
+
+    <div class="footer">WiFi Billing System</div>
+
+    <script>
+      var raw = "$(link-orig)";
+      var mac = "$(mac)";
+      var ip = "$(ip)";
+      var llOnly = "$(link-login-only)";
+      var API = "http://192.168.0.15:8080";
+
+      function backToLogin() {
+        var dest = raw.indexOf("$(") === -1 ? raw : "";
+        window.location.replace(
+          API +
+            "/portal/login" +
+            "?mac=" +
+            encodeURIComponent(mac) +
+            "&ip=" +
+            encodeURIComponent(ip) +
+            "&link-login=" +
+            encodeURIComponent(llOnly) +
+            "&link-orig=" +
+            encodeURIComponent(dest),
+        );
+      }
+
+      /**
+       * Prove there is real internet, rather than assuming it.
+       *
+       * Reaching the backend proves nothing — it sits inside the walled garden and is
+       * reachable even when the hotspot has granted no internet at all. So we load an
+       * image from an external host: if the hotspot is still intercepting, it answers
+       * with HTML, the image fails to decode, and onerror fires. Images are used instead
+       * of fetch() because a cross-origin fetch gives an opaque response whose status is
+       * unreadable — an intercepted request looks identical to a successful one.
+       */
+      function probeInternet(timeoutMs) {
+        var hosts = [
+          "https://www.google.com/favicon.ico",
+          "https://www.cloudflare.com/favicon.ico",
+        ];
+        return new Promise(function (resolve) {
+          var settled = false;
+          var remaining = hosts.length;
+
+          function finish(result) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(result);
+          }
+
+          var timer = setTimeout(function () {
+            finish(false);
+          }, timeoutMs);
+
+          hosts.forEach(function (host) {
+            var img = new Image();
+            img.onload = function () {
+              finish(true);
+            };
+            img.onerror = function () {
+              remaining--;
+              if (remaining === 0) finish(false);
+            };
+            // Cache-buster: a cached hit would prove nothing about right now.
+            img.src = host + "?cb=" + Date.now() + "-" + Math.random();
+          });
+        });
+      }
+
+      var heading = document.getElementById("state-heading");
+      var sub = document.getElementById("state-sub");
+      var hint = document.getElementById("state-hint");
+      var retryBtn = document.getElementById("retry-btn");
+
+      function showChecking() {
+        heading.textContent = "Checking your connection";
+        sub.textContent = "Verifying internet access…";
+        hint.textContent = "This only takes a moment.";
+        retryBtn.style.display = "none";
+      }
+
+      function showConnected() {
+        heading.textContent = "You're connected";
+        sub.textContent = "Internet access confirmed.";
+        hint.innerHTML = "You're all set — close this window<br />and start browsing.";
+        retryBtn.style.display = "none";
+      }
+
+      function showNotConnected() {
+        heading.textContent = "Not connected yet";
+        sub.textContent = "You're logged in, but we couldn't reach the internet.";
+        hint.textContent =
+          "This usually clears in a few seconds. If it doesn't, tell the staff.";
+        retryBtn.style.display = "";
+      }
+
+      // Written with plain promise chains rather than async/await: this page runs inside
+      // captive-portal mini-browsers, and older Android WebViews predate ES2017.
+      function verifyConnection() {
+        showChecking();
+        probeInternet(6000).then(function (ok) {
+          if (ok) {
+            showConnected();
+            return;
+          }
+          // One retry — the first probe often races the router finishing authentication.
+          setTimeout(function () {
+            probeInternet(6000).then(function (okAgain) {
+              if (okAgain) showConnected();
+              else showNotConnected();
+            });
+          }, 2000);
+        });
+      }
+
+      retryBtn.addEventListener("click", verifyConnection);
+
+      // ── Remaining time / data ───────────────────────────────────────────────
+      var usageBlock = document.getElementById("usage-block");
+      var timeMetric = document.getElementById("time-metric");
+      var timeValue = document.getElementById("time-value");
+      var timeLabel = document.getElementById("time-label");
+      var dataMetric = document.getElementById("data-metric");
+      var dataBarWrap = document.getElementById("data-bar-wrap");
+      var dataBar = document.getElementById("data-bar");
+      var dataLabel = document.getElementById("data-label");
+
+      // { secondsRemaining, syncedAtMs } — null when unlimited, unknown, or exhausted.
+      var timeState = null;
+
+      function pad(n) {
+        return n < 10 ? "0" + n : "" + n;
+      }
+
+      function formatDuration(total) {
+        if (total < 0) total = 0;
+        var h = Math.floor(total / 3600);
+        var m = Math.floor((total % 3600) / 60);
+        var s = total % 60;
+        return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s);
+      }
+
+      function formatBytes(bytes) {
+        if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + " GB";
+        if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
+        if (bytes >= 1024) return Math.round(bytes / 1024) + " KB";
+        return bytes + " B";
+      }
+
+      /**
+       * Counts down from the last server-supplied figure using elapsed time since that
+       * sync, rather than comparing the client clock against an absolute expiry — a
+       * device with a wrong clock would otherwise show nonsense. Re-synced every 30s.
+       */
+      function renderTime() {
+        if (!timeState) return;
+        var elapsed = Math.floor((Date.now() - timeState.syncedAtMs) / 1000);
+        var left = timeState.secondsRemaining - elapsed;
+
+        if (left <= 0) {
+          timeValue.textContent = formatDuration(0);
+          // Stop counting and let the server decide — the client never declares expiry.
+          timeState = null;
+          syncStatus();
+          return;
+        }
+        timeValue.textContent = formatDuration(left);
+      }
+
+      /**
+       * Time and data are capped independently, so each is rendered independently.
+       * "Unlimited" is stated explicitly rather than left blank — a missing figure is
+       * ambiguous (unlimited? still loading? broken?), and saying so is reassuring.
+       */
+      function applyUsage(data) {
+        var t = data.time;
+        if (t && t.unlimited) {
+          // No countdown to run, but the user should know there isn't a clock on them.
+          timeState = null;
+          timeValue.textContent = "∞";
+          timeLabel.textContent = "No time limit";
+          timeMetric.style.display = "";
+        } else if (t && typeof t.secondsRemaining === "number") {
+          timeState =
+            t.secondsRemaining > 0
+              ? { secondsRemaining: t.secondsRemaining, syncedAtMs: Date.now() }
+              : null;
+          timeValue.textContent = formatDuration(t.secondsRemaining);
+          timeLabel.textContent = "Time remaining";
+          timeMetric.style.display = "";
+        } else {
+          timeState = null;
+          timeMetric.style.display = "none";
+        }
+
+        var d = data.data;
+        if (d && d.unlimited) {
+          // A progress bar against no limit is meaningless — label only.
+          dataBarWrap.style.display = "none";
+          dataLabel.textContent = "Unlimited data";
+          dataMetric.style.display = "";
+        } else if (d && d.limitBytes) {
+          var pct = Math.min(100, Math.round((d.usedBytes / d.limitBytes) * 100));
+          dataBar.style.width = pct + "%";
+          dataBar.className = pct >= 90 ? "bar-fill low" : "bar-fill";
+          dataBarWrap.style.display = "";
+          dataLabel.textContent =
+            formatBytes(d.remainingBytes) + " of " + formatBytes(d.limitBytes) + " left";
+          dataMetric.style.display = "";
+        } else {
+          dataMetric.style.display = "none";
+        }
+
+        // At least one axis always renders now, so the block is effectively always shown
+        // for an active session — but keep the guard for a malformed response.
+        usageBlock.style.display =
+          timeMetric.style.display === "none" && dataMetric.style.display === "none"
+            ? "none"
+            : "";
+      }
+
+      var syncing = false;
+      var verifiedOnce = false;
+
+      function afterFirstSync() {
+        if (verifiedOnce) return;
+        verifiedOnce = true;
+        verifyConnection();
+      }
+
+      function syncStatus() {
+        if (syncing) return;
+        syncing = true;
+
+        fetch(API + "/portal/session-status?mac=" + encodeURIComponent(mac))
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            syncing = false;
+            // An expired or invalid voucher goes back to the portal rather than sitting
+            // on a stale "connected" screen.
+            if (!data.active) {
+              backToLogin();
+              return;
+            }
+            applyUsage(data);
+            afterFirstSync();
+          })
+          .catch(function () {
+            syncing = false;
+            // Backend unreachable — keep the last known figures rather than inventing
+            // new ones, and still find out whether the internet works.
+            afterFirstSync();
+          });
+      }
+
+      syncStatus();
+      setInterval(syncStatus, 30000);
+      setInterval(renderTime, 1000);
+    </script>
+  </body>
+</html>

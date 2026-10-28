@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "noEmit": true,
+    "allowJs": true,
+    // "bun" is for the `bun:test` module the *.test.ts files import — `pnpm test` runs `bun test`,
+    // which needs no build step. The runtime itself is still Node; nothing outside tests uses Bun.
+    "types": ["node", "bun"]
+  },
+  "include": ["src/**/*.ts", "*.ts"]
+}

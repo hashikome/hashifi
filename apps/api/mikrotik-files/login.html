@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connecting…</title>
+    <style>
+      :root {
+        --ground: #f4efe9;
+        --card: #ffffff;
+        --text: #1a0f0b;
+        --muted: #7a6860;
+        --subtle: #c4b0a8;
+        --accent: #e05c2b;
+        --a-light: rgba(224, 92, 43, 0.08);
+        --a-ring: rgba(224, 92, 43, 0.22);
+        --border: #e8dcd5;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        background: var(--ground);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        color: var(--text);
+        padding: 24px;
+        gap: 18px;
+      }
+
+      /* ── Brand mark ─────────────────────────────────── */
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: fadeUp 0.35s 0.05s ease-out both;
+      }
+      .brand-icon {
+        width: 30px;
+        height: 30px;
+        background: var(--accent);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .brand-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: -0.015em;
+      }
+
+      /* ── Card ───────────────────────────────────────── */
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 40px 32px 36px;
+        max-width: 370px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        box-shadow:
+          0 1px 4px rgba(26, 15, 11, 0.05),
+          0 4px 16px rgba(26, 15, 11, 0.04);
+        animation: fadeUp 0.4s 0.12s ease-out both;
+      }
+
+      /* ── Spinner ────────────────────────────────────── */
+      .spinner-wrap {
+        position: relative;
+        width: 64px;
+        height: 64px;
+        margin-bottom: 24px;
+        animation: popIn 0.4s 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      .spinner-track {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2.5px solid var(--border);
+      }
+      .spinner-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2.5px solid transparent;
+        border-top-color: var(--accent);
+        animation: spin 0.9s linear infinite;
+      }
+      .spinner-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--a-light);
+        border: 1.5px solid var(--a-ring);
+        animation: pulse 1.8s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(0.7);
+          opacity: 0.5;
+        }
+      }
+      @keyframes popIn {
+        from {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      /* ── Text ───────────────────────────────────────── */
+      .heading {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: var(--text);
+        margin-bottom: 8px;
+        animation: fadeUp 0.35s 0.4s ease-out both;
+      }
+      .sub {
+        font-size: 13.5px;
+        color: var(--muted);
+        line-height: 1.6;
+        text-align: center;
+        animation: fadeUp 0.35s 0.45s ease-out both;
+      }
+
+      /* ── Divider ─────────────────────────────────── */
+      .divider {
+        width: 100%;
+        height: 1px;
+        background: var(--border);
+        margin: 24px 0 20px;
+        animation: fadeIn 0.3s 0.55s ease-out both;
+      }
+
+      /* ── Status row ─────────────────────────────── */
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+        animation: fadeUp 0.35s 0.6s ease-out both;
+      }
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+        animation: pulse 1.8s ease-in-out infinite;
+      }
+
+      /* ── Footer ─────────────────────────────────── */
+      .footer {
+        font-size: 11px;
+        color: var(--subtle);
+        letter-spacing: 0.02em;
+        animation: fadeIn 0.3s 0.8s ease-out both;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .brand,
+        .card,
+        .spinner-wrap,
+        .heading,
+        .sub,
+        .divider,
+        .status,
+        .footer {
+          animation: none;
+          opacity: 1;
+        }
+        .spinner-ring,
+        .spinner-dot,
+        .status-dot {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#fff"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+          <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+          <circle cx="12" cy="20" r="1" fill="#fff" stroke="none" />
+        </svg>
+      </div>
+      <span class="brand-name">WiFi Billing</span>
+    </div>
+
+    <div class="card">
+      <div class="spinner-wrap">
+        <div class="spinner-track"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-dot"></div>
+      </div>
+
+      <div class="heading">Opening login portal</div>
+      <div class="sub">Redirecting you to the sign-in page.<br />This only takes a moment.</div>
+
+      <div class="divider"></div>
+
+      <div class="status">
+        <div class="status-dot"></div>
+        Establishing secure connection…
+      </div>
+    </div>
+
+    <div class="footer">WiFi Billing System</div>
+
+    <script>
+      window.location.replace(
+        "http://192.168.0.15:8080/portal/login" +
+          "?mac=$(mac)" +
+          "&ip=$(ip)" +
+          "&link-login=$(link-login-only)" +
+          "&link-orig=$(link-orig)" +
+          "&chap-id=$(chap-id)" +
+          "&chap-challenge=$(chap-challenge)",
+      );
+    </script>
+  </body>
+</html>

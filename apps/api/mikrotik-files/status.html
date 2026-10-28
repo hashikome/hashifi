@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    $(if refresh-timeout)
+    <meta http-equiv="refresh" content="$(refresh-timeout-secs)" />
+    $(endif)
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta http-equiv="expires" content="-1" />
+    <title>Your connection</title>
+
+    <!--
+      The page a customer sees when they are already online and open the hotspot address.
+
+      RouterOS ships a status.html that is a bare four-row table with a "Log out" button and a
+      popup-window logout handler. It works, but it is the only screen a paying customer ever
+      returns to, so it is worth as much care as the login page.
+
+      Two rules shape this file:
+
+      1. **Server-rendered first.** Every figure below is a RouterOS variable substituted by
+         the router before the page is sent, so the page is complete and correct with the backend
+         switched off — which matters, because the customer is already online and a status screen
+         that needs a working backend to say anything would be broken exactly when they most want
+         to check. JavaScript only *enriches* (data allowance) and *animates* (the ticking
+         countdown); nothing structural depends on it.
+      2. **No dollar-parenthesis sequence outside a real RouterOS variable.** The router
+         substitutes that pattern anywhere in the file — including inside comments like this one,
+         and inside script and style blocks — so never introduce a jQuery-style selector call.
+
+      Styling deliberately mirrors alogin.html — same tokens, same card — so the page a customer
+      lands on after paying and the page they come back to look like one product.
+    -->
+
+    <style>
+      :root {
+        --ground: #f4efe9;
+        --card: #ffffff;
+        --text: #1a0f0b;
+        --muted: #7a6860;
+        --subtle: #c4b0a8;
+        --accent: #e05c2b;
+        --a-light: rgba(224, 92, 43, 0.08);
+        --border: #e8dcd5;
+        --ok: #1f9254;
+        --ok-light: rgba(31, 146, 84, 0.1);
+        --warn: #b45309;
+        --warn-light: rgba(180, 83, 9, 0.1);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100svh;
+        background: var(--ground);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        color: var(--text);
+        padding: 24px;
+        gap: 20px;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      /* ── Brand ──────────────────────────────────────── */
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        animation: fadeUp 0.35s 0.05s ease-out both;
+      }
+      .brand-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--accent);
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .brand-name {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 28px 26px 24px;
+        max-width: 380px;
+        width: 100%;
+        box-shadow:
+          0 1px 4px rgba(26, 15, 11, 0.05),
+          0 4px 20px rgba(26, 15, 11, 0.06);
+        animation: fadeUp 0.4s 0.12s ease-out both;
+      }
+
+      /* ── Online pill ────────────────────────────────── */
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--ok-light);
+        color: var(--ok);
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 5px 11px 5px 9px;
+        border-radius: 999px;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--ok);
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .who {
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .who strong {
+        color: var(--text);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
+
+      /* ── Headline figure ────────────────────────────── */
+      .headline {
+        margin-top: 18px;
+      }
+      .headline-label {
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--subtle);
+        font-weight: 600;
+      }
+      .headline-value {
+        font-size: 34px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.15;
+        margin-top: 2px;
+      }
+      .headline-value.low {
+        color: var(--accent);
+      }
+
+      .bar {
+        height: 8px;
+        width: 100%;
+        background: #e8dcd5;
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 12px;
+      }
+      .bar-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        border-radius: 999px;
+        transition: width 0.4s ease;
+      }
+      .bar-note {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 7px;
+      }
+
+      /* ── Detail rows ────────────────────────────────── */
+      .rows {
+        margin-top: 20px;
+        border-top: 1px solid var(--border);
+      }
+      .row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .row-label {
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .row-value {
+        font-weight: 550;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        word-break: break-all;
+      }
+
+      .notice {
+        margin-top: 16px;
+        background: var(--warn-light);
+        color: var(--warn);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 12.5px;
+        line-height: 1.45;
+      }
+      .notice a {
+        color: inherit;
+        font-weight: 600;
+      }
+
+      /* ── Logout ─────────────────────────────────────── */
+      .actions {
+        margin-top: 22px;
+      }
+      button {
+        width: 100%;
+        /* 46px: a thumb target on a phone, which is the only device this is read on. */
+        min-height: 46px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--muted);
+        font: inherit;
+        font-size: 14.5px;
+        font-weight: 600;
+        border-radius: 12px;
+        cursor: pointer;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease,
+          border-color 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      button:hover {
+        background: var(--ground);
+      }
+      button.confirming {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .actions-note {
+        font-size: 11.5px;
+        color: var(--subtle);
+        text-align: center;
+        margin-top: 9px;
+        line-height: 1.45;
+      }
+
+      .footer {
+        font-size: 11.5px;
+        color: var(--subtle);
+        letter-spacing: 0.02em;
+        text-align: center;
+        animation: fadeIn 0.3s 0.6s ease-out both;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(7px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+
+      /* Small phones: keep the headline from crowding the card edges. */
+      @media (max-width: 360px) {
+        .card {
+          padding: 24px 20px 20px;
+        }
+        .headline-value {
+          font-size: 30px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round">
+          <path d="M5 12.55a11 11 0 0 1 14 0" />
+          <path d="M8.5 16.03a6 6 0 0 1 7 0" />
+          <path d="M12 20h.01" />
+        </svg>
+      </span>
+      <span class="brand-name">Wi-Fi Billing</span>
+    </div>
+
+    <main class="card">
+      <span class="pill"><span class="dot" aria-hidden="true"></span>You're online</span>
+
+      <!--
+        $(login-by) is 'trial' for the free trial user and 'mac' for a MAC-bypass login; neither has
+        a voucher code to show. $(username) is the voucher code itself — it never leaves the router,
+        which is why /portal/session-status deliberately does not return it.
+      -->
+      $(if login-by == 'trial')
+      <p class="who">Connected on a <strong>free trial</strong></p>
+      $(elif login-by == 'mac')
+      <p class="who">Connected automatically by device</p>
+      $(else)
+      <p class="who">Voucher <strong>$(username)</strong></p>
+      $(endif)
+
+      <div class="headline">
+        $(if session-time-left)
+        <div class="headline-label">Time remaining</div>
+        <div class="headline-value" id="remaining">$(session-time-left)</div>
+        <div class="bar hidden" id="time-bar-wrap"><div class="bar-fill" id="time-bar"></div></div>
+        <!--
+          When it runs out, in words. "2h 14m left" tells you how long; "until 9:42 pm" tells you
+          whether that covers the trip home. Filled in by script from the phone's own clock, so it
+          is right even with the backend unreachable and even though the router's clock drifts.
+        -->
+        <div class="bar-note" id="expires-note"></div>
+        $(else)
+        <div class="headline-label">Connected for</div>
+        <div class="headline-value">$(uptime)</div>
+        <div class="bar-note" id="expires-note">This voucher has no time limit.</div>
+        $(endif)
+      </div>
+
+      <!-- Data allowance. Hidden until the backend confirms there is a limit worth showing. -->
+      <div class="headline hidden" id="data-block">
+        <div class="headline-label">Data remaining</div>
+        <div class="headline-value" id="data-remaining">—</div>
+        <div class="bar"><div class="bar-fill" id="data-bar"></div></div>
+        <div class="bar-note" id="data-note"></div>
+      </div>
+
+      $(if blocked == 'yes')
+      <div class="notice">
+        Your session is paused until you view the required page.
+        <a href="$(link-advert)" target="hotspot_advert">Open it now</a>.
+      </div>
+      $(endif)
+
+      <div class="rows">
+        <div class="row">
+          <span class="row-label">Used this session</span>
+          <span class="row-value">&uarr; $(bytes-in-nice) &nbsp; &darr; $(bytes-out-nice)</span>
+        </div>
+        $(if session-time-left)
+        <div class="row">
+          <span class="row-label">Connected for</span>
+          <span class="row-value">$(uptime)</span>
+        </div>
+        $(endif)
+        <div class="row">
+          <span class="row-label">Your address</span>
+          <span class="row-value">$(ip)</span>
+        </div>
+        <div class="row">
+          <span class="row-label">Device</span>
+          <span class="row-value">$(mac)</span>
+        </div>
+      </div>
+
+      <!--
+        A MAC-bypass login has no session to end — RouterOS re-authenticates the device
+        immediately — so offering a button that appears to do nothing would be worse than
+        offering none.
+      -->
+      $(if login-by-mac != 'yes')
+      <form action="$(link-logout)" name="logout" method="post" class="actions" id="logout-form">
+        <button type="submit" id="logout-btn">Disconnect</button>
+        <p class="actions-note" id="logout-note">
+          Your remaining time keeps counting down while you are disconnected.
+        </p>
+      </form>
+      $(endif)
+    </main>
+
+    <p class="footer">Keep this page to check your remaining time</p>
+
+    <script>
+      (function () {
+        "use strict";
+
+        // Substituted by the router. The backend URL is rewritten at push time by
+        // renderPortalFile(), so this literal is only ever a placeholder in the repo.
+        var mac = "$(mac)";
+        var API = "http://192.168.0.15:8080";
+
+        /* ── Duration handling ─────────────────────────────────────────────
+         * RouterOS renders durations as "1d2h3m4s", "23h59m58s", "4m30s" and sometimes
+         * "1d 00:10:00". Parsing all of those means the countdown can tick between the
+         * router's own refreshes instead of sitting frozen for a minute at a time.
+         * If it does not parse, the server-rendered text is simply left alone — that is
+         * the whole point of rendering it server-side first.
+         */
+        function parseDuration(text) {
+          if (!text) return null;
+          var s = String(text).trim();
+          var total = 0;
+          var matched = false;
+
+          var clock = s.match(/(\d+)\s*:\s*(\d{1,2})\s*:\s*(\d{1,2})/);
+          var days = s.match(/(\d+)\s*d/);
+          if (clock) {
+            total += Number(clock[1]) * 3600 + Number(clock[2]) * 60 + Number(clock[3]);
+            if (days) total += Number(days[1]) * 86400;
+            matched = true;
+          } else {
+            var units = { d: 86400, h: 3600, m: 60, s: 1 };
+            var re = /(\d+)\s*([dhms])/g;
+            var m;
+            while ((m = re.exec(s)) !== null) {
+              total += Number(m[1]) * units[m[2]];
+              matched = true;
+            }
+          }
+          return matched ? total : null;
+        }
+
+        function formatDuration(seconds) {
+          if (seconds <= 0) return "0m";
+          var d = Math.floor(seconds / 86400);
+          var h = Math.floor((seconds % 86400) / 3600);
+          var m = Math.floor((seconds % 3600) / 60);
+          var s = seconds % 60;
+          if (d > 0) return d + "d " + h + "h";
+          if (h > 0) return h + "h " + (m < 10 ? "0" : "") + m + "m";
+          // Under an hour the seconds matter to someone watching it run out.
+          if (m > 0) return m + "m " + (s < 10 ? "0" : "") + s + "s";
+          return s + "s";
+        }
+
+        /* ── When does it end? ─────────────────────────────────────────
+         * Matches the date style used everywhere else in the product (AGENT.md): "5th Mar 2026"
+         * and "2:49 am". Today and tomorrow are named rather than dated, because "today at 9:42 pm"
+         * is what someone actually wants to know.
+         *
+         * Computed from the PHONE's clock plus the remaining seconds, never from the router's — a
+         * MikroTik with no NTP client can be weeks out, and it is the customer's own clock they
+         * will compare this against.
+         */
+        var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+        function ordinal(n) {
+          if (n > 3 && n < 21) return n + "th";
+          if (n % 10 === 1) return n + "st";
+          if (n % 10 === 2) return n + "nd";
+          if (n % 10 === 3) return n + "rd";
+          return n + "th";
+        }
+
+        function clockOf(date) {
+          var h = date.getHours();
+          var m = date.getMinutes();
+          var suffix = h < 12 ? "am" : "pm";
+          var h12 = h % 12;
+          if (h12 === 0) h12 = 12;
+          return h12 + ":" + (m < 10 ? "0" : "") + m + " " + suffix;
+        }
+
+        function sameDay(a, b) {
+          return (
+            a.getFullYear() === b.getFullYear() &&
+            a.getMonth() === b.getMonth() &&
+            a.getDate() === b.getDate()
+          );
+        }
+
+        function formatWhen(date) {
+          var now = new Date();
+          var tomorrow = new Date(now.getTime() + 86400000);
+          if (sameDay(date, now)) return "today at " + clockOf(date);
+          if (sameDay(date, tomorrow)) return "tomorrow at " + clockOf(date);
+          return (
+            ordinal(date.getDate()) +
+            " " +
+            MONTHS[date.getMonth()] +
+            " " +
+            date.getFullYear() +
+            ", " +
+            clockOf(date)
+          );
+        }
+
+        var expiresNote = document.getElementById("expires-note");
+
+        function showExpiry(date) {
+          if (!expiresNote || !date || isNaN(date.getTime())) return;
+          expiresNote.textContent = "Runs out " + formatWhen(date);
+        }
+
+        function formatBytes(bytes) {
+          if (bytes === null || bytes === undefined) return "—";
+          if (bytes < 1024) return bytes + " B";
+          var kb = bytes / 1024;
+          if (kb < 1024) return Math.round(kb) + " KB";
+          var mb = kb / 1024;
+          if (mb < 1024) return (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + " MB";
+          return (mb / 1024).toFixed(2) + " GB";
+        }
+
+        /* ── Ticking countdown ─────────────────────────────────────────── */
+        var remainingEl = document.getElementById("remaining");
+        var secondsLeft = remainingEl ? parseDuration(remainingEl.textContent) : null;
+        var initialLeft = secondsLeft;
+        var timeBarWrap = document.getElementById("time-bar-wrap");
+        var timeBar = document.getElementById("time-bar");
+
+        function renderRemaining() {
+          if (!remainingEl || secondsLeft === null) return;
+          remainingEl.textContent = formatDuration(secondsLeft);
+          // Under 5 minutes, colour it — the customer needs to notice before it stops.
+          remainingEl.className = secondsLeft <= 300 ? "headline-value low" : "headline-value";
+
+          if (initialLeft && initialLeft > 0 && timeBar && timeBarWrap) {
+            timeBarWrap.classList.remove("hidden");
+            timeBar.style.width = Math.max(0, Math.min(100, (secondsLeft / initialLeft) * 100)) + "%";
+          }
+        }
+
+        if (secondsLeft !== null) {
+          renderRemaining();
+          showExpiry(new Date(Date.now() + secondsLeft * 1000));
+          setInterval(function () {
+            if (secondsLeft === null) return;
+            secondsLeft = Math.max(0, secondsLeft - 1);
+            renderRemaining();
+            // Out of time: reload so RouterOS decides what the customer sees next, rather
+            // than this page claiming a session that has ended.
+            if (secondsLeft === 0) setTimeout(function () { location.reload(); }, 1500);
+          }, 1000);
+        }
+
+        /* ── Data allowance, from the backend ───────────────────────────
+         * The router knows bytes transferred this session; only the backend knows the
+         * voucher's total allowance across sessions. Enrichment only: any failure leaves
+         * the server-rendered page exactly as it is.
+         */
+        var dataBlock = document.getElementById("data-block");
+        var dataRemaining = document.getElementById("data-remaining");
+        var dataBar = document.getElementById("data-bar");
+        var dataNote = document.getElementById("data-note");
+
+        function applyData(d) {
+          if (!d || d.unlimited || !d.limitBytes || !dataBlock) return;
+          var used = d.usedBytes || 0;
+          var pct = Math.min(100, Math.round((used / d.limitBytes) * 100));
+          dataRemaining.textContent = formatBytes(d.remainingBytes);
+          dataRemaining.className = pct >= 90 ? "headline-value low" : "headline-value";
+          dataBar.style.width = pct + "%";
+          dataNote.textContent = formatBytes(used) + " of " + formatBytes(d.limitBytes) + " used";
+          dataBlock.classList.remove("hidden");
+        }
+
+        function sync() {
+          if (!window.fetch) return;
+          fetch(API + "/portal/session-status?mac=" + encodeURIComponent(mac))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data || !data.active) return;
+              applyData(data.data);
+              // Prefer the backend's wall-clock figure when the router did not give one
+              // (an uptime-only voucher still has a real expiry in the database).
+              if (data.time && !data.time.unlimited) {
+                // The database holds the real wall-clock expiry; the router only knows a duration.
+                if (data.time.expiresAt) showExpiry(new Date(data.time.expiresAt));
+                if (
+                  secondsLeft === null &&
+                  typeof data.time.secondsRemaining === "number"
+                ) {
+                  secondsLeft = data.time.secondsRemaining;
+                  initialLeft = secondsLeft;
+                  renderRemaining();
+                }
+              }
+            })
+            .catch(function () {
+              /* backend down — the page is already complete without it */
+            });
+        }
+        sync();
+        setInterval(sync, 30000);
+
+        /* ── Disconnect ─────────────────────────────────────────────────
+         * Two taps, because this is destructive and irreversible on a phone where a
+         * mis-tap is easy: the remaining time keeps burning while they are off. The stock
+         * page opened a popup window for logout, which modern mobile browsers block.
+         */
+        var form = document.getElementById("logout-form");
+        var btn = document.getElementById("logout-btn");
+        var note = document.getElementById("logout-note");
+        if (form && btn) {
+          var armed = false;
+          var disarm;
+          form.addEventListener("submit", function (e) {
+            if (armed) return; // second tap — let it through
+            e.preventDefault();
+            armed = true;
+            btn.textContent = "Tap again to disconnect";
+            btn.className = "confirming";
+            if (note) note.textContent = "You will need your voucher code to get back online.";
+            clearTimeout(disarm);
+            disarm = setTimeout(function () {
+              armed = false;
+              btn.textContent = "Disconnect";
+              btn.className = "";
+              if (note)
+                note.textContent =
+                  "Your remaining time keeps counting down while you are disconnected.";
+            }, 4000);
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>
