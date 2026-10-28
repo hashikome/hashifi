@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!ref", "!.agents", "!apps/api/src/generated/prisma", "!**/*.md"]
+    "includes": [
+      "**",
+      "!ref",
+      "!.agents",
+      "!apps/api/src/generated/prisma",
+      "!**/*.md",
+      "!apps/api/mikrotik-files"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -65,8 +72,7 @@
         "apps/api/src/middleware/**",
         "apps/api/src/server.ts",
         "apps/api/src/db/**",
-        "apps/api/drizzle.config.ts",
-        "apps/api/mikrotik-files/**"
+        "apps/api/drizzle.config.ts"
       ],
       "linter": {
         "rules": {
@@ -86,9 +92,6 @@
           },
           "complexity": {
             "noImportantStyles": "warn"
-          },
-          "a11y": {
-            "noSvgWithoutTitle": "warn"
           }
         }
       }

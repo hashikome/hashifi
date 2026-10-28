@@ -76,6 +76,14 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Observation: the package create and edit pages enforce business rules (minimum price 1,000
   TSH; throttled speeds below the package speed) in the web.
   Evidence: `apps/web/app/admin/packages/create/page.tsx`, `[id]/edit/page.tsx`.
+- Observation: Biome's "safe" fixes rewrote the router portal pages' inline scripts (ES5
+  `function` to arrow functions), which old captive-portal browsers may not run. Restored as
+  received apart from the brand name, and excluded from Biome.
+  Evidence: `git diff 45ebd53 -- apps/api/mikrotik-files`.
+- Observation: a browser smoke test of the built web against a stub API (signed-in manager,
+  one venue, no portal settings) rendered printing, voucher creation, the venue map, packages,
+  routers and the dashboard without script errors, and each page fetched once (routers also
+  polls every 10 s, as designed). Not yet exercised against the real API.
 - Observation: Bun 1.4 workspaces install in isolated mode (`node_modules/.bun/`, symlinked per
   app); the purchased `turbopack.root` pin stopped Next.js resolving itself and was removed.
   Next.js finds the root `bun.lock`.
@@ -122,8 +130,10 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   ntumie. and Pigfarm's sign-in is the duplication the service removes.
   Date/Author: 2026-10-28 / Paul
 - Decision: lint findings in code M3 and M4 replace (Express routes, middleware, `server.ts`,
-  the Drizzle layer, the router portal pages) are warnings until those milestones remove the
-  code, rather than typed now and deleted after.
+  the Drizzle layer) are warnings until those milestones remove the code, rather than typed
+  now and deleted after. The router portal pages (`apps/api/mikrotik-files/`) are device files
+  uploaded byte for byte and deliberately ES5 for captive-portal browsers: Biome does not
+  touch them.
   Rationale: kept code (`services/`, `utils/`, the web) is fixed; the rest is rewritten.
   Date/Author: 2026-10-28 / Claude
 - Decision: FSL-1.1-ALv2, Shikome Technology Limited as licensor.
