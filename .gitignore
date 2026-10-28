@@ -11,6 +11,9 @@ ref/*
 !.env.example
 !**/.env.example
 
+# Operating-system files.
+.DS_Store
+
 # Bun workspace dependencies and generated build output.
 node_modules/
 .next/

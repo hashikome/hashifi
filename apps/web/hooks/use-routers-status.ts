@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
-const POLL_INTERVAL_MS = 30_000
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const POLL_INTERVAL_MS = 30_000;
 
 // The live-sessions WebSocket only reflects whether the browser has an open
 // connection to OUR backend — it says nothing about whether the backend can
@@ -13,34 +13,34 @@ const POLL_INTERVAL_MS = 30_000
 // spinner UI driven only by the WS connection spins forever. This hook checks
 // actual router status so pages can show a clear disconnected state instead.
 export function useRoutersStatus() {
-  const [totalCount, setTotalCount] = useState(1)
-  const [onlineCount, setOnlineCount] = useState(1)
-  const [loaded, setLoaded] = useState(false)
+  const [totalCount, setTotalCount] = useState(1);
+  const [onlineCount, setOnlineCount] = useState(1);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     const check = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/routers`, { credentials: "include" })
-        if (!res.ok || !mounted) return
-        const data = await res.json()
-        const routers: { status: string }[] = data.routers ?? []
-        setTotalCount(routers.length)
-        setOnlineCount(routers.filter((r) => r.status === "online").length)
-        setLoaded(true)
+        const res = await fetch(`${API_URL}/api/routers`, { credentials: "include" });
+        if (!res.ok || !mounted) return;
+        const data = await res.json();
+        const routers: { status: string }[] = data.routers ?? [];
+        setTotalCount(routers.length);
+        setOnlineCount(routers.filter((r) => r.status === "online").length);
+        setLoaded(true);
       } catch {
         // keep last-known state on a transient fetch failure
       }
-    }
+    };
 
-    check()
-    const interval = setInterval(check, POLL_INTERVAL_MS)
+    check();
+    const interval = setInterval(check, POLL_INTERVAL_MS);
     return () => {
-      mounted = false
-      clearInterval(interval)
-    }
-  }, [])
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return {
     hasAnyRouter: totalCount > 0,
@@ -50,5 +50,5 @@ export function useRoutersStatus() {
     onlineCount,
     totalCount,
     loaded,
-  }
+  };
 }

@@ -1,10 +1,28 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import {
+  Activity,
+  AlertTriangle,
+  Clock,
+  Loader,
+  Plus,
+  Power,
+  RefreshCw,
+  RotateCw,
+  Router as RouterIcon,
+  Users,
+  Wand2,
+} from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { ErrorState } from "@/components/error-state";
+import { ProvisionDialog } from "@/components/provision-dialog";
+import { TableDeleteButton, TableEditButton } from "@/components/table-action-buttons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -12,159 +30,140 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { ConfirmModal } from "@/components/confirm-modal"
-import { ProvisionDialog } from "@/components/provision-dialog"
-import type { Router } from "@/lib/types"
-import {
-  Router as RouterIcon,
-  Plus,
-  Clock,
-  Users,
-  Activity,
-  RefreshCw,
-  Power,
-  Loader,
-  RotateCw,
-  Wand2,
-  AlertTriangle,
-} from "lucide-react"
-import { toast } from "sonner"
-import { ErrorState } from "@/components/error-state"
-import { useAuth } from "@/lib/auth-context"
-import { statusPill } from "@/lib/status-pill"
-import { TableEditButton, TableDeleteButton } from "@/components/table-action-buttons"
+} from "@/components/ui/table";
+import { useAuth } from "@/lib/auth-context";
+import { errorMessage } from "@/lib/errors";
+import { statusPill } from "@/lib/status-pill";
+import type { Router } from "@/lib/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function formatUptime(seconds: number) {
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  if (days > 0) return `${days}d ${hours}h`
-  const minutes = Math.floor((seconds % 3600) / 60)
-  return `${hours}h ${minutes}m`
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  if (days > 0) return `${days}d ${hours}h`;
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${hours}h ${minutes}m`;
 }
 
 function getStatusColor(status: Router["status"]) {
   switch (status) {
     case "online":
-      return statusPill.success
+      return statusPill.success;
     case "provisioning":
-      return statusPill.warning
+      return statusPill.warning;
     case "error":
-      return statusPill.danger
+      return statusPill.danger;
     default:
-      return statusPill.neutral
+      return statusPill.neutral;
   }
 }
 
 function getStatusLabel(status: Router["status"]) {
-  if (status === "error") return "disconnected"
-  return status
+  if (status === "error") return "disconnected";
+  return status;
 }
 
 export default function RoutersPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
-  const [routers, setRouters] = useState<Router[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [routerToDelete, setRouterToDelete] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [syncingId, setSyncingId] = useState<string | null>(null)
-  const [provisionTarget, setProvisionTarget] = useState<{ id: string; name: string } | null>(
-    null,
-  )
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [routers, setRouters] = useState<Router[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [routerToDelete, setRouterToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [provisionTarget, setProvisionTarget] = useState<{ id: string; name: string } | null>(null);
   const [backlog, setBacklog] = useState<{
-    stuckVouchers: number
-    unprovisionedPayments: number
-  } | null>(null)
+    stuckVouchers: number;
+    unprovisionedPayments: number;
+  } | null>(null);
 
   const handleSync = async (routerId: string, routerName: string) => {
-    setSyncingId(routerId)
+    setSyncingId(routerId);
     try {
       const res = await fetch(`${API_URL}/api/routers/${routerId}/sync`, {
         method: "POST",
         credentials: "include",
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Sync failed")
-      toast.success(`${routerName}: ${data.message}`)
-      fetchRouters()
-    } catch (err: any) {
-      toast.error(`${routerName}: ${err.message}`)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Sync failed");
+      toast.success(`${routerName}: ${data.message}`);
+      fetchRouters();
+    } catch (err) {
+      toast.error(`${routerName}: ${errorMessage(err, "request failed")}`);
     } finally {
-      setSyncingId(null)
+      setSyncingId(null);
     }
-  }
+  };
 
-  const fetchRouters = async (showLoading = true) => {
-    if (showLoading) setIsLoading(true)
-    setLoadError(null)
+  const fetchRouters = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
+    setLoadError(null);
     try {
-      const res = await fetch(`${API_URL}/api/routers`, { credentials: "include" })
-      if (!res.ok) throw new Error("Failed to fetch routers")
-      const data = await res.json()
-      setRouters(data.routers)
+      const res = await fetch(`${API_URL}/api/routers`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch routers");
+      const data = await res.json();
+      setRouters(data.routers);
     } catch {
       // Recorded even on a background refresh — the empty state would otherwise claim there are
       // no routers when the request simply failed. The *toast* stays gated on showLoading so the
       // 10s poll doesn't spam one every tick.
-      setLoadError("The router list could not be loaded. Check your connection and try again.")
-      if (showLoading) toast.error("Failed to load routers")
+      setLoadError("The router list could not be loaded. Check your connection and try again.");
+      if (showLoading) toast.error("Failed to load routers");
     } finally {
-      if (showLoading) setIsLoading(false)
+      if (showLoading) setIsLoading(false);
     }
-  }
+  }, []);
 
   // Customers who paid or redeemed but whose router never confirmed. The reconcile
   // daemon retries these; this surfaces the ones it can't fix on its own.
-  const fetchBacklog = async () => {
+  const fetchBacklog = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/routers/provisioning-backlog`, {
         credentials: "include",
-      })
-      if (res.ok) setBacklog(await res.json())
+      });
+      if (res.ok) setBacklog(await res.json());
     } catch {
       /* non-critical indicator */
     }
-  }
+  }, []);
 
   useEffect(() => {
-    fetchRouters()
-    fetchBacklog()
+    fetchRouters();
+    fetchBacklog();
     const interval = setInterval(() => {
-      fetchRouters(false)
-      fetchBacklog()
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [])
+      fetchRouters(false);
+      fetchBacklog();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fetchRouters, fetchBacklog]);
 
   const handleDeleteConfirm = async () => {
-    if (!routerToDelete) return
-    setIsDeleting(true)
+    if (!routerToDelete) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`${API_URL}/api/routers/${routerToDelete}`, {
         method: "DELETE",
         credentials: "include",
-      })
+      });
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to delete router")
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete router");
       }
-      setRouters((prev) => prev.filter((r) => r.id !== routerToDelete))
-      toast.success("Router deleted successfully")
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete router")
+      setRouters((prev) => prev.filter((r) => r.id !== routerToDelete));
+      toast.success("Router deleted successfully");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to delete router"));
     } finally {
-      setIsDeleting(false)
-      setRouterToDelete(null)
+      setIsDeleting(false);
+      setRouterToDelete(null);
     }
-  }
+  };
 
-  const onlineCount = routers.filter((r) => r.status === "online").length
-  const offlineCount = routers.filter((r) => r.status === "offline").length
-  const totalDevices = routers.reduce((sum, r) => sum + r.connectedDevices, 0)
+  const onlineCount = routers.filter((r) => r.status === "online").length;
+  const offlineCount = routers.filter((r) => r.status === "offline").length;
+  const totalDevices = routers.reduce((sum, r) => sum + r.connectedDevices, 0);
 
   return (
     <div className="space-y-6">
@@ -293,11 +292,7 @@ export default function RoutersPage() {
               {loadError ? (
                 <TableRow>
                   <TableCell colSpan={isAdmin ? 9 : 8} className="h-24 text-center">
-                    <ErrorState
-                      message={loadError}
-                      onRetry={fetchRouters}
-                      isRetrying={isLoading}
-                    />
+                    <ErrorState message={loadError} onRetry={fetchRouters} isRetrying={isLoading} />
                   </TableCell>
                 </TableRow>
               ) : routers.length === 0 && !isLoading ? (
@@ -419,7 +414,7 @@ export default function RoutersPage() {
       <ConfirmModal
         isOpen={!!routerToDelete}
         onClose={() => {
-          if (!isDeleting) setRouterToDelete(null)
+          if (!isDeleting) setRouterToDelete(null);
         }}
         onConfirm={handleDeleteConfirm}
         title="Delete Router?"
@@ -448,5 +443,5 @@ export default function RoutersPage() {
         />
       )}
     </div>
-  )
+  );
 }

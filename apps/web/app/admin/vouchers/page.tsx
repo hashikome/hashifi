@@ -1,26 +1,47 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { useRouter, usePathname } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import type { VoucherListItem, VouchersResponse } from "@hashifi/types";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  CheckCircle,
+  Clock,
+  Copy,
+  Filter,
+  Loader,
+  Plus,
+  Printer,
+  RefreshCw,
+  Search,
+  Ticket,
+  Trash2,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { TableDeleteButton, TableNavButton } from "@/components/table-action-buttons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -28,191 +49,179 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import {
-  Ticket,
-  Search,
-  Filter,
-  Plus,
-  Copy,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Printer,
-  RefreshCw,
-  Loader,
-} from "lucide-react"
-import { toast } from "sonner"
-import { formatDuration } from "@/lib/duration"
-import { QRCodeSVG } from "qrcode.react"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ConfirmModal } from "@/components/confirm-modal"
-import { Trash2 } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
-import { formatDate } from "@/lib/utils"
-import { useAuth } from "@/lib/auth-context"
-import { statusPill } from "@/lib/status-pill"
-import { TableDeleteButton, TableNavButton } from "@/components/table-action-buttons"
+} from "@/components/ui/table";
+import { useAuth } from "@/lib/auth-context";
+import { formatDuration } from "@/lib/duration";
+import { statusPill } from "@/lib/status-pill";
+import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+/** A voucher with the fields this page displays. */
+interface VoucherRow extends VoucherListItem {
+  price: number;
+  dataLimit: number;
+  /** Data used, in GB. */
+  dataUsed: number;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 // NEXT_PUBLIC_PORTAL_URL must be set to the IP/hostname users reach from the WiFi
 // network (e.g. http://192.168.1.15:8080). QR codes encode this URL so scanning
 // them opens the portal login with the voucher code pre-filled.
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || API_URL
+const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || API_URL;
 
 function getStatusColor(status: string) {
   switch (status) {
     case "active":
-      return statusPill.warning
+      return statusPill.warning;
     case "used":
-      return statusPill.info
+      return statusPill.info;
     case "expired":
-      return statusPill.danger
+      return statusPill.danger;
     case "unused":
-      return statusPill.success
+      return statusPill.success;
     case "revoked":
-      return statusPill.neutral
+      return statusPill.neutral;
     case "pending_activation":
       // Redeemed but the router hasn't confirmed it — needs attention if it sticks.
-      return statusPill.accent
+      return statusPill.accent;
     default:
-      return statusPill.neutral
+      return statusPill.neutral;
   }
 }
 
 /** `pending_activation` → "pending router" */
 function formatStatus(status: string) {
-  return status === "pending_activation" ? "pending router" : status
+  return status === "pending_activation" ? "pending router" : status;
 }
 
 function getStatusIcon(status: string) {
   switch (status) {
     case "active":
-      return CheckCircle
+      return CheckCircle;
     case "used":
-      return CheckCircle
+      return CheckCircle;
     case "expired":
-      return XCircle
+      return XCircle;
     case "unused":
-      return Clock
+      return Clock;
     default:
-      return Ticket
+      return Ticket;
   }
 }
 
 export default function VouchersPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [vouchers, setVouchers] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedVoucher, setSelectedVoucher] = useState<any | null>(null)
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isPrinting, setIsPrinting] = useState(false)
-  const [isDialogPrinting, setIsDialogPrinting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [pageSize, setPageSize] = useState(10)
-  const [currentPage, setCurrentPage] = useState(1)
-  const router = useRouter()
-  const pathname = usePathname()
-  const { user } = useAuth()
-  const canDeleteVouchers = user?.role === "admin"
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [vouchers, setVouchers] = useState<VoucherRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedVoucher, setSelectedVoucher] = useState<VoucherRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isDialogPrinting, setIsDialogPrinting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const canDeleteVouchers = user?.role === "admin";
 
-  const fetchVouchers = async () => {
-    setIsLoading(true)
+  const fetchVouchers = useCallback(async () => {
+    setIsLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/vouchers`, {
         credentials: "include",
-      })
-      if (!res.ok) throw new Error("Failed to fetch vouchers")
-      const data = await res.json()
+      });
+      if (!res.ok) throw new Error("Failed to fetch vouchers");
+      const data: VouchersResponse = await res.json();
       setVouchers(
-        data.vouchers.map((v: any) => ({
+        data.vouchers.map((v) => ({
           ...v,
           price: Number(v.priceTsh),
           dataLimit: v.dataLimitGb ?? -1,
           dataUsed: v.dataUsedBytes / (1024 * 1024 * 1024), // Bytes to GB
         })),
-      )
+      );
     } catch (err) {
-      console.error(err)
-      toast.error("Failed to refresh vouchers")
+      console.error(err);
+      toast.error("Failed to refresh vouchers");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    fetchVouchers()
-  }, [])
+    fetchVouchers();
+  }, [fetchVouchers]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on navigation to reset the pending state
   useEffect(() => {
-    setIsPrinting(false)
-    setIsDialogPrinting(false)
-  }, [pathname])
+    setIsPrinting(false);
+    setIsDialogPrinting(false);
+  }, [pathname]);
 
   const filteredVouchers = vouchers.filter((voucher) => {
-    const q = searchQuery.toLowerCase()
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
       !q ||
       voucher.code.toLowerCase().includes(q) ||
       (voucher.packageName ?? "").toLowerCase().includes(q) ||
-      (voucher.venueName ?? "").toLowerCase().includes(q)
-    const matchesStatus = statusFilter === "all" ? true : voucher.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+      (voucher.venueName ?? "").toLowerCase().includes(q);
+    const matchesStatus = statusFilter === "all" ? true : voucher.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  const totalPages = Math.max(1, Math.ceil(filteredVouchers.length / pageSize))
-  const safePage = Math.min(currentPage, totalPages)
-  const pagedVouchers = filteredVouchers.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const totalPages = Math.max(1, Math.ceil(filteredVouchers.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedVouchers = filteredVouchers.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const handleFilterChange = (fn: () => void) => {
-    fn()
-    setCurrentPage(1)
-  }
+    fn();
+    setCurrentPage(1);
+  };
 
-  const activeCount = vouchers.filter((v) => v.status === "active").length
-  const usedCount = vouchers.filter((v) => v.status === "used").length
-  const expiredCount = vouchers.filter((v) => v.status === "expired").length
-  const unusedCount = vouchers.filter((v) => v.status === "unused").length
+  const activeCount = vouchers.filter((v) => v.status === "active").length;
+  const expiredCount = vouchers.filter((v) => v.status === "expired").length;
+  const unusedCount = vouchers.filter((v) => v.status === "unused").length;
 
   const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-    toast.success(`Copied: ${code}`)
-  }
+    navigator.clipboard.writeText(code);
+    toast.success(`Copied: ${code}`);
+  };
 
   const toggleSelectAll = () => {
-    const pageIds = pagedVouchers.map((v) => v.id)
-    const allSelected = pageIds.every((id) => selectedIds.includes(id))
+    const pageIds = pagedVouchers.map((v) => v.id);
+    const allSelected = pageIds.every((id) => selectedIds.includes(id));
     if (allSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
     } else {
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
     }
-  }
+  };
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
-  }
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  };
 
   const handleBatchDelete = async () => {
     if (!canDeleteVouchers) {
-      toast.error("Only admins can delete vouchers")
-      return
+      toast.error("Only admins can delete vouchers");
+      return;
     }
 
-    setIsDeleting(true)
-    const protectedStatuses = new Set(["active", "used"])
+    setIsDeleting(true);
+    const protectedStatuses = new Set(["active", "used"]);
     const idsToDelete = (deleteId ? [deleteId] : selectedIds).filter(
       (id) => !protectedStatuses.has(vouchers.find((v) => v.id === id)?.status ?? ""),
-    )
+    );
     if (idsToDelete.length === 0) {
-      toast.error("Active and used vouchers cannot be deleted.")
-      setIsDeleting(false)
-      setShowDeleteConfirm(false)
-      setDeleteId(null)
-      return
+      toast.error("Active and used vouchers cannot be deleted.");
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      setDeleteId(null);
+      return;
     }
     try {
       const res = await fetch(`${API_URL}/api/vouchers/batch`, {
@@ -220,35 +229,35 @@ export default function VouchersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: idsToDelete }),
         credentials: "include",
-      })
+      });
 
-      if (!res.ok) throw new Error("Failed to delete vouchers")
+      if (!res.ok) throw new Error("Failed to delete vouchers");
 
-      toast.success(`${idsToDelete.length} voucher(s) deleted`)
-      setSelectedIds((prev) => prev.filter((id) => !idsToDelete.includes(id)))
-      fetchVouchers()
+      toast.success(`${idsToDelete.length} voucher(s) deleted`);
+      setSelectedIds((prev) => prev.filter((id) => !idsToDelete.includes(id)));
+      fetchVouchers();
     } catch (err) {
-      console.error(err)
-      toast.error("Failed to delete vouchers")
+      console.error(err);
+      toast.error("Failed to delete vouchers");
     } finally {
-      setIsDeleting(false)
-      setShowDeleteConfirm(false)
-      setDeleteId(null)
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      setDeleteId(null);
     }
-  }
+  };
 
   const handleDeleteClick = (id: string) => {
-    setDeleteId(id)
-    setShowDeleteConfirm(true)
-  }
+    setDeleteId(id);
+    setShowDeleteConfirm(true);
+  };
 
   const handleBatchPrint = () => {
-    const selectedVouchers = vouchers.filter((v) => selectedIds.includes(v.id))
-    const codes = selectedVouchers.map((v) => v.code).join(",")
-    const packageId = selectedVouchers[0]?.packageId
-    setIsPrinting(true)
-    router.push(`/admin/vouchers/print?codes=${codes}&packageId=${packageId || ""}`)
-  }
+    const selectedVouchers = vouchers.filter((v) => selectedIds.includes(v.id));
+    const codes = selectedVouchers.map((v) => v.code).join(",");
+    const packageId = selectedVouchers[0]?.packageId;
+    setIsPrinting(true);
+    router.push(`/admin/vouchers/print?codes=${codes}&packageId=${packageId || ""}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -405,7 +414,7 @@ export default function VouchersPage() {
                 </TableRow>
               ) : (
                 pagedVouchers.map((voucher) => {
-                  const StatusIcon = getStatusIcon(voucher.status)
+                  const StatusIcon = getStatusIcon(voucher.status);
                   return (
                     <TableRow
                       key={voucher.id}
@@ -433,7 +442,7 @@ export default function VouchersPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{voucher.packageName}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {(voucher as any).venueName ?? (
+                        {voucher.venueName ?? (
                           <span className="text-xs text-muted-foreground/50">—</span>
                         )}
                       </TableCell>
@@ -488,7 +497,7 @@ export default function VouchersPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })
               )}
             </TableBody>
@@ -501,8 +510,8 @@ export default function VouchersPage() {
               <Select
                 value={String(pageSize)}
                 onValueChange={(v) => {
-                  setPageSize(Number(v))
-                  setCurrentPage(1)
+                  setPageSize(Number(v));
+                  setCurrentPage(1);
                 }}
               >
                 <SelectTrigger className="w-20 h-8">
@@ -621,10 +630,10 @@ export default function VouchersPage() {
                 <Button
                   disabled={isDialogPrinting}
                   onClick={() => {
-                    setIsDialogPrinting(true)
+                    setIsDialogPrinting(true);
                     router.push(
                       `/admin/vouchers/print?codes=${selectedVoucher.code}&packageId=${selectedVoucher.packageId || ""}`,
-                    )
+                    );
                   }}
                 >
                   {isDialogPrinting ? (
@@ -706,8 +715,8 @@ export default function VouchersPage() {
         isOpen={showDeleteConfirm}
         onClose={() => {
           if (!isDeleting) {
-            setShowDeleteConfirm(false)
-            setDeleteId(null)
+            setShowDeleteConfirm(false);
+            setDeleteId(null);
           }
         }}
         onConfirm={handleBatchDelete}
@@ -721,5 +730,5 @@ export default function VouchersPage() {
         isLoading={isDeleting}
       />
     </div>
-  )
+  );
 }

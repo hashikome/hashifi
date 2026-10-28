@@ -1,24 +1,48 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Clock,
+  Download,
+  Eye,
+  Laptop,
+  Loader,
+  MapPin,
+  Monitor,
+  Network,
+  Power,
+  Radio,
+  RefreshCw,
+  Router as RouterIcon,
+  Search,
+  Signal,
+  Smartphone,
+  Tablet,
+  Ticket,
+  Upload,
+  Wifi,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { ErrorState } from "@/components/error-state";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -26,219 +50,194 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { ConfirmModal } from "@/components/confirm-modal"
-import type { ActiveSession, Venue } from "@/lib/types"
-import { formatDate } from "@/lib/utils"
-import {
-  Radio,
-  Search,
-  Smartphone,
-  Laptop,
-  Tablet,
-  Monitor,
-  Eye,
-  Download,
-  Upload,
-  Clock,
-  Signal,
-  Network,
-  Router as RouterIcon,
-  RefreshCw,
-  Power,
-  Loader,
-  MapPin,
-  User,
-  Ticket,
-  Wifi,
-} from "lucide-react"
-import { toast } from "sonner"
-import { ErrorState } from "@/components/error-state"
-import { useAuth } from "@/lib/auth-context"
-import { statusPill } from "@/lib/status-pill"
-import { useLiveSessions } from "@/hooks/use-live-sessions"
-import { useRoutersStatus } from "@/hooks/use-routers-status"
+} from "@/components/ui/table";
+import { useLiveSessions } from "@/hooks/use-live-sessions";
+import { useRoutersStatus } from "@/hooks/use-routers-status";
+import { useAuth } from "@/lib/auth-context";
+import { statusPill } from "@/lib/status-pill";
+import type { ActiveSession, Venue } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface SessionStats {
-  total: number
-  connected: number
-  totalUploadBytes: number
-  totalDownloadBytes: number
+  total: number;
+  connected: number;
+  totalUploadBytes: number;
+  totalDownloadBytes: number;
 }
 
 function getDeviceIcon(deviceType: string | null) {
   switch (deviceType?.toLowerCase()) {
     case "mobile":
     case "phone":
-      return Smartphone
+      return Smartphone;
     case "laptop":
     case "computer":
-      return Laptop
+      return Laptop;
     case "tablet":
-      return Tablet
+      return Tablet;
     default:
-      return Monitor
+      return Monitor;
   }
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  const k = 1024
-  const sizes = ["B", "KB", "MB", "GB", "TB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / k ** i).toFixed(1)} ${sizes[i]}`;
 }
 
 function formatDuration(seconds: number): string {
-  if (seconds <= 0) return "0m"
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
+  if (seconds <= 0) return "0m";
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 function parseMikrotikUptime(uptime: string): number {
-  let s = 0
-  const d = uptime.match(/(\d+)d/)
-  if (d) s += parseInt(d[1]) * 86400
-  const h = uptime.match(/(\d+)h/)
-  if (h) s += parseInt(h[1]) * 3600
-  const m = uptime.match(/(\d+)m/)
-  if (m) s += parseInt(m[1]) * 60
-  const sec = uptime.match(/(\d+)s/)
-  if (sec) s += parseInt(sec[1])
-  return s
+  let s = 0;
+  const d = uptime.match(/(\d+)d/);
+  if (d) s += parseInt(d[1], 10) * 86400;
+  const h = uptime.match(/(\d+)h/);
+  if (h) s += parseInt(h[1], 10) * 3600;
+  const m = uptime.match(/(\d+)m/);
+  if (m) s += parseInt(m[1], 10) * 60;
+  const sec = uptime.match(/(\d+)s/);
+  if (sec) s += parseInt(sec[1], 10);
+  return s;
 }
 
 function getSignalInfo(dbm: number | null) {
-  if (dbm === null) return { label: "—", color: "text-muted-foreground", bars: 0 }
-  if (dbm >= -50) return { label: "Excellent", color: "text-emerald-500", bars: 4 }
-  if (dbm >= -60) return { label: "Good", color: "text-chart-2", bars: 3 }
-  if (dbm >= -70) return { label: "Fair", color: "text-chart-3", bars: 2 }
-  return { label: "Weak", color: "text-destructive", bars: 1 }
+  if (dbm === null) return { label: "—", color: "text-muted-foreground", bars: 0 };
+  if (dbm >= -50) return { label: "Excellent", color: "text-emerald-500", bars: 4 };
+  if (dbm >= -60) return { label: "Good", color: "text-chart-2", bars: 3 };
+  if (dbm >= -70) return { label: "Fair", color: "text-chart-3", bars: 2 };
+  return { label: "Weak", color: "text-destructive", bars: 1 };
 }
 
 function getStatusColor(status: ActiveSession["status"]) {
   switch (status) {
     case "connected":
-      return statusPill.success
+      return statusPill.success;
     case "terminated":
-      return statusPill.danger
+      return statusPill.danger;
     case "expired":
-      return statusPill.warning
+      return statusPill.warning;
     default:
-      return statusPill.neutral
+      return statusPill.neutral;
   }
 }
 
 export default function SessionsPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const {
     clients: liveClients,
     isConnected: wsConnected,
     lastUpdated: wsUpdated,
-  } = useLiveSessions()
-  const { hasOnlineRouter, isPartiallyOnline, onlineCount, totalCount } = useRoutersStatus()
+  } = useLiveSessions();
+  const { hasOnlineRouter, isPartiallyOnline, onlineCount, totalCount } = useRoutersStatus();
 
-  const [sessions, setSessions] = useState<ActiveSession[]>([])
-  const [venues, setVenues] = useState<Venue[]>([])
+  const [sessions, setSessions] = useState<ActiveSession[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [stats, setStats] = useState<SessionStats>({
     total: 0,
     connected: 0,
     totalUploadBytes: 0,
     totalDownloadBytes: 0,
-  })
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [venueFilter, setVenueFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("connected")
-  const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null)
-  const [sessionToTerminate, setSessionToTerminate] = useState<string | null>(null)
-  const [isTerminating, setIsTerminating] = useState(false)
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [venueFilter, setVenueFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("connected");
+  const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
+  const [sessionToTerminate, setSessionToTerminate] = useState<string | null>(null);
+  const [isTerminating, setIsTerminating] = useState(false);
 
   const fetchSessions = useCallback(async () => {
-    setIsLoading(true)
-    setLoadError(null)
+    setIsLoading(true);
+    setLoadError(null);
     try {
-      const params = new URLSearchParams()
-      if (searchQuery) params.set("search", searchQuery)
-      if (statusFilter !== "all") params.set("status", statusFilter)
-      if (venueFilter !== "all") params.set("venueId", venueFilter)
+      const params = new URLSearchParams();
+      if (searchQuery) params.set("search", searchQuery);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (venueFilter !== "all") params.set("venueId", venueFilter);
 
-      const res = await fetch(`${API_URL}/api/sessions?${params}`, { credentials: "include" })
-      if (!res.ok) throw new Error("Failed to fetch sessions")
-      const data = await res.json()
-      setSessions(data.sessions)
-      setStats(data.stats)
+      const res = await fetch(`${API_URL}/api/sessions?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch sessions");
+      const data = await res.json();
+      setSessions(data.sessions);
+      setStats(data.stats);
     } catch {
       // Recorded, not just toasted — the empty state would otherwise claim there is no
       // data when the request simply failed.
-      setLoadError("Sessions could not be loaded. Check your connection and try again.")
-      toast.error("Failed to load sessions")
+      setLoadError("Sessions could not be loaded. Check your connection and try again.");
+      toast.error("Failed to load sessions");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [searchQuery, statusFilter, venueFilter])
+  }, [searchQuery, statusFilter, venueFilter]);
 
   useEffect(() => {
-    const timer = setTimeout(fetchSessions, searchQuery ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchSessions, searchQuery])
+    const timer = setTimeout(fetchSessions, searchQuery ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [fetchSessions, searchQuery]);
 
   useEffect(() => {
     const fetchVenues = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" })
-        if (!res.ok) return
-        const data = await res.json()
-        setVenues(data.venues)
+        const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        setVenues(data.venues);
       } catch {}
-    }
-    fetchVenues()
-  }, [])
+    };
+    fetchVenues();
+  }, []);
 
   const handleTerminateConfirm = async () => {
-    if (!sessionToTerminate) return
-    setIsTerminating(true)
+    if (!sessionToTerminate) return;
+    setIsTerminating(true);
     try {
       const res = await fetch(`${API_URL}/api/sessions/${sessionToTerminate}/terminate`, {
         method: "PATCH",
         credentials: "include",
-      })
+      });
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to terminate session")
+        const data = await res.json();
+        throw new Error(data.error || "Failed to terminate session");
       }
       setSessions((prev) =>
         prev.map((s) =>
           s.id === sessionToTerminate ? { ...s, status: "terminated" as const } : s,
         ),
-      )
-      setSelectedSession(null)
-      toast.success("Session terminated successfully")
+      );
+      setSelectedSession(null);
+      toast.success("Session terminated successfully");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to terminate session")
+      toast.error(err instanceof Error ? err.message : "Failed to terminate session");
     } finally {
-      setIsTerminating(false)
-      setSessionToTerminate(null)
+      setIsTerminating(false);
+      setSessionToTerminate(null);
     }
-  }
+  };
 
   // Deduplicate: keep only the latest session per MAC address
   const dedupedSessions = useMemo(() => {
-    const seen = new Map<string, ActiveSession>()
+    const seen = new Map<string, ActiveSession>();
     for (const s of sessions) {
-      const key = s.macAddress ?? s.id
-      const existing = seen.get(key)
-      if (!existing || s.startedAt > existing.startedAt) seen.set(key, s)
+      const key = s.macAddress ?? s.id;
+      const existing = seen.get(key);
+      if (!existing || s.startedAt > existing.startedAt) seen.set(key, s);
     }
-    return Array.from(seen.values())
-  }, [sessions])
+    return Array.from(seen.values());
+  }, [sessions]);
 
   return (
     <div className="space-y-6">
@@ -399,8 +398,8 @@ export default function SessionsPage() {
                 {liveClients.map((client) => {
                   const matchedSession = sessions.find(
                     (s) => s.macAddress?.toLowerCase() === client.mac.toLowerCase(),
-                  )
-                  const DeviceIcon = getDeviceIcon(matchedSession?.deviceType ?? null)
+                  );
+                  const DeviceIcon = getDeviceIcon(matchedSession?.deviceType ?? null);
                   return (
                     <TableRow key={`${client.routerId}-${client.id}`}>
                       <TableCell>
@@ -447,7 +446,7 @@ export default function SessionsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })}
               </TableBody>
             </Table>
@@ -545,10 +544,10 @@ export default function SessionsPage() {
                 </TableRow>
               ) : (
                 dedupedSessions.map((session) => {
-                  const DeviceIcon = getDeviceIcon(session.deviceType)
+                  const DeviceIcon = getDeviceIcon(session.deviceType);
                   const liveRow = liveClients.find(
                     (c) => c.mac.toLowerCase() === session.macAddress?.toLowerCase(),
-                  )
+                  );
                   return (
                     <TableRow key={session.id}>
                       <TableCell>
@@ -629,7 +628,7 @@ export default function SessionsPage() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })
               )}
             </TableBody>
@@ -648,15 +647,15 @@ export default function SessionsPage() {
             (() => {
               const liveClient = liveClients.find(
                 (c) => c.mac.toLowerCase() === selectedSession.macAddress?.toLowerCase(),
-              )
+              );
               return (
                 <div className="space-y-4">
                   {/* User header */}
                   <div className="flex items-start gap-4">
                     <div className="size-12 rounded-full bg-muted flex items-center justify-center shrink-0">
                       {(() => {
-                        const Icon = getDeviceIcon(selectedSession.deviceType)
-                        return <Icon className="size-6" />
+                        const Icon = getDeviceIcon(selectedSession.deviceType);
+                        return <Icon className="size-6" />;
                       })()}
                     </div>
                     <div className="flex-1">
@@ -667,7 +666,9 @@ export default function SessionsPage() {
                             "Unknown Customer"}
                         </p>
                         {liveClient && (
-                          <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusPill.success}`}>
+                          <span
+                            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusPill.success}`}
+                          >
                             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             live
                           </span>
@@ -840,7 +841,7 @@ export default function SessionsPage() {
                       )}
                   </div>
                 </div>
-              )
+              );
             })()}
         </DialogContent>
       </Dialog>
@@ -857,5 +858,5 @@ export default function SessionsPage() {
         isLoading={isTerminating}
       />
     </div>
-  )
+  );
 }

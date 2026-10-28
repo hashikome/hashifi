@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
   DAY,
-  HOUR,
-  MONTH,
-  WEEK,
   durationShort,
   formatDuration,
+  HOUR,
+  MONTH,
   minutesToMs,
   minutesToRosUptime,
   splitDuration,
   toMinutes,
+  WEEK,
 } from "./duration.js";
 
 describe("toMinutes", () => {

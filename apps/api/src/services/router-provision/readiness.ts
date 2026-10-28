@@ -30,7 +30,7 @@ import {
 import type { RouterLogger } from "../router-log.js";
 import type { HotspotPlan } from "./context.js";
 import type { RouterProfile } from "./probe.js";
-import { RosClient, WBS_TAG, type RosRow } from "./ros-client.js";
+import { RosClient, type RosRow, WBS_TAG } from "./ros-client.js";
 
 export type ReadinessStatus = "pass" | "warn" | "fail" | "skipped";
 
@@ -309,7 +309,11 @@ async function untaggedConfigCheck(ros: RosClient): Promise<ReadinessCheck> {
     return { ...base, status: "skipped", detail: "Hotspot menus could not be read." };
   }
   if (found.length === 0) {
-    return { ...base, status: "pass", detail: "Nothing untagged that provisioning would clash with." };
+    return {
+      ...base,
+      status: "pass",
+      detail: "Nothing untagged that provisioning would clash with.",
+    };
   }
   return {
     ...base,

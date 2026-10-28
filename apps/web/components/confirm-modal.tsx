@@ -1,7 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { AlertTriangle, Info, AlertCircle, LucideIcon, Loader } from "lucide-react"
+import { AlertCircle, AlertTriangle, Info, Loader, type LucideIcon } from "lucide-react";
+import * as React from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,23 +10,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
-export type ConfirmModalVariant = "primary" | "destructive" | "warning" | "info"
+export type ConfirmModalVariant = "primary" | "destructive" | "warning" | "info";
 
 interface ConfirmModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onConfirm: () => void | Promise<void>
-  title: string
-  description: React.ReactNode
-  confirmText?: string
-  cancelText?: string
-  variant?: ConfirmModalVariant
-  icon?: LucideIcon
-  isLoading?: boolean
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void | Promise<void>;
+  title: string;
+  description: React.ReactNode;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: ConfirmModalVariant;
+  icon?: LucideIcon;
+  isLoading?: boolean;
 }
 
 export function ConfirmModal({
@@ -40,16 +40,16 @@ export function ConfirmModal({
   icon: CustomIcon,
   isLoading = false,
 }: ConfirmModalProps) {
-  const [internalLoading, setInternalLoading] = React.useState(false)
+  const [internalLoading, setInternalLoading] = React.useState(false);
 
   const handleConfirm = async () => {
-    setInternalLoading(true)
+    setInternalLoading(true);
     try {
-      await onConfirm()
+      await onConfirm();
     } finally {
-      setInternalLoading(false)
+      setInternalLoading(false);
     }
-  }
+  };
 
   const getVariantStyles = () => {
     switch (variant) {
@@ -61,7 +61,7 @@ export function ConfirmModal({
           iconColor: "text-destructive",
           buttonVariant: "destructive" as const,
           icon: AlertTriangle,
-        }
+        };
       case "warning":
         return {
           headerBg: "bg-amber-500/5",
@@ -70,7 +70,7 @@ export function ConfirmModal({
           iconColor: "text-amber-500",
           buttonVariant: "default" as const,
           icon: AlertCircle,
-        }
+        };
       case "info":
         return {
           headerBg: "bg-blue-500/5",
@@ -79,7 +79,7 @@ export function ConfirmModal({
           iconColor: "text-blue-500",
           buttonVariant: "default" as const,
           icon: Info,
-        }
+        };
       default:
         return {
           headerBg: "bg-primary/5",
@@ -88,12 +88,12 @@ export function ConfirmModal({
           iconColor: "text-primary",
           buttonVariant: "default" as const,
           icon: Info,
-        }
+        };
     }
-  }
+  };
 
-  const styles = getVariantStyles()
-  const Icon = CustomIcon || styles.icon
+  const styles = getVariantStyles();
+  const Icon = CustomIcon || styles.icon;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -155,5 +155,5 @@ export function ConfirmModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,54 +1,55 @@
-"use client"
+"use client";
 
-import { useMemo, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  AlertCircle,
+  ArrowLeft,
+  KeyRound,
+  Loader,
+  Router as RouterIcon,
+  Save,
+  Terminal,
+  Wifi,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { RouterBootstrapDialog } from "@/components/router-bootstrap-dialog";
+import {
+  HotspotInterfacePicker,
+  RouterConnectionTest,
+  type RouterInterfaceInfo,
+} from "@/components/router-connection-test";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
-import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
-import {
-  ArrowLeft,
-  Save,
-  Router as RouterIcon,
-  KeyRound,
-  Loader,
-  AlertCircle,
-  Wifi,
-  Terminal,
-} from "lucide-react"
-import { toast } from "sonner"
-import {
-  HotspotInterfacePicker,
-  RouterConnectionTest,
-  type RouterInterfaceInfo,
-} from "@/components/router-connection-test"
-import { RouterBootstrapDialog } from "@/components/router-bootstrap-dialog"
-import { hotspotRangeClashesWithIp } from "@/lib/utils"
-import type { Venue } from "@/lib/types"
+} from "@/components/ui/select";
+import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { errorMessage } from "@/lib/errors";
+import type { Venue } from "@/lib/types";
+import { hotspotRangeClashesWithIp } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface FormData {
-  venueId: string
-  name: string
-  ipAddress: string
-  hotspotInterface: string
-  ssid: string
-  networkRange: string
-  hotspotGatewayIp: string
-  hotspotName: string
-  apiUsername: string
-  apiPassword: string
-  model: string
+  venueId: string;
+  name: string;
+  ipAddress: string;
+  hotspotInterface: string;
+  ssid: string;
+  networkRange: string;
+  hotspotGatewayIp: string;
+  hotspotName: string;
+  apiUsername: string;
+  apiPassword: string;
+  model: string;
 }
 
 const INITIAL_FORM: FormData = {
@@ -63,44 +64,44 @@ const INITIAL_FORM: FormData = {
   apiUsername: "",
   apiPassword: "",
   model: "",
-}
+};
 
 export default function CreateRouterPage() {
-  const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [venues, setVenues] = useState<Venue[]>([])
-  const [isLoadingVenues, setIsLoadingVenues] = useState(true)
-  const [formData, setFormData] = useState<FormData>(INITIAL_FORM)
-  const [discoveredInterfaces, setDiscoveredInterfaces] = useState<RouterInterfaceInfo[]>([])
-  const [bootstrapOpen, setBootstrapOpen] = useState(false)
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [isLoadingVenues, setIsLoadingVenues] = useState(true);
+  const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
+  const [discoveredInterfaces, setDiscoveredInterfaces] = useState<RouterInterfaceInfo[]>([]);
+  const [bootstrapOpen, setBootstrapOpen] = useState(false);
 
   const isDirty = useMemo(
     () => JSON.stringify(formData) !== JSON.stringify(INITIAL_FORM),
     [formData],
-  )
-  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSubmitting)
+  );
+  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSubmitting);
 
   const rangeClash = useMemo(
     () => hotspotRangeClashesWithIp(formData.networkRange, formData.ipAddress),
     [formData.networkRange, formData.ipAddress],
-  )
+  );
 
   useEffect(() => {
     fetch(`${API_URL}/api/venues`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setVenues(d.venues.filter((v: Venue) => v.status === "active")))
       .catch(() => toast.error("Failed to load venues"))
-      .finally(() => setIsLoadingVenues(false))
-  }, [])
+      .finally(() => setIsLoadingVenues(false));
+  }, []);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    let createSuccess = false
+    e.preventDefault();
+    setIsSubmitting(true);
+    let createSuccess = false;
 
     try {
       const body: Record<string, unknown> = {
@@ -108,38 +109,38 @@ export default function CreateRouterPage() {
         name: formData.name,
         ipAddress: formData.ipAddress,
         enableHotspot: true,
-      }
-      if (formData.hotspotInterface) body.hotspotInterface = formData.hotspotInterface.trim()
-      if (formData.ssid) body.ssid = formData.ssid.trim()
-      if (formData.networkRange) body.networkRange = formData.networkRange.trim()
-      if (formData.hotspotGatewayIp) body.hotspotGatewayIp = formData.hotspotGatewayIp
-      if (formData.hotspotName) body.hotspotName = formData.hotspotName.trim()
-      if (formData.apiUsername) body.apiUsername = formData.apiUsername
-      if (formData.apiPassword) body.apiPassword = formData.apiPassword
-      if (formData.model) body.model = formData.model
+      };
+      if (formData.hotspotInterface) body.hotspotInterface = formData.hotspotInterface.trim();
+      if (formData.ssid) body.ssid = formData.ssid.trim();
+      if (formData.networkRange) body.networkRange = formData.networkRange.trim();
+      if (formData.hotspotGatewayIp) body.hotspotGatewayIp = formData.hotspotGatewayIp;
+      if (formData.hotspotName) body.hotspotName = formData.hotspotName.trim();
+      if (formData.apiUsername) body.apiUsername = formData.apiUsername;
+      if (formData.apiPassword) body.apiPassword = formData.apiPassword;
+      if (formData.model) body.model = formData.model;
 
       const res = await fetch(`${API_URL}/api/routers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(body),
-      })
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to create router")
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create router");
       }
 
-      toast.success("Router added successfully!")
-      setFormData(INITIAL_FORM)
-      createSuccess = true
-      setTimeout(() => router.push("/admin/routers"), 300)
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred")
+      toast.success("Router added successfully!");
+      setFormData(INITIAL_FORM);
+      createSuccess = true;
+      setTimeout(() => router.push("/admin/routers"), 300);
+    } catch (err) {
+      toast.error(errorMessage(err, "An error occurred"));
     } finally {
-      if (!createSuccess) setIsSubmitting(false)
+      if (!createSuccess) setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <>
@@ -480,5 +481,5 @@ export default function CreateRouterPage() {
 
       <UnsavedChangesDialog open={showDialog} onLeave={confirmLeave} onStay={cancelLeave} />
     </>
-  )
+  );
 }

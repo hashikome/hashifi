@@ -1,7 +1,0 @@
-node_modules
-.next
-tsconfig.tsbuildinfo
-next-env.d.ts
-package-lock.json
-pnpm-lock.yaml
-components/ui

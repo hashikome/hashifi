@@ -1,4 +1,4 @@
-import type { PortalSettings } from "./types"
+import type { PortalSettings } from "./types";
 
 /**
  * Fallback portal branding, used to render previews before any real settings are loaded.
@@ -28,4 +28,4 @@ export const initialPortalSettings: PortalSettings = {
   showMpesa: true,
   requirePhone: true,
   requireTerms: true,
-}
+};

@@ -1,4 +1,4 @@
-# WiFi Billing MySQL Schema
+# HashiFi MySQL schema (until the Prisma port)
 
 This backend uses Drizzle ORM with MySQL. The schema is in `src/db/schema.ts`, and the database client is exported from `src/db/index.ts`.
 
@@ -7,12 +7,12 @@ This backend uses Drizzle ORM with MySQL. The schema is in `src/db/schema.ts`, a
 1. Copy `.env.example` to `.env`.
 2. Set `DATABASE_URL` to your MySQL connection string.
 3. Install backend dependencies.
-4. Generate migrations with `npm run db:generate`.
-5. Apply migrations with `pnpm db:migrate`.
+4. Generate migrations with `bun run db:generate`.
+5. Apply migrations with `bun run db:migrate`.
 
 If the database was previously synced with `db:push`, the migrate script detects that and baselines the initial migration before applying newer ones.
 
-For early local development, `npm run db:push` can sync the schema directly to MySQL, but migrations are better once the schema starts stabilizing.
+`bun run db:migrate` is the only supported way to change the schema.
 
 ## Core Areas
 

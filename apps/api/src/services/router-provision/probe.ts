@@ -174,10 +174,7 @@ function deriveCapabilities(
  *
  * One-way on purpose: false wins, because nothing but a real rejection ever sets it.
  */
-export function mergeCapabilities(
-  stored: unknown,
-  probed: RouterCapabilities,
-): RouterCapabilities {
+export function mergeCapabilities(stored: unknown, probed: RouterCapabilities): RouterCapabilities {
   if (!stored || typeof stored !== "object") return probed;
   const prev = stored as Partial<RouterCapabilities>;
   return {
@@ -209,12 +206,10 @@ export async function probeRouterMerged(
   return { ...probed, capabilities: mergeCapabilities(storedCapabilities, probed.capabilities) };
 }
 
-function assessCompatibility(
-  profile: Omit<RouterProfile, "compatibility">,
-): RouterCompatibility {
+function assessCompatibility(profile: Omit<RouterProfile, "compatibility">): RouterCompatibility {
   const reasons: string[] = [];
   const warnings: string[] = [];
-  const { capabilities, architecture, rosVersion, storage, memory, boardName } = profile;
+  const { capabilities, architecture, rosVersion, storage, memory } = profile;
 
   if (!capabilities.hotspot) {
     const deviceMode = profile.deviceMode;
@@ -234,7 +229,9 @@ function assessCompatibility(
       const version = rosVersion.raw.split(" ")[0] ?? rosVersion.raw;
       reasons.push(
         `The hotspot subsystem is not installed${
-          deviceMode ? ` (device-mode "${deviceMode.mode}" permits it, so that is not the cause)` : ""
+          deviceMode
+            ? ` (device-mode "${deviceMode.mode}" permits it, so that is not the cause)`
+            : ""
         }. RouterOS ${version} ships hotspot as a separate Extra package on ` +
           `${architecture ?? "this architecture"}. Download ` +
           `hotspot-${version}-${architecture ?? "<arch>"}.npk from mikrotik.com/download — ` +
@@ -342,9 +339,7 @@ export async function probeRouter(
     }));
 
     const addresses: RouterAddress[] = rows(
-      await logger.run({ host, command: "/ip/address/print" }, () =>
-        c.write("/ip/address/print"),
-      ),
+      await logger.run({ host, command: "/ip/address/print" }, () => c.write("/ip/address/print")),
     ).map((a) => ({
       address: a.address ?? "",
       interface: a.interface ?? "",

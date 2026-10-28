@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { Helix } from "ldrs/react"
-import "ldrs/react/Helix.css"
+import { Helix } from "ldrs/react";
+import "ldrs/react/Helix.css";
 
 export default function AdminLoading() {
   return (
@@ -15,5 +15,5 @@ export default function AdminLoading() {
       </div>
       <p className="text-muted-foreground font-medium animate-pulse">Loading content...</p>
     </div>
-  )
+  );
 }

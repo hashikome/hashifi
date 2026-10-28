@@ -10,6 +10,7 @@
 import { networkInterfaces } from "node:os";
 import type { routers } from "../../db/schema.js";
 import type { Dialect } from "./dialect.js";
+import { intToIpv4, ipv4ToInt } from "./ipv4.js";
 import type { RouterProfile } from "./probe.js";
 
 type RouterRow = typeof routers.$inferSelect;
@@ -65,16 +66,12 @@ const DEFAULT_DNS = "8.8.8.8,8.8.4.4";
 // ── IPv4 helpers ────────────────────────────────────────────────────────────
 
 function ipToInt(ip: string): number {
-  const parts = ip.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) {
-    throw new Error(`Invalid IPv4 address: ${ip}`);
-  }
-  return ((parts[0]! << 24) | (parts[1]! << 16) | (parts[2]! << 8) | parts[3]!) >>> 0;
+  const value = ipv4ToInt(ip);
+  if (value === null) throw new Error(`Invalid IPv4 address: ${ip}`);
+  return value;
 }
 
-function intToIp(value: number): string {
-  return [(value >>> 24) & 255, (value >>> 16) & 255, (value >>> 8) & 255, value & 255].join(".");
-}
+const intToIp = intToIpv4;
 
 export function parseCidr(cidr: string): { networkInt: number; prefix: number; size: number } {
   const [addr, prefixRaw] = cidr.split("/");

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { addRuleFirst, ruleBeforeDynamic } from "./steps.js";
 import type { RosClient } from "./ros-client.js";
+import { addRuleFirst, ruleBeforeDynamic } from "./steps.js";
 
 /**
  * The `place-before` regression.
@@ -31,7 +31,7 @@ describe("addRuleFirst", () => {
     const { ros, added } = fakeRos([]);
     await addRuleFirst(ros, "/ip/firewall/filter", "firewall-forward-backend", ["=chain=forward"]);
     expect(added).toHaveLength(1);
-    expect(added[0]!.some((p) => p.startsWith("=place-before="))).toBe(false);
+    expect(added[0]?.some((p) => p.startsWith("=place-before="))).toBe(false);
   });
 
   test("never sends the numeric index that the board rejects", async () => {

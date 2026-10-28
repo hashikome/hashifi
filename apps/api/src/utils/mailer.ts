@@ -1,7 +1,6 @@
-import nodemailer from "nodemailer";
 import dns from "node:dns/promises";
 import net from "node:net";
-import "dotenv/config";
+import nodemailer from "nodemailer";
 
 const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
 
@@ -28,7 +27,7 @@ if (!net.isIP(smtpHost)) {
 
 const transporter = nodemailer.createTransport({
   host: connectHost,
-  port: parseInt(process.env.SMTP_PORT || "587"),
+  port: parseInt(process.env.SMTP_PORT || "587", 10),
   secure: process.env.SMTP_PORT === "465",
   ...(servername ? { tls: { servername } } : {}),
   auth: {
@@ -39,8 +38,8 @@ const transporter = nodemailer.createTransport({
 
 function buildFrom(): string {
   const raw = process.env.SMTP_FROM;
-  const user = process.env.SMTP_USER ?? "noreply@wifibilling.com";
-  if (!raw) return `"WiFi Billing" <${user}>`;
+  const user = process.env.SMTP_USER ?? "noreply@example.com";
+  if (!raw) return `"HashiFi" <${user}>`;
   if (raw.includes("@")) return raw;
   return `"${raw}" <${user}>`;
 }
@@ -79,7 +78,7 @@ function wrap(accentColor: string, label: string, body: string): string {
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WiFi Billing</title>
+  <title>HashiFi</title>
 </head>
 <body style="margin:0;padding:0;background-color:${BODY_BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BODY_BG};padding:40px 16px;">
@@ -98,7 +97,7 @@ function wrap(accentColor: string, label: string, body: string): string {
                       <span style="font-size:18px;line-height:36px;display:block;">📶</span>
                     </td>
                     <td style="padding-left:12px;vertical-align:middle;">
-                      <p style="margin:0;color:#FFFFFF;font-size:16px;font-weight:700;letter-spacing:-0.2px;">WiFi Billing</p>
+                      <p style="margin:0;color:#FFFFFF;font-size:16px;font-weight:700;letter-spacing:-0.2px;">HashiFi</p>
                       <p style="margin:2px 0 0;color:#8A7A6E;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;">Admin Portal</p>
                     </td>
                   </tr>
@@ -121,7 +120,7 @@ function wrap(accentColor: string, label: string, body: string): string {
         <!-- Footer -->
         <tr><td style="background-color:${BODY_BG};border:1px solid ${BORDER_COLOR};border-top:0;border-radius:0 0 12px 12px;padding:18px 32px;">
           <p style="margin:0;color:${TEXT_MUTED};font-size:11px;text-align:center;line-height:1.7;">
-            WiFi Billing System &middot; Automated notification — do not reply.<br/>
+            HashiFi &middot; Automated notification — do not reply.<br/>
             Questions? Contact your system administrator.
           </p>
         </td></tr>
@@ -188,7 +187,7 @@ export async function sendOtpEmail(to: string, otp: string, name: string) {
   const body =
     p(`Hello <strong>${name}</strong>,`) +
     p(
-      `Use the code below to sign in to your WiFi Billing admin account. It expires in <strong>10 minutes</strong>.`,
+      `Use the code below to sign in to your HashiFi admin account. It expires in <strong>10 minutes</strong>.`,
     ) +
     `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
       <tr><td align="center" style="background:${BODY_BG};border:1px solid ${BORDER_COLOR};border-radius:10px;padding:28px 16px;">
@@ -201,7 +200,7 @@ export async function sendOtpEmail(to: string, otp: string, name: string) {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: `${otp} is your WiFi Billing login code`,
+    subject: `${otp} is your HashiFi login code`,
     html: wrap(BRAND_ORANGE, "Login verification", body),
   });
 }
@@ -216,7 +215,7 @@ export async function sendWelcomeEmail(to: string, name: string, role: string) {
   const body =
     p(`Hello <strong>${name}</strong>,`) +
     p(
-      `Your WiFi Billing admin account is ready. Sign in with your email address — we'll send you a one-time login code each time.`,
+      `Your HashiFi admin account is ready. Sign in with your email address — we'll send you a one-time login code each time.`,
     ) +
     infoBox([
       { label: "Email Address", value: to },
@@ -228,7 +227,7 @@ export async function sendWelcomeEmail(to: string, name: string, role: string) {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "Welcome to WiFi Billing — Your account is ready",
+    subject: "Welcome to HashiFi — Your account is ready",
     html: wrap(BRAND_ORANGE, "Account created", body),
   });
 }
@@ -241,7 +240,7 @@ export async function sendProfileUpdatedEmail(to: string, name: string) {
 
   const body =
     p(`Hello <strong>${name}</strong>,`) +
-    p(`Your WiFi Billing admin account details were recently updated by an administrator.`) +
+    p(`Your HashiFi admin account details were recently updated by an administrator.`) +
     alertBox(
       "If you did not expect this change, contact your system administrator immediately.",
       "#EFF6FF",
@@ -254,7 +253,7 @@ export async function sendProfileUpdatedEmail(to: string, name: string) {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "Your WiFi Billing account was updated",
+    subject: "Your HashiFi account was updated",
     html: wrap("#3B82F6", "Account updated", body),
   });
 }
@@ -268,7 +267,7 @@ export async function sendAccountSuspendedEmail(to: string, name: string) {
   const body =
     p(`Hello <strong>${name}</strong>,`) +
     p(
-      `Your WiFi Billing admin account has been <strong>suspended</strong>. You won't be able to sign in while suspended.`,
+      `Your HashiFi admin account has been <strong>suspended</strong>. You won't be able to sign in while suspended.`,
     ) +
     alertBox(
       "Access has been temporarily suspended by an administrator.",
@@ -281,7 +280,7 @@ export async function sendAccountSuspendedEmail(to: string, name: string) {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "Your WiFi Billing account has been suspended",
+    subject: "Your HashiFi account has been suspended",
     html: wrap("#F59E0B", "Account suspended", body),
   });
 }
@@ -295,7 +294,7 @@ export async function sendAccountReactivatedEmail(to: string, name: string) {
   const body =
     p(`Hello <strong>${name}</strong>,`) +
     p(
-      `Good news — your WiFi Billing admin account has been <strong>reactivated</strong>. You can sign in again.`,
+      `Good news — your HashiFi admin account has been <strong>reactivated</strong>. You can sign in again.`,
     ) +
     cta("Sign In Now", "#10B981") +
     small(`If you have any questions, contact your system administrator.`);
@@ -303,7 +302,7 @@ export async function sendAccountReactivatedEmail(to: string, name: string) {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "Your WiFi Billing account has been reactivated",
+    subject: "Your HashiFi account has been reactivated",
     html: wrap("#10B981", "Account reactivated", body),
   });
 }
@@ -317,7 +316,7 @@ export async function sendPromotedToAdminEmail(to: string, name: string) {
   const body =
     p(`Hello <strong>${name}</strong>,`) +
     p(
-      `You've been promoted to <strong>System Administrator</strong> on WiFi Billing. Your account now has full access — revenue reports, payment records, team management, and all system settings.`,
+      `You've been promoted to <strong>System Administrator</strong> on HashiFi. Your account now has full access — revenue reports, payment records, team management, and all system settings.`,
     ) +
     alertBox(
       "With admin access comes responsibility. Handle all accounts and data with care.",
@@ -330,12 +329,16 @@ export async function sendPromotedToAdminEmail(to: string, name: string) {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "You've been promoted to Admin on WiFi Billing",
+    subject: "You've been promoted to Admin on HashiFi",
     html: wrap("#8B5CF6", "Promoted to admin", body),
   });
 }
 
-export async function sendDemotedToManagerEmail(to: string, name: string, venueName: string | null) {
+export async function sendDemotedToManagerEmail(
+  to: string,
+  name: string,
+  venueName: string | null,
+) {
   if (!smtpReady()) {
     console.warn(`[Mailer] SMTP not configured. Demotion email skipped for ${to}`);
     return;
@@ -344,7 +347,7 @@ export async function sendDemotedToManagerEmail(to: string, name: string, venueN
   const body =
     p(`Hello <strong>${name}</strong>,`) +
     p(
-      `Your role on WiFi Billing has been changed to <strong>Venue Manager</strong>. You no longer have access to revenue reports, payment records, or system-wide settings.`,
+      `Your role on HashiFi has been changed to <strong>Venue Manager</strong>. You no longer have access to revenue reports, payment records, or system-wide settings.`,
     ) +
     (venueName
       ? infoBox([{ label: "Assigned Venue", value: venueName }])
@@ -359,7 +362,7 @@ export async function sendDemotedToManagerEmail(to: string, name: string, venueN
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "Your WiFi Billing role has changed",
+    subject: "Your HashiFi role has changed",
     html: wrap(BRAND_ORANGE, "Role updated", body),
   });
 }
@@ -373,7 +376,7 @@ export async function sendAccountDeletedEmail(to: string, name: string) {
   const body =
     p(`Hello <strong>${name}</strong>,`) +
     p(
-      `Your WiFi Billing admin account has been <strong>permanently removed</strong>. You can no longer sign in to the portal.`,
+      `Your HashiFi admin account has been <strong>permanently removed</strong>. You can no longer sign in to the portal.`,
     ) +
     alertBox("This action is permanent and cannot be undone.", "#FEF2F2", "#EF4444", "#991B1B") +
     small(`If you believe this was done in error, contact your system administrator.`);
@@ -381,7 +384,7 @@ export async function sendAccountDeletedEmail(to: string, name: string) {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "Your WiFi Billing account has been removed",
+    subject: "Your HashiFi account has been removed",
     html: wrap("#EF4444", "Account removed", body),
   });
 }

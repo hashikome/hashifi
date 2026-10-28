@@ -2,12 +2,12 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { eq, or } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { packages, payments, routers, vouchers } from "../db/schema.js";
-import { logSystemEvent } from "./audit.js";
 import {
   describeFailures,
   outcomeOk,
   pushVouchersToVenueRouters,
 } from "../services/router-sync.js";
+import { logSystemEvent } from "./audit.js";
 
 /**
  * Statuses from which a payment can never recover. `cancelled` is what the live API

@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { useRouter, usePathname } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
-import { AdminSidebar } from "@/components/admin-sidebar"
-import { Loader } from "lucide-react"
-import { TooltipProvider } from "@/components/ui/tooltip"
+import { Loader } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { AdminSidebar } from "@/components/admin-sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAuth } from "@/lib/auth-context";
 
 function isManagerAllowedRoute(pathname: string) {
   const exact = [
@@ -17,42 +17,42 @@ function isManagerAllowedRoute(pathname: string) {
     "/admin/packages",
     "/admin/analytics",
     "/admin/settings",
-  ]
-  if (exact.includes(pathname)) return true
+  ];
+  if (exact.includes(pathname)) return true;
 
   return (
     pathname.startsWith("/admin/vouchers/") ||
     pathname.startsWith("/admin/routers/") ||
     pathname.startsWith("/admin/venues/") ||
     pathname.startsWith("/admin/settings/")
-  )
+  );
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
-  const pathname = usePathname()
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push("/")
+      router.push("/");
     } else if (!isLoading && user && user.role === "manager") {
       if (!isManagerAllowedRoute(pathname)) {
-        router.replace("/admin")
+        router.replace("/admin");
       }
     }
-  }, [user, isLoading, router, pathname])
+  }, [user, isLoading, router, pathname]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader className="size-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   if (!user) {
-    return null
+    return null;
   }
 
   if (user.role === "manager" && !isManagerAllowedRoute(pathname)) {
@@ -60,7 +60,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader className="size-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   return (
@@ -76,5 +76,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </main>
       </div>
     </TooltipProvider>
-  )
+  );
 }

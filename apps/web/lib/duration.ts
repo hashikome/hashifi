@@ -17,13 +17,13 @@
  * A "month" is 30 days, matching the 720-hour convention the presets used.
  */
 
-export const MINUTE = 1
-export const HOUR = 60
-export const DAY = 24 * HOUR
-export const WEEK = 7 * DAY
-export const MONTH = 30 * DAY
+export const MINUTE = 1;
+export const HOUR = 60;
+export const DAY = 24 * HOUR;
+export const WEEK = 7 * DAY;
+export const MONTH = 30 * DAY;
 
-export type DurationUnit = "minutes" | "hours" | "days" | "weeks" | "months"
+export type DurationUnit = "minutes" | "hours" | "days" | "weeks" | "months";
 
 export const UNIT_MINUTES: Record<DurationUnit, number> = {
   minutes: MINUTE,
@@ -31,7 +31,7 @@ export const UNIT_MINUTES: Record<DurationUnit, number> = {
   days: DAY,
   weeks: WEEK,
   months: MONTH,
-}
+};
 
 export const DURATION_UNITS: { value: DurationUnit; label: string }[] = [
   { value: "minutes", label: "Minutes" },
@@ -39,13 +39,13 @@ export const DURATION_UNITS: { value: DurationUnit; label: string }[] = [
   { value: "days", label: "Days" },
   { value: "weeks", label: "Weeks" },
   { value: "months", label: "Months" },
-]
+];
 
 /** Whole minutes for `value` of `unit`, or null when the input is not a usable duration. */
 export function toMinutes(value: number, unit: DurationUnit): number | null {
-  if (!Number.isFinite(value) || value <= 0) return null
-  const minutes = Math.round(value * UNIT_MINUTES[unit])
-  return minutes > 0 ? minutes : null
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const minutes = Math.round(value * UNIT_MINUTES[unit]);
+  return minutes > 0 ? minutes : null;
 }
 
 /**
@@ -53,31 +53,31 @@ export function toMinutes(value: number, unit: DurationUnit): number | null {
  * it was entered: 90 stays "90 minutes" rather than becoming "1.5 hours".
  */
 export function splitDuration(minutes: number): { value: number; unit: DurationUnit } {
-  const units: DurationUnit[] = ["months", "weeks", "days", "hours", "minutes"]
+  const units: DurationUnit[] = ["months", "weeks", "days", "hours", "minutes"];
   for (const unit of units) {
-    const size = UNIT_MINUTES[unit]
-    if (minutes >= size && minutes % size === 0) return { value: minutes / size, unit }
+    const size = UNIT_MINUTES[unit];
+    if (minutes >= size && minutes % size === 0) return { value: minutes / size, unit };
   }
-  return { value: minutes, unit: "minutes" }
+  return { value: minutes, unit: "minutes" };
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** "45 minutes", "1 hour", "2 days", "1 week". Returns "—" for a missing duration. */
 export function formatDuration(minutes: number | null | undefined): string {
-  if (minutes === null || minutes === undefined || minutes <= 0) return "—"
-  const { value, unit } = splitDuration(minutes)
-  return plural(value, unit.slice(0, -1))
+  if (minutes === null || minutes === undefined || minutes <= 0) return "—";
+  const { value, unit } = splitDuration(minutes);
+  return plural(value, unit.slice(0, -1));
 }
 
 /** "45m", "1h", "2d", "1wk", "1mo" — where space is tight. Rounds to the nearest unit. */
 export function durationShort(minutes: number | null | undefined): string {
-  if (!minutes || minutes <= 0) return "—"
-  if (minutes >= MONTH) return `${Math.round(minutes / MONTH)}mo`
-  if (minutes >= WEEK) return `${Math.round(minutes / WEEK)}wk`
-  if (minutes >= DAY) return `${Math.round(minutes / DAY)}d`
-  if (minutes >= HOUR) return `${Math.round(minutes / HOUR)}h`
-  return `${minutes}m`
+  if (!minutes || minutes <= 0) return "—";
+  if (minutes >= MONTH) return `${Math.round(minutes / MONTH)}mo`;
+  if (minutes >= WEEK) return `${Math.round(minutes / WEEK)}wk`;
+  if (minutes >= DAY) return `${Math.round(minutes / DAY)}d`;
+  if (minutes >= HOUR) return `${Math.round(minutes / HOUR)}h`;
+  return `${minutes}m`;
 }
 
 /**
@@ -93,7 +93,7 @@ export const DURATION_PRESETS: { minutes: number; label: string }[] = [
   { minutes: DAY, label: "24 Hours" },
   { minutes: WEEK, label: "1 Week" },
   { minutes: MONTH, label: "1 Month" },
-]
+];
 
 /**
  * How the captive portal groups packages into its tab strip.
@@ -109,22 +109,22 @@ export const DURATION_PRESETS: { minutes: number; label: string }[] = [
  *
  * Ranges are half-open: `min <= durationMinutes < max`.
  */
-export type DurationBucketKey = "minutes" | "hourly" | "daily" | "weekly" | "monthly"
+export type DurationBucketKey = "minutes" | "hourly" | "daily" | "weekly" | "monthly";
 
 export const DURATION_BUCKETS: {
-  key: DurationBucketKey
-  label: string
-  min: number
-  max: number
+  key: DurationBucketKey;
+  label: string;
+  min: number;
+  max: number;
 }[] = [
   { key: "minutes", label: "Minutes", min: 0, max: HOUR },
   { key: "hourly", label: "Hourly", min: HOUR, max: DAY },
   { key: "daily", label: "Daily", min: DAY, max: WEEK },
   { key: "weekly", label: "Weekly", min: WEEK, max: MONTH },
   { key: "monthly", label: "Monthly", min: MONTH, max: Infinity },
-]
+];
 
 /** The bucket a duration belongs to. */
 export function bucketFor(minutes: number): DurationBucketKey {
-  return DURATION_BUCKETS.find((b) => minutes >= b.min && minutes < b.max)?.key ?? "monthly"
+  return DURATION_BUCKETS.find((b) => minutes >= b.min && minutes < b.max)?.key ?? "monthly";
 }

@@ -1,27 +1,28 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { packages, routers, vouchers } from "../db/schema.js";
-import { getRouterCredentials } from "./router-credentials.js";
+import { logSystemEvent } from "../utils/audit.js";
+import { withRetry } from "../utils/retry.js";
 import {
+  type CreateHotspotUserOptions,
   closeConnection,
   connectToRouter,
   createHotspotUser,
   ensureHotspotUserProfile,
   ensureHotspotUserProfileAssigned,
+  type HotspotUserCapabilities,
   hotspotUserExists,
   kickHotspotSession,
+  type MikroTikConn,
   packageCanThrottle,
+  type RouterCredentials,
   rateLimitFor,
+  removeHotspotUser,
   throttledProfileNameForPackage,
   throttledRateLimitFor,
-  removeHotspotUser,
   userProfileNameForPackage,
-  type CreateHotspotUserOptions,
-  type HotspotUserCapabilities,
-  type RouterCredentials,
 } from "./mikrotik.js";
-import { withRetry } from "../utils/retry.js";
-import { logSystemEvent } from "../utils/audit.js";
+import { getRouterCredentials } from "./router-credentials.js";
 
 type RouterRow = typeof routers.$inferSelect;
 type PackageRow = typeof packages.$inferSelect;
@@ -221,7 +222,7 @@ export async function pushVouchersToVenueRouters(
     try {
       await withRetry(
         async () => {
-          let conn;
+          let conn: MikroTikConn | null = null;
           try {
             conn = await connectToRouter(creds);
             const caps = capsFor(router);
@@ -310,7 +311,7 @@ export async function syncNewRouter(routerId: string): Promise<void> {
     return;
   }
 
-  let conn;
+  let conn: MikroTikConn | null = null;
   try {
     conn = await connectToRouter(creds);
     const caps = capsFor(router);
@@ -402,6 +403,7 @@ export async function ensureVoucherOnVenueRouters(
       failures: [{ router: "(none)", error: `Voucher ${code} has no package` }],
     };
   }
+  const pkg = row.pkg;
 
   const outcome: SyncOutcome = { attempted: 0, succeeded: 0, failures: [] };
 
@@ -416,7 +418,7 @@ export async function ensureVoucherOnVenueRouters(
     try {
       await withRetry(
         async () => {
-          let conn;
+          let conn: MikroTikConn | null = null;
           try {
             conn = await connectToRouter(creds);
             if (!(await hotspotUserExists(conn, code))) {
@@ -425,10 +427,10 @@ export async function ensureVoucherOnVenueRouters(
                 conn,
                 buildUserOpts(
                   code,
-                  row.pkg!,
+                  pkg,
                   row.voucher.dataLimitGb ?? null,
                   row.voucher.durationMinutes ?? null,
-                  await ensureProfileFor(conn, row.pkg!, caps),
+                  await ensureProfileFor(conn, pkg, caps),
                 ),
                 caps,
               );
@@ -475,7 +477,7 @@ export async function kickVoucherFromVenueRouters(venueId: string, code: string)
   for (const router of venueRouters) {
     const creds = getCredentials(router);
     if (!creds) continue;
-    let conn;
+    let conn: MikroTikConn | null = null;
     try {
       conn = await connectToRouter(creds);
       await kickHotspotSession(conn, code);
@@ -514,7 +516,7 @@ export async function removeVouchersFromVenueRouters(
     const creds = getCredentials(router);
     if (!creds) continue;
 
-    let conn;
+    let conn: MikroTikConn | null = null;
     try {
       conn = await connectToRouter(creds);
       for (const code of codes) {

@@ -1,40 +1,40 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react"
+import { AlertTriangle, Check, Copy, Download, Loader, Terminal } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { AlertTriangle, Check, Copy, Download, Loader, Terminal } from "lucide-react"
-import { toast } from "sonner"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface BootstrapResponse {
-  script: string
-  warnings: string[]
+  script: string;
+  warnings: string[];
   resolved: {
-    gatewayIp: string
-    apiPassword: string
-    apiPasswordGenerated: boolean
-    ssid: string
-    apiPort: number
-  }
+    gatewayIp: string;
+    apiPassword: string;
+    apiPasswordGenerated: boolean;
+    ssid: string;
+    apiPort: number;
+  };
 }
 
 export interface BootstrapDefaults {
-  routerName: string
-  ipAddress: string
-  apiUsername: string
-  apiPassword: string
+  routerName: string;
+  ipAddress: string;
+  apiUsername: string;
+  apiPassword: string;
   /** Usually the venue name — what customers will see in their WiFi list. */
-  ssid: string
+  ssid: string;
 }
 
 /**
@@ -51,10 +51,10 @@ export function RouterBootstrapDialog({
   onPasswordGenerated,
   onSsidChosen,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  defaults: BootstrapDefaults
-  onPasswordGenerated?: (password: string) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  defaults: BootstrapDefaults;
+  onPasswordGenerated?: (password: string) => void;
   /**
    * Push the SSID back onto the router form.
    *
@@ -64,27 +64,27 @@ export function RouterBootstrapDialog({
    * happens to be broadcasting, and the only hint is Test connection still reporting
    * "SSID left as-is". Hit for real while onboarding on 2026-08-12.
    */
-  onSsidChosen?: (ssid: string) => void
+  onSsidChosen?: (ssid: string) => void;
 }) {
-  const [gatewayIp, setGatewayIp] = useState("")
-  const [ssid, setSsid] = useState("")
-  const [adminPassword, setAdminPassword] = useState("")
-  const [lanPrefix, setLanPrefix] = useState("24")
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<BootstrapResponse | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [gatewayIp, setGatewayIp] = useState("");
+  const [ssid, setSsid] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [lanPrefix, setLanPrefix] = useState("24");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<BootstrapResponse | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Re-seed each time it opens so edits to the form behind it are picked up.
   useEffect(() => {
-    if (!open) return
-    setSsid(defaults.ssid || defaults.routerName)
-    setResult(null)
-    setCopied(false)
-  }, [open, defaults.ssid, defaults.routerName])
+    if (!open) return;
+    setSsid(defaults.ssid || defaults.routerName);
+    setResult(null);
+    setCopied(false);
+  }, [open, defaults.ssid, defaults.routerName]);
 
   const generate = useCallback(async () => {
-    setBusy(true)
-    setCopied(false)
+    setBusy(true);
+    setCopied(false);
     try {
       const res = await fetch(`${API_URL}/api/routers/bootstrap-script`, {
         method: "POST",
@@ -100,52 +100,52 @@ export function RouterBootstrapDialog({
           adminPassword: adminPassword.trim() || undefined,
           ssid: ssid.trim() || undefined,
         }),
-      })
-      const data = await res.json()
+      });
+      const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Could not generate the script")
-        return
+        toast.error(data.error || "Could not generate the script");
+        return;
       }
-      setResult(data)
-      if (!gatewayIp.trim() && data.resolved?.gatewayIp) setGatewayIp(data.resolved.gatewayIp)
+      setResult(data);
+      if (!gatewayIp.trim() && data.resolved?.gatewayIp) setGatewayIp(data.resolved.gatewayIp);
       // Mirror the password's write-back: what went into the script must reach the form, or the
       // row saves ssid = NULL and Set up never re-asserts the name. `resolved.ssid` rather than
       // the raw field, so the form gets the same value the script baked in — router-name fallback
       // and 32-character truncation included.
-      if (data.resolved?.ssid) onSsidChosen?.(data.resolved.ssid)
+      if (data.resolved?.ssid) onSsidChosen?.(data.resolved.ssid);
     } catch {
-      toast.error("Could not reach the billing backend")
+      toast.error("Could not reach the billing backend");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }, [defaults, gatewayIp, adminPassword, ssid, lanPrefix, onSsidChosen])
+  }, [defaults, gatewayIp, adminPassword, ssid, lanPrefix, onSsidChosen]);
 
   const copy = useCallback(async () => {
-    if (!result) return
+    if (!result) return;
     try {
-      await navigator.clipboard.writeText(result.script)
-      setCopied(true)
-      toast.success("Script copied — paste it into WinBox → New Terminal")
+      await navigator.clipboard.writeText(result.script);
+      setCopied(true);
+      toast.success("Script copied — paste it into WinBox → New Terminal");
     } catch {
-      toast.error("Could not access the clipboard. Select the text and copy it manually.")
+      toast.error("Could not access the clipboard. Select the text and copy it manually.");
     }
-  }, [result])
+  }, [result]);
 
   const download = useCallback(() => {
-    if (!result) return
-    const blob = new Blob([result.script], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `bootstrap-${defaults.routerName.replace(/[^A-Za-z0-9_-]+/g, "-") || "router"}.rsc`
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [result, defaults.routerName])
+    if (!result) return;
+    const blob = new Blob([result.script], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bootstrap-${defaults.routerName.replace(/[^A-Za-z0-9_-]+/g, "-") || "router"}.rsc`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [result, defaults.routerName]);
 
-  const missing: string[] = []
-  if (!defaults.routerName.trim()) missing.push("Router Name")
-  if (!defaults.ipAddress.trim()) missing.push("Router IP Address")
-  if (!defaults.apiUsername.trim()) missing.push("API Username")
+  const missing: string[] = [];
+  if (!defaults.routerName.trim()) missing.push("Router Name");
+  if (!defaults.ipAddress.trim()) missing.push("Router IP Address");
+  if (!defaults.apiUsername.trim()) missing.push("API Username");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -282,8 +282,8 @@ export function RouterBootstrapDialog({
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    onPasswordGenerated(result.resolved.apiPassword)
-                    toast.success("Password filled into the form")
+                    onPasswordGenerated(result.resolved.apiPassword);
+                    toast.success("Password filled into the form");
                   }}
                 >
                   Use this password
@@ -318,5 +318,5 @@ export function RouterBootstrapDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

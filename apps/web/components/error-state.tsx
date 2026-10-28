@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { Button } from "@/components/ui/button"
-import { AlertCircle, Loader, RefreshCw } from "lucide-react"
+import { AlertCircle, Loader, RefreshCw } from "lucide-react";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 /**
  * Shown when a load **failed** — never when it merely returned nothing.
@@ -29,11 +29,11 @@ export function ErrorState({
   isRetrying = false,
   className = "",
 }: {
-  title?: string
-  message: string
-  onRetry?: () => void
-  isRetrying?: boolean
-  className?: string
+  title?: string;
+  message: string;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+  className?: string;
 }) {
   return (
     <div
@@ -56,7 +56,7 @@ export function ErrorState({
         </Button>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -72,11 +72,11 @@ export function EmptyState({
   action,
   className = "",
 }: {
-  icon?: React.ComponentType<{ className?: string }>
-  title?: string
-  message: string
-  action?: ReactNode
-  className?: string
+  icon?: React.ComponentType<{ className?: string }>;
+  title?: string;
+  message: string;
+  action?: ReactNode;
+  className?: string;
 }) {
   return (
     <div
@@ -89,5 +89,5 @@ export function EmptyState({
       </div>
       {action}
     </div>
-  )
+  );
 }

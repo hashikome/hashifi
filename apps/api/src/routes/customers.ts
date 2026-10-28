@@ -1,5 +1,5 @@
-import { Router } from "express";
 import { and, desc, eq, inArray, isNotNull, like, or, sql } from "drizzle-orm";
+import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db/index.js";
 import { wifiCustomers, wifiSessions } from "../db/schema.js";
@@ -145,9 +145,7 @@ router.get(
     const [openSession] = await db
       .select({ id: wifiSessions.id })
       .from(wifiSessions)
-      .where(
-        and(eq(wifiSessions.customerId, customer.id), eq(wifiSessions.status, "connected")),
-      )
+      .where(and(eq(wifiSessions.customerId, customer.id), eq(wifiSessions.status, "connected")))
       .limit(1);
 
     res.json({

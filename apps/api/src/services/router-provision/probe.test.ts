@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mergeCapabilities } from "./probe.js";
 import type { RouterCapabilities } from "./probe.js";
+import { mergeCapabilities } from "./probe.js";
 
 /**
  * The one-way capability latch.

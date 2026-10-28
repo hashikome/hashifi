@@ -28,14 +28,14 @@ import { db } from "../../db/index.js";
 import { routers } from "../../db/schema.js";
 import { RouterError } from "../mikrotik-errors.js";
 import { getRouterCredentials } from "../router-credentials.js";
-import { RouterLogger, type RouterLogEvent } from "../router-log.js";
-import { buildHotspotPlan, resolveBackendUrl, type HotspotPlan } from "./context.js";
-import { provisionRouter, type ProvisionReport } from "./index.js";
+import { type RouterLogEvent, RouterLogger } from "../router-log.js";
+import { syncNewRouter } from "../router-sync.js";
+import { buildHotspotPlan, type HotspotPlan, resolveBackendUrl } from "./context.js";
+import { dialectFor } from "./dialect.js";
+import { type ProvisionReport, provisionRouter } from "./index.js";
 import { probeRouterMerged, type RouterProfile } from "./probe.js";
 import { probeReadiness, type ReadinessReport } from "./readiness.js";
-import { syncNewRouter } from "../router-sync.js";
 import { probeVerify, type VerifyReport } from "./verify.js";
-import { dialectFor } from "./dialect.js";
 
 export type SetupPhaseId = "probe" | "readiness" | "dry-run" | "provision" | "verify" | "self-test";
 export type SetupPhaseStatus = "pass" | "warn" | "fail" | "skipped";
@@ -120,7 +120,7 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
     runId: logger.runId,
     routerId,
     host: router.ipAddress,
-    ok: stoppedAt === null && verify !== null && verify.ok && selfTest !== null && selfTest.ok,
+    ok: stoppedAt === null && verify !== null && verify.ok && selfTest?.ok === true,
     stoppedAt,
     forced: force,
     startedAt,
@@ -412,7 +412,6 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
       try {
         const backend = resolveBackendUrl(router.ipAddress);
         selfTest = await probeVerify(creds, logger, {
-          profile,
           dialect: dialectFor(profile),
           plan,
           backendUrl: backend.url,

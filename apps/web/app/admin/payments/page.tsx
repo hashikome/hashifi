@@ -1,17 +1,31 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import {
+  CheckCircle,
+  Clock,
+  Copy,
+  CreditCard,
+  Filter,
+  Loader,
+  RefreshCw,
+  Search,
+  TrendingUp,
+  XCircle,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ErrorState } from "@/components/error-state";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -19,116 +33,102 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import {
-  CreditCard,
-  Search,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Copy,
-  Filter,
-  Loader,
-  TrendingUp,
-} from "lucide-react"
-import { toast } from "sonner"
-import { ErrorState } from "@/components/error-state"
-import { formatDate } from "@/lib/utils"
-import { statusPill } from "@/lib/status-pill"
+} from "@/components/ui/table";
+import { statusPill } from "@/lib/status-pill";
+import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 type Payment = {
-  id: string
-  phone: string | null
-  amountTsh: string
-  status: "pending" | "paid" | "failed"
-  provider: string
-  providerReference: string | null
-  paidAt: string | null
-  createdAt: string
-  packageName: string | null
-  voucherCode: string | null
-}
+  id: string;
+  phone: string | null;
+  amountTsh: string;
+  status: "pending" | "paid" | "failed";
+  provider: string;
+  providerReference: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  packageName: string | null;
+  voucherCode: string | null;
+};
 
 function getStatusColor(status: Payment["status"]) {
   switch (status) {
     case "paid":
-      return statusPill.success
+      return statusPill.success;
     case "failed":
-      return statusPill.danger
+      return statusPill.danger;
     default:
-      return statusPill.warning
+      return statusPill.warning;
   }
 }
 
 function getStatusIcon(status: Payment["status"]) {
   switch (status) {
     case "paid":
-      return CheckCircle
+      return CheckCircle;
     case "failed":
-      return XCircle
+      return XCircle;
     default:
-      return Clock
+      return Clock;
   }
 }
 
 function formatTsh(amount: string | number) {
-  return `TSh ${Number(amount).toLocaleString()}`
+  return `TSh ${Number(amount).toLocaleString()}`;
 }
 
 function copyToClipboard(text: string, label: string) {
-  navigator.clipboard.writeText(text).then(() => toast.success(`${label} copied`))
+  navigator.clipboard.writeText(text).then(() => toast.success(`${label} copied`));
 }
 
 export default function PaymentsPage() {
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const fetchPayments = async () => {
-    setIsLoading(true)
-    setLoadError(null)
+  const fetchPayments = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
     try {
-      const res = await fetch(`${API_URL}/api/payments`, { credentials: "include" })
-      if (!res.ok) throw new Error("Failed to fetch payments")
-      const data = await res.json()
-      setPayments(data.payments)
+      const res = await fetch(`${API_URL}/api/payments`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch payments");
+      const data = await res.json();
+      setPayments(data.payments);
     } catch {
       // Recorded, not just toasted — the empty state would otherwise claim there is no
       // data when the request simply failed.
-      setLoadError("Payments could not be loaded. Check your connection and try again.")
-      toast.error("Failed to load payments")
+      setLoadError("Payments could not be loaded. Check your connection and try again.");
+      toast.error("Failed to load payments");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    fetchPayments()
-  }, [])
+    fetchPayments();
+  }, [fetchPayments]);
 
   const filtered = payments.filter((p) => {
-    const q = searchQuery.toLowerCase()
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
       !q ||
       (p.phone ?? "").toLowerCase().includes(q) ||
       (p.providerReference ?? "").toLowerCase().includes(q) ||
       (p.voucherCode ?? "").toLowerCase().includes(q) ||
-      (p.packageName ?? "").toLowerCase().includes(q)
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+      (p.packageName ?? "").toLowerCase().includes(q);
+    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  const paidCount = payments.filter((p) => p.status === "paid").length
-  const pendingCount = payments.filter((p) => p.status === "pending").length
-  const failedCount = payments.filter((p) => p.status === "failed").length
+  const paidCount = payments.filter((p) => p.status === "paid").length;
+  const pendingCount = payments.filter((p) => p.status === "pending").length;
+  const failedCount = payments.filter((p) => p.status === "failed").length;
   const totalRevenue = payments
     .filter((p) => p.status === "paid")
-    .reduce((sum, p) => sum + Number(p.amountTsh), 0)
+    .reduce((sum, p) => sum + Number(p.amountTsh), 0);
 
   return (
     <div className="space-y-6">
@@ -267,7 +267,7 @@ export default function PaymentsPage() {
                 </TableRow>
               ) : (
                 filtered.map((payment) => {
-                  const StatusIcon = getStatusIcon(payment.status)
+                  const StatusIcon = getStatusIcon(payment.status);
                   return (
                     <TableRow key={payment.id}>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
@@ -299,7 +299,10 @@ export default function PaymentsPage() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              onClick={() => copyToClipboard(payment.voucherCode!, "Voucher code")}
+                              onClick={() =>
+                                payment.voucherCode &&
+                                copyToClipboard(payment.voucherCode, "Voucher code")
+                              }
                             >
                               <Copy className="size-3" />
                             </Button>
@@ -318,7 +321,8 @@ export default function PaymentsPage() {
                               variant="ghost"
                               size="icon-sm"
                               onClick={() =>
-                                copyToClipboard(payment.providerReference!, "Reference")
+                                payment.providerReference &&
+                                copyToClipboard(payment.providerReference, "Reference")
                               }
                             >
                               <Copy className="size-3" />
@@ -329,7 +333,7 @@ export default function PaymentsPage() {
                         )}
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })
               )}
             </TableBody>
@@ -337,5 +341,5 @@ export default function PaymentsPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

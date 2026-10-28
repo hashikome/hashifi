@@ -1,23 +1,24 @@
-"use client"
+"use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
+import type { PackageRecord } from "@hashifi/types";
 import {
+  Banknote,
   Clock,
+  Gauge,
   HardDrive,
   MonitorSmartphone,
+  Package,
   TrendingDown,
   Zap,
-  Banknote,
-  Package,
-  Gauge,
-} from "lucide-react"
-import { formatDuration } from "@/lib/duration"
-import { statusPill } from "@/lib/status-pill"
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { formatDuration } from "@/lib/duration";
+import { statusPill } from "@/lib/status-pill";
 
 function formatHour(h: number): string {
-  return `${String(h).padStart(2, "0")}:00`
+  return `${String(h).padStart(2, "0")}:00`;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -26,7 +27,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium text-right">{value}</span>
     </div>
-  )
+  );
 }
 
 function Section({
@@ -34,9 +35,9 @@ function Section({
   title,
   children,
 }: {
-  icon: React.ElementType
-  title: string
-  children: React.ReactNode
+  icon: React.ElementType;
+  title: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1">
@@ -46,45 +47,32 @@ function Section({
       </div>
       {children}
     </div>
-  )
+  );
 }
 
-export interface PackageForDialog {
-  id: string
-  name: string
-  description?: string | null
-  packageType: string
-  durationMinutes: number
-  downloadSpeedMbps: number
-  uploadSpeedMbps?: number | null
-  dataLimitGb?: number | null
-  priceTsh: string | number
-  isActive: boolean
-  throttledDownloadMbps?: number | null
-  throttledUploadMbps?: number | null
-  peakStartHour?: number | null
-  peakEndHour?: number | null
-  throttleAfterGb?: number | null
-}
+export type PackageForDialog = PackageRecord;
 
 interface PackageViewDialogProps {
-  pkg: PackageForDialog | null
-  onClose: () => void
+  pkg: PackageForDialog | null;
+  onClose: () => void;
 }
 
 export function PackageViewDialog({ pkg, onClose }: PackageViewDialogProps) {
-  if (!pkg) return null
+  if (!pkg) return null;
 
-  const throttleEnabled = pkg.throttledDownloadMbps != null
-  const peakHoursEnabled = pkg.peakStartHour != null && pkg.peakEndHour != null
-  const dataThresholdEnabled = pkg.throttleAfterGb != null
-  const price = typeof pkg.priceTsh === "string" ? parseFloat(pkg.priceTsh) : pkg.priceTsh
+  const throttleEnabled = pkg.throttledDownloadMbps != null;
+  const peakHours =
+    pkg.peakStartHour !== null && pkg.peakEndHour !== null
+      ? { start: pkg.peakStartHour, end: pkg.peakEndHour }
+      : null;
+  const dataThresholdEnabled = pkg.throttleAfterGb !== null;
+  const price = parseFloat(pkg.priceTsh);
 
   return (
     <Dialog
       open={!!pkg}
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open) onClose();
       }}
     >
       <DialogContent className="max-w-lg">
@@ -98,10 +86,7 @@ export function PackageViewDialog({ pkg, onClose }: PackageViewDialogProps) {
               {pkg.isActive ? "Active" : "Inactive"}
             </Badge>
             {throttleEnabled && (
-              <Badge
-                variant="secondary"
-                className={statusPill.warning}
-              >
+              <Badge variant="secondary" className={statusPill.warning}>
                 Throttled
               </Badge>
             )}
@@ -188,15 +173,15 @@ export function PackageViewDialog({ pkg, onClose }: PackageViewDialogProps) {
                     </span>
                   }
                 />
-                {peakHoursEnabled && (
+                {peakHours && (
                   <>
                     <Separator />
                     <Row
                       label="Peak hours (EAT)"
                       value={
-                        pkg.peakStartHour! <= pkg.peakEndHour!
-                          ? `${formatHour(pkg.peakStartHour!)} – ${formatHour(pkg.peakEndHour!)}`
-                          : `${formatHour(pkg.peakStartHour!)} – ${formatHour(pkg.peakEndHour!)} (overnight)`
+                        peakHours.start <= peakHours.end
+                          ? `${formatHour(peakHours.start)} – ${formatHour(peakHours.end)}`
+                          : `${formatHour(peakHours.start)} – ${formatHour(peakHours.end)} (overnight)`
                       }
                     />
                   </>
@@ -207,7 +192,7 @@ export function PackageViewDialog({ pkg, onClose }: PackageViewDialogProps) {
                     <Row label="Data threshold" value={`After ${pkg.throttleAfterGb} GB used`} />
                   </>
                 )}
-                {!peakHoursEnabled && !dataThresholdEnabled && (
+                {!peakHours && !dataThresholdEnabled && (
                   <p className="text-xs text-muted-foreground py-1">
                     Throttled speeds set but no triggers configured.
                   </p>
@@ -220,5 +205,5 @@ export function PackageViewDialog({ pkg, onClose }: PackageViewDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

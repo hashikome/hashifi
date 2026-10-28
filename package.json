@@ -3,7 +3,10 @@
   "private": true,
   "license": "FSL-1.1-ALv2",
   "packageManager": "bun@1.4.4",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "bun run infra:up && bun run --filter '*' dev",
     "infra:up": "docker compose up -d",
@@ -20,5 +23,7 @@
     "build": "bun run --filter '*' build",
     "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@biomejs/biome": "2.6.3"
+  }
 }

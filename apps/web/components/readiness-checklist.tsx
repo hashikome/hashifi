@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import { AlertTriangle, CheckCircle2, CircleSlash, XCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle2, CircleSlash, XCircle } from "lucide-react";
 
-export type ReadinessStatus = "pass" | "warn" | "fail" | "skipped"
+export type ReadinessStatus = "pass" | "warn" | "fail" | "skipped";
 
 export interface ReadinessCheck {
-  id: string
-  title: string
-  status: ReadinessStatus
-  detail: string
-  fix?: string
+  id: string;
+  title: string;
+  status: ReadinessStatus;
+  detail: string;
+  fix?: string;
 }
 
 export interface ReadinessReport {
-  ok: boolean
-  checks: ReadinessCheck[]
-  summary: { pass: number; warn: number; fail: number; skipped: number }
+  ok: boolean;
+  checks: ReadinessCheck[];
+  summary: { pass: number; warn: number; fail: number; skipped: number };
 }
 
 const STYLES: Record<
@@ -46,9 +46,9 @@ const STYLES: Record<
     border: "border-l-muted",
     label: "Not checked",
   },
-}
+};
 
-const ORDER: ReadinessStatus[] = ["fail", "warn", "skipped", "pass"]
+const ORDER: ReadinessStatus[] = ["fail", "warn", "skipped", "pass"];
 
 /**
  * The readiness checklist — what would stop this router working, and what to type to fix it.
@@ -59,9 +59,9 @@ const ORDER: ReadinessStatus[] = ["fail", "warn", "skipped", "pass"]
 export function ReadinessChecklist({ report }: { report: ReadinessReport }) {
   const checks = [...report.checks].sort(
     (a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status),
-  )
+  );
 
-  const { pass, warn, fail, skipped } = report.summary
+  const { pass, warn, fail, skipped } = report.summary;
 
   return (
     <div className="space-y-2">
@@ -82,8 +82,8 @@ export function ReadinessChecklist({ report }: { report: ReadinessReport }) {
 
       <ul className="space-y-1.5">
         {checks.map((c) => {
-          const s = STYLES[c.status]
-          const Icon = s.icon
+          const s = STYLES[c.status];
+          const Icon = s.icon;
           return (
             <li key={c.id} className={`rounded-r-md border-l-2 bg-muted/30 px-3 py-2 ${s.border}`}>
               <div className="flex items-start gap-2">
@@ -92,16 +92,18 @@ export function ReadinessChecklist({ report }: { report: ReadinessReport }) {
                   <p className="text-sm font-medium leading-snug">{c.title}</p>
                   <p className="text-xs text-muted-foreground">{c.detail}</p>
                   {c.fix && (
-                    <p className={`text-xs ${c.status === "pass" ? "text-muted-foreground" : s.text}`}>
+                    <p
+                      className={`text-xs ${c.status === "pass" ? "text-muted-foreground" : s.text}`}
+                    >
                       {c.fix}
                     </p>
                   )}
                 </div>
               </div>
             </li>
-          )
+          );
         })}
       </ul>
     </div>
-  )
+  );
 }

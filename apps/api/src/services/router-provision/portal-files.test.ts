@@ -64,7 +64,7 @@ describe("status.html", () => {
       "refresh-timeout-secs",
     ]);
     for (const match of html.matchAll(/\$\(([a-z-]*)/g)) {
-      expect(allowed).toContain(match[1]!);
+      expect(allowed).toContain(match[1]);
     }
   });
 

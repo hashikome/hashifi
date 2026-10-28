@@ -1,24 +1,25 @@
-"use client"
+"use client";
 
-import { useEffect, useState, type ReactNode } from "react"
-import { useRouter, usePathname } from "next/navigation"
-import { Edit, Loader, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Edit, Loader, Trash2 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface TableEditButtonProps {
-  href: string
-  className?: string
+  href: string;
+  className?: string;
 }
 
 export function TableEditButton({ href, className }: TableEditButtonProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const [isNavigating, setIsNavigating] = useState(false)
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isNavigating, setIsNavigating] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on navigation to reset the pending state
   useEffect(() => {
-    setIsNavigating(false)
-  }, [pathname])
+    setIsNavigating(false);
+  }, [pathname]);
 
   return (
     <Button
@@ -27,21 +28,21 @@ export function TableEditButton({ href, className }: TableEditButtonProps) {
       className={className}
       disabled={isNavigating}
       onClick={() => {
-        setIsNavigating(true)
-        router.push(href)
+        setIsNavigating(true);
+        router.push(href);
       }}
       aria-label="Edit"
     >
       {isNavigating ? <Loader className="size-4 animate-spin" /> : <Edit className="size-4" />}
     </Button>
-  )
+  );
 }
 
 interface TableDeleteButtonProps {
-  onClick: () => void
-  isLoading?: boolean
-  disabled?: boolean
-  className?: string
+  onClick: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  className?: string;
 }
 
 export function TableDeleteButton({
@@ -61,14 +62,14 @@ export function TableDeleteButton({
     >
       {isLoading ? <Loader className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
     </Button>
-  )
+  );
 }
 
 interface TableNavButtonProps {
-  href: string
-  icon: ReactNode
-  className?: string
-  ariaLabel?: string
+  href: string;
+  icon: ReactNode;
+  className?: string;
+  ariaLabel?: string;
 }
 
 export function TableNavButton({
@@ -77,13 +78,14 @@ export function TableNavButton({
   className,
   ariaLabel = "Navigate",
 }: TableNavButtonProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const [isNavigating, setIsNavigating] = useState(false)
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isNavigating, setIsNavigating] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on navigation to reset the pending state
   useEffect(() => {
-    setIsNavigating(false)
-  }, [pathname])
+    setIsNavigating(false);
+  }, [pathname]);
 
   return (
     <Button
@@ -92,12 +94,12 @@ export function TableNavButton({
       className={className}
       disabled={isNavigating}
       onClick={() => {
-        setIsNavigating(true)
-        router.push(href)
+        setIsNavigating(true);
+        router.push(href);
       }}
       aria-label={ariaLabel}
     >
       {isNavigating ? <Loader className="size-4 animate-spin" /> : icon}
     </Button>
-  )
+  );
 }

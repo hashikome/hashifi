@@ -17,13 +17,6 @@
  */
 
 import { randomBytes } from "node:crypto";
-import type { Dialect } from "./dialect.js";
-import { hotspotUserParams } from "./dialect.js";
-import type { HotspotPlan } from "./context.js";
-import { PORTAL_FILES, renderPortalFile, routerPathFor } from "./portal-files.js";
-import type { RouterCapabilities, RouterProfile } from "./probe.js";
-// Same check/report shape as readiness.ts on purpose: one frontend component renders both.
-import type { ReadinessCheck, ReadinessStatus } from "./readiness.js";
 import {
   closeConnection,
   connectToRouter,
@@ -32,7 +25,14 @@ import {
 } from "../mikrotik.js";
 import { RouterUnsupportedError } from "../mikrotik-errors.js";
 import type { RouterLogger } from "../router-log.js";
-import { RosClient } from "./ros-client.js";
+import type { HotspotPlan } from "./context.js";
+import type { Dialect } from "./dialect.js";
+import { hotspotUserParams } from "./dialect.js";
+import { PORTAL_FILES, renderPortalFile, routerPathFor } from "./portal-files.js";
+import type { RouterCapabilities } from "./probe.js";
+// Same check/report shape as readiness.ts on purpose: one frontend component renders both.
+import type { ReadinessCheck, ReadinessStatus } from "./readiness.js";
+import { RosClient, rowId } from "./ros-client.js";
 
 export interface VerifyReport {
   /** False when something proves the hotspot is not serving. */
@@ -49,7 +49,6 @@ export interface VerifyReport {
 }
 
 export interface VerifyInput {
-  profile: RouterProfile;
   dialect: Dialect;
   plan: HotspotPlan;
   /** Used to compute the expected portal-file sizes. */
@@ -196,7 +195,6 @@ async function radioIsOnAir(ros: RosClient, dialect: Dialect, plan: HotspotPlan)
 
 async function radioBroadcastingCheck(
   ros: RosClient,
-  profile: RouterProfile,
   dialect: Dialect,
   plan: HotspotPlan,
 ): Promise<ReadinessCheck> {
@@ -296,7 +294,7 @@ async function portalFilesCheck(ros: RosClient, backendUrl: string): Promise<Rea
     return {
       ...base,
       status: "fail",
-      detail: wrong.join("; ") + ".",
+      detail: `${wrong.join("; ")}.`,
       fix:
         "Usually an older copy of the page left over from a previous install — customers would " +
         "see the stale portal. It can also mean truncation in transit, which is what RouterOS's " +
@@ -443,7 +441,7 @@ async function voucherRoundTripCheck(
       const optional = params.filter((p) => OPTIONAL_USER_PARAMS.some((x) => p.startsWith(x)));
       if (!(err instanceof RouterUnsupportedError) || optional.length === 0) throw err;
 
-      rejected = optional.map((p) => p.split("=")[1]!);
+      rejected = optional.map((p) => p.split("=")[1] ?? p);
       discovered = {
         ...(rejected.includes("rate-limit") ? { userRateLimit: false } : {}),
         ...(rejected.includes("shared-users") ? { userSharedUsers: false } : {}),
@@ -486,7 +484,7 @@ async function voucherRoundTripCheck(
     const capInForce = userRateLimit ?? profileRateLimit;
 
     // Clean up before reporting, so a failure verdict does not also leave litter behind.
-    await ros.remove("/ip/hotspot/user", readBack[".id"]!);
+    await ros.remove("/ip/hotspot/user", rowId(readBack));
     created = false;
     const leftBehind = (await ros.findByName("/ip/hotspot/user", code)) !== null;
 
@@ -606,14 +604,14 @@ async function voucherRoundTripCheck(
 // ── Runner ──────────────────────────────────────────────────────────────────
 
 export async function verifyRouter(ros: RosClient, input: VerifyInput): Promise<VerifyReport> {
-  const { profile, dialect, plan, backendUrl, backendIp, includeWriteTest = true } = input;
+  const { dialect, plan, backendUrl, backendIp, includeWriteTest = true } = input;
 
   const checks: ReadinessCheck[] = [];
 
   // Sequential — one API connection, and a 32 MB board is no place for concurrency.
   checks.push(await hotspotServerCheck(ros, plan));
   checks.push(await dhcpServerCheck(ros, dialect, plan));
-  checks.push(await radioBroadcastingCheck(ros, profile, dialect, plan));
+  checks.push(await radioBroadcastingCheck(ros, dialect, plan));
   checks.push(await loginModeCheck(ros, plan));
   checks.push(await portalFilesCheck(ros, backendUrl));
   checks.push(await walledGardenCheck(ros, backendIp));

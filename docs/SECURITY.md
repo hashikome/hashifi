@@ -42,7 +42,7 @@ two ways, and the application works with either and depends on no password manag
   and passed as `<NAME>_FILE`. A set `<NAME>_FILE` wins; if it cannot be read, the API fails
   at startup.
 - **Environment variables** from a private env file for everything else, and for local
-  development (`.env.example` lists each key).
+  development (each app's `.env.example` lists its keys).
 
 A password manager such as 1Password is an optional adapter around the process
 (`op run --env-file=... -- <command>` filling the same variables or secret files); no script

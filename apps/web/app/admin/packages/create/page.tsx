@@ -1,60 +1,61 @@
-"use client"
+"use client";
 
-import { useMemo, useState } from "react"
-import { flushSync } from "react-dom"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
+import {
+  ArrowLeft,
+  ArrowRight,
+  Banknote,
+  Check,
+  Gauge,
+  Loader,
+  Package,
+  Save,
+  Zap,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
+import { toast } from "sonner";
+import { DurationField } from "@/components/duration-field";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
-import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Save,
-  Package,
-  Zap,
-  Banknote,
-  Gauge,
-  Loader,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { toast } from "sonner"
-import { DurationField } from "@/components/duration-field"
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { errorMessage } from "@/lib/errors";
+import { cn } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-const STEP_LABELS = ["Basic Info", "Speed & Throttling", "Pricing & Limits"]
+const STEP_LABELS = ["Basic Info", "Speed & Throttling", "Pricing & Limits"];
 
 const HOURS = Array.from({ length: 24 }, (_, i) => ({
   value: i.toString(),
   label: `${String(i).padStart(2, "0")}:00`,
-}))
+}));
 
 interface FormData {
-  name: string
-  description: string
-  duration: string
-  downloadSpeed: string
-  uploadSpeed: string
-  throttleEnabled: boolean
-  throttledDownload: string
-  throttledUpload: string
-  peakStartHour: string
-  peakEndHour: string
-  throttleAfterGb: string
-  price: string
-  dataLimit: string
+  name: string;
+  description: string;
+  duration: string;
+  downloadSpeed: string;
+  uploadSpeed: string;
+  throttleEnabled: boolean;
+  throttledDownload: string;
+  throttledUpload: string;
+  peakStartHour: string;
+  peakEndHour: string;
+  throttleAfterGb: string;
+  price: string;
+  dataLimit: string;
 }
 
 const INITIAL_FORM: FormData = {
@@ -71,15 +72,15 @@ const INITIAL_FORM: FormData = {
   throttleAfterGb: "",
   price: "",
   dataLimit: "",
-}
+};
 
 function StepIndicator({ step }: { step: number }) {
   return (
     <div className="flex items-center justify-center mb-8 select-none">
       {STEP_LABELS.map((label, i) => {
-        const s = i + 1
-        const done = step > s
-        const active = step === s
+        const s = i + 1;
+        const done = step > s;
+        const active = step === s;
         return (
           <div key={s} className="flex items-center">
             <div className="flex flex-col items-center gap-1.5">
@@ -113,99 +114,99 @@ function StepIndicator({ step }: { step: number }) {
               />
             )}
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 export default function CreatePackagePage() {
-  const router = useRouter()
-  const [step, setStep] = useState(1)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [form, setForm] = useState<FormData>(INITIAL_FORM)
+  const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState<FormData>(INITIAL_FORM);
 
-  const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(INITIAL_FORM), [form])
-  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSubmitting)
+  const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(INITIAL_FORM), [form]);
+  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSubmitting);
 
   const set = (field: keyof FormData, value: string | boolean) =>
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => ({ ...prev, [field]: value }));
 
   const canGoNext = useMemo(() => {
-    if (step === 1) return form.name.trim() !== "" && form.duration !== ""
+    if (step === 1) return form.name.trim() !== "" && form.duration !== "";
     if (step === 2) {
-      if (!form.downloadSpeed) return false
+      if (!form.downloadSpeed) return false;
       if (form.throttleEnabled && form.throttledDownload) {
-        const dl = parseInt(form.downloadSpeed)
-        const tdl = parseInt(form.throttledDownload)
-        if (!isNaN(dl) && !isNaN(tdl) && tdl >= dl) return false
+        const dl = parseInt(form.downloadSpeed, 10);
+        const tdl = parseInt(form.throttledDownload, 10);
+        if (!Number.isNaN(dl) && !Number.isNaN(tdl) && tdl >= dl) return false;
         if (form.throttledUpload) {
-          const ul = form.uploadSpeed ? parseInt(form.uploadSpeed) : dl
-          const tul = parseInt(form.throttledUpload)
-          if (!isNaN(ul) && !isNaN(tul) && tul >= ul) return false
+          const ul = form.uploadSpeed ? parseInt(form.uploadSpeed, 10) : dl;
+          const tul = parseInt(form.throttledUpload, 10);
+          if (!Number.isNaN(ul) && !Number.isNaN(tul) && tul >= ul) return false;
         }
       }
-      return true
+      return true;
     }
-    const price = parseFloat(form.price)
-    return form.price !== "" && !isNaN(price) && price >= 1000
-  }, [step, form])
+    const price = parseFloat(form.price);
+    return form.price !== "" && !Number.isNaN(price) && price >= 1000;
+  }, [step, form]);
 
   const handleNext = () => {
     if (step === 2) {
       if (!form.downloadSpeed) {
-        toast.error("Please enter a download speed.")
-        return
+        toast.error("Please enter a download speed.");
+        return;
       }
       if (form.throttleEnabled && form.throttledDownload) {
-        const dl = parseInt(form.downloadSpeed)
-        const tdl = parseInt(form.throttledDownload)
-        if (!isNaN(dl) && !isNaN(tdl) && tdl >= dl) {
+        const dl = parseInt(form.downloadSpeed, 10);
+        const tdl = parseInt(form.throttledDownload, 10);
+        if (!Number.isNaN(dl) && !Number.isNaN(tdl) && tdl >= dl) {
           toast.error(
             `Throttled download (${tdl} Mbps) must be less than normal download (${dl} Mbps).`,
-          )
-          return
+          );
+          return;
         }
         if (form.throttledUpload) {
-          const ul = form.uploadSpeed ? parseInt(form.uploadSpeed) : dl
-          const tul = parseInt(form.throttledUpload)
-          if (!isNaN(ul) && !isNaN(tul) && tul >= ul) {
+          const ul = form.uploadSpeed ? parseInt(form.uploadSpeed, 10) : dl;
+          const tul = parseInt(form.throttledUpload, 10);
+          if (!Number.isNaN(ul) && !Number.isNaN(tul) && tul >= ul) {
             toast.error(
               `Throttled upload (${tul} Mbps) must be less than normal upload (${ul} Mbps).`,
-            )
-            return
+            );
+            return;
           }
         }
       }
-      setStep((s) => s + 1)
-      return
+      setStep((s) => s + 1);
+      return;
     }
     if (!canGoNext) {
       toast.error(
         step === 1
           ? "Please fill in the package name and duration."
           : "Please enter a price of at least TSh 1,000.",
-      )
-      return
+      );
+      return;
     }
-    setStep((s) => s + 1)
-  }
+    setStep((s) => s + 1);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!canGoNext) return
-    setIsSubmitting(true)
-    let success = false
+    e.preventDefault();
+    if (!canGoNext) return;
+    setIsSubmitting(true);
+    let success = false;
 
     try {
       const throttlePayload =
         form.throttleEnabled && form.throttledDownload
           ? {
-              throttledDownloadMbps: parseInt(form.throttledDownload),
-              throttledUploadMbps: form.throttledUpload ? parseInt(form.throttledUpload) : null,
-              peakStartHour: form.peakStartHour !== "" ? parseInt(form.peakStartHour) : null,
-              peakEndHour: form.peakEndHour !== "" ? parseInt(form.peakEndHour) : null,
-              throttleAfterGb: form.throttleAfterGb ? parseInt(form.throttleAfterGb) : null,
+              throttledDownloadMbps: parseInt(form.throttledDownload, 10),
+              throttledUploadMbps: form.throttledUpload ? parseInt(form.throttledUpload, 10) : null,
+              peakStartHour: form.peakStartHour !== "" ? parseInt(form.peakStartHour, 10) : null,
+              peakEndHour: form.peakEndHour !== "" ? parseInt(form.peakEndHour, 10) : null,
+              throttleAfterGb: form.throttleAfterGb ? parseInt(form.throttleAfterGb, 10) : null,
             }
           : {
               throttledDownloadMbps: null,
@@ -213,7 +214,7 @@ export default function CreatePackagePage() {
               peakStartHour: null,
               peakEndHour: null,
               throttleAfterGb: null,
-            }
+            };
 
       const res = await fetch(`${API_URL}/api/packages`, {
         method: "POST",
@@ -222,33 +223,33 @@ export default function CreatePackagePage() {
         body: JSON.stringify({
           name: form.name,
           description: form.description || undefined,
-          durationMinutes: parseInt(form.duration),
-          downloadSpeedMbps: parseInt(form.downloadSpeed),
-          uploadSpeedMbps: form.uploadSpeed ? parseInt(form.uploadSpeed) : undefined,
+          durationMinutes: parseInt(form.duration, 10),
+          downloadSpeedMbps: parseInt(form.downloadSpeed, 10),
+          uploadSpeedMbps: form.uploadSpeed ? parseInt(form.uploadSpeed, 10) : undefined,
           priceTsh: parseFloat(form.price),
           deviceLimit: 1,
-          dataLimitGb: form.dataLimit ? parseInt(form.dataLimit) : undefined,
+          dataLimitGb: form.dataLimit ? parseInt(form.dataLimit, 10) : undefined,
           features: [],
           isActive: true,
           ...throttlePayload,
         }),
-      })
+      });
 
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || "Failed to create package")
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create package");
       }
 
-      toast.success("Package created!")
-      success = true
-      flushSync(() => setForm(INITIAL_FORM)) // clears isDirty before navigation so the hook doesn't intercept router.push
-      router.push("/admin/packages")
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred")
+      toast.success("Package created!");
+      success = true;
+      flushSync(() => setForm(INITIAL_FORM)); // clears isDirty before navigation so the hook doesn't intercept router.push
+      router.push("/admin/packages");
+    } catch (err) {
+      toast.error(errorMessage(err, "An error occurred"));
     } finally {
-      if (!success) setIsSubmitting(false)
+      if (!success) setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <>
@@ -481,9 +482,9 @@ export default function CreatePackagePage() {
                       </div>
                       {form.peakStartHour !== "" && form.peakEndHour !== "" && (
                         <p className="text-xs text-muted-foreground">
-                          {parseInt(form.peakStartHour) <= parseInt(form.peakEndHour)
-                            ? `Throttle from ${HOURS[parseInt(form.peakStartHour)].label} to ${HOURS[parseInt(form.peakEndHour)].label}`
-                            : `Throttle from ${HOURS[parseInt(form.peakStartHour)].label} overnight to ${HOURS[parseInt(form.peakEndHour)].label}`}
+                          {parseInt(form.peakStartHour, 10) <= parseInt(form.peakEndHour, 10)
+                            ? `Throttle from ${HOURS[parseInt(form.peakStartHour, 10)].label} to ${HOURS[parseInt(form.peakEndHour, 10)].label}`
+                            : `Throttle from ${HOURS[parseInt(form.peakStartHour, 10)].label} overnight to ${HOURS[parseInt(form.peakEndHour, 10)].label}`}
                         </p>
                       )}
                     </div>
@@ -622,5 +623,5 @@ export default function CreatePackagePage() {
 
       <UnsavedChangesDialog open={showDialog} onLeave={confirmLeave} onStay={cancelLeave} />
     </>
-  )
+  );
 }

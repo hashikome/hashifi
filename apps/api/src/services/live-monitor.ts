@@ -1,15 +1,16 @@
-import { WebSocketServer, WebSocket } from "ws";
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
+import { WebSocket, WebSocketServer } from "ws";
 import { db } from "../db/index.js";
 import { packages, routers, venues, vouchers, wifiSessions } from "../db/schema.js";
 import { decrypt } from "../utils/encrypt.js";
 import {
-  connectToRouter,
   closeConnection,
+  connectToRouter,
+  ensureHotspotUserProfileAssigned,
   getActiveClients,
   getSystemUptimeSeconds,
-  ensureHotspotUserProfileAssigned,
   kickHotspotSession,
+  type MikroTikConn,
   throttledProfileNameForPackage,
   userProfileNameForPackage,
 } from "./mikrotik.js";
@@ -64,7 +65,7 @@ export function startLiveMonitor(wss: WebSocketServer): void {
       onlineRouters.map(async ({ router, venueName }) => {
         if (!router.apiUsername || !router.apiPasswordEncrypted) return;
 
-        let conn;
+        let conn: MikroTikConn | null = null;
         try {
           conn = await connectToRouter({
             host: router.ipAddress,
@@ -79,7 +80,8 @@ export function startLiveMonitor(wss: WebSocketServer): void {
 
           // Accumulate active voucher codes for reconciliation
           if (router.venueId) {
-            const venueSet = activeByVenue.get(router.venueId)!;
+            const venueSet = activeByVenue.get(router.venueId) ?? new Set<string>();
+            activeByVenue.set(router.venueId, venueSet);
             clients.forEach((c) => {
               if (c.user) venueSet.add(c.user);
             });
@@ -118,14 +120,16 @@ export function startLiveMonitor(wss: WebSocketServer): void {
 
               const codeToSession = new Map(sessionRows.map((r) => [r.code, r.id]));
               await Promise.allSettled(
-                clients
-                  .filter((c) => codeToSession.has(c.user))
-                  .map((c) =>
+                clients.flatMap((c) => {
+                  const sessionId = codeToSession.get(c.user);
+                  if (sessionId === undefined) return [];
+                  return [
                     db
                       .update(wifiSessions)
                       .set({ uploadBytes: c.bytesIn, downloadBytes: c.bytesOut })
-                      .where(eq(wifiSessions.id, codeToSession.get(c.user)!)),
-                  ),
+                      .where(eq(wifiSessions.id, sessionId)),
+                  ];
+                }),
               );
             }
           }
@@ -180,7 +184,7 @@ export function startLiveMonitor(wss: WebSocketServer): void {
       deadRouters.map(async ({ router }) => {
         if (!router.apiUsername || !router.apiPasswordEncrypted) return;
 
-        let conn;
+        let conn: MikroTikConn | null = null;
         try {
           conn = await connectToRouter({
             host: router.ipAddress,

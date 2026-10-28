@@ -1,13 +1,28 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth-context"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  BarChart3,
+  Building2,
+  ChevronDown,
+  CreditCard,
+  DollarSign,
+  LayoutDashboard,
+  Loader,
+  LogOut,
+  Package,
+  Radio,
+  Router,
+  Settings,
+  Smartphone,
+  Ticket,
+  Users,
+  Users2,
+  Wifi,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -16,7 +31,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,29 +41,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Wifi,
-  LayoutDashboard,
-  Users,
-  Activity,
-  Ticket,
-  Settings,
-  LogOut,
-  Building2,
-  Router,
-  BarChart3,
-  ChevronDown,
-  Radio,
-  Package,
-  Users2,
-  Globe,
-  Smartphone,
-  Loader,
-  CreditCard,
-  DollarSign,
-} from "lucide-react"
-import { toast } from "sonner"
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard, roles: ["admin", "manager"] },
@@ -61,20 +59,21 @@ const navigation = [
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3, roles: ["admin", "manager"] },
   { name: "Revenue", href: "/admin/revenue", icon: DollarSign, roles: ["admin"] },
   { name: "Team", href: "/admin/team", icon: Users2, roles: ["admin"] },
-]
+];
 
 export function AdminSidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const { user, logout } = useAuth()
-  const [isSignOutOpen, setIsSignOutOpen] = useState(false)
-  const [isSigningOut, setIsSigningOut] = useState(false)
-  const [loadingRoute, setLoadingRoute] = useState<string | null>(null)
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [isSignOutOpen, setIsSignOutOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [loadingRoute, setLoadingRoute] = useState<string | null>(null);
 
   // Clear loading state when pathname changes (navigation completes)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on navigation to reset the pending state
   useEffect(() => {
-    setLoadingRoute(null)
-  }, [pathname])
+    setLoadingRoute(null);
+  }, [pathname]);
 
   const getInitials = (name: string) => {
     return name
@@ -82,32 +81,32 @@ export function AdminSidebar() {
       .map((n) => n[0])
       .join("")
       .toUpperCase()
-      .slice(0, 2)
-  }
+      .slice(0, 2);
+  };
 
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "admin":
-        return "Admin"
+        return "Admin";
       case "manager":
-        return "Manager"
+        return "Manager";
       default:
-        return role
+        return role;
     }
-  }
+  };
 
   const handleSignOut = async () => {
-    setIsSigningOut(true)
+    setIsSigningOut(true);
 
     try {
-      await logout()
-      toast.success("Signed out")
-      setIsSignOutOpen(false)
-      router.replace("/")
+      await logout();
+      toast.success("Signed out");
+      setIsSignOutOpen(false);
+      router.replace("/");
     } finally {
-      setIsSigningOut(false)
+      setIsSigningOut(false);
     }
-  }
+  };
 
   return (
     <div className="flex h-screen w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
@@ -117,7 +116,7 @@ export function AdminSidebar() {
           <Wifi className="size-5" />
         </div>
         <div>
-          <h1 className="font-semibold text-sm">WiFi Billing</h1>
+          <h1 className="font-semibold text-sm">HashiFi</h1>
           <p className="text-xs text-sidebar-foreground/60">Admin Portal</p>
         </div>
       </div>
@@ -129,7 +128,8 @@ export function AdminSidebar() {
             .filter((item) => !user || item.roles.includes(user.role))
             .map((item) => {
               const isActive =
-                pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
+                pathname === item.href ||
+                (item.href !== "/admin" && pathname.startsWith(item.href));
               return (
                 <Link
                   key={item.name}
@@ -141,8 +141,8 @@ export function AdminSidebar() {
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                   )}
                   onClick={() => {
-                    if (pathname !== item.href && !pathname.startsWith(item.href + "/")) {
-                      setLoadingRoute(item.href)
+                    if (pathname !== item.href && !pathname.startsWith(`${item.href}/`)) {
+                      setLoadingRoute(item.href);
                     }
                   }}
                 >
@@ -153,7 +153,7 @@ export function AdminSidebar() {
                   )}
                   {item.name}
                 </Link>
-              )
+              );
             })}
         </nav>
       </ScrollArea>
@@ -198,8 +198,8 @@ export function AdminSidebar() {
             <DropdownMenuItem
               variant="destructive"
               onSelect={(event) => {
-                event.preventDefault()
-                setIsSignOutOpen(true)
+                event.preventDefault();
+                setIsSignOutOpen(true);
               }}
             >
               <LogOut className="size-4 mr-2" />
@@ -231,5 +231,5 @@ export function AdminSidebar() {
         </AlertDialog>
       </div>
     </div>
-  )
+  );
 }

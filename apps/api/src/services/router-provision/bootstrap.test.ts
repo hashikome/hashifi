@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { buildBootstrapScript, rosQuote } from "./bootstrap.js";
 import { bootstrapSchema } from "../../routes/routers.js";
+import { buildBootstrapScript, rosQuote } from "./bootstrap.js";
 
 const VALID = {
   routerName: "Bloc 3 Main Router",
@@ -18,6 +18,13 @@ const build = (over: Partial<typeof VALID> & Record<string, unknown> = {}) =>
 /** Statement lines only — comments and blanks are never executed, so their length is irrelevant. */
 const statements = (script: string) =>
   script.split("\n").filter((l) => l.trim() !== "" && !l.trimStart().startsWith("#"));
+
+/** The first statement containing `text`; fails the test when there is none. */
+function lineWith(script: string, text: string): string {
+  const line = statements(script).find((l) => l.includes(text));
+  if (line === undefined) throw new Error(`no statement contains ${text}`);
+  return line;
+}
 
 describe("generated script fits the RouterOS console", () => {
   /**
@@ -69,14 +76,14 @@ describe("generated script fits the RouterOS console", () => {
     // below. Passing one here keeps this test from failing on a legitimate credential later.
     for (const line of statements(build({ adminPassword: "pa$$word$USER" }).script)) {
       const declared = new Set(
-        [...line.matchAll(/:(?:local|set)\s+([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]!),
+        [...line.matchAll(/:(?:local|set)\s+([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]),
       );
       // `:foreach x in=…` and `:for x from=…` bind their own variable too.
       for (const m of line.matchAll(/:(?:foreach|for)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
-        declared.add(m[1]!);
+        declared.add(m[1]);
       }
       for (const m of line.matchAll(/(?<!\\)\$([A-Za-z_][A-Za-z0-9_]*)/g)) {
-        expect(declared).toContain(m[1]!);
+        expect(declared).toContain(m[1]);
       }
     }
   });
@@ -85,6 +92,7 @@ describe("generated script fits the RouterOS console", () => {
     // Only the script's own text is guaranteed — a UTF-8 SSID passes through, and RouterOS
     // accepts one. This catches a smart quote or em-dash creeping into a comment or message,
     // which is what would actually corrupt an /import.
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: the assertion is that only tab, newline and printable ASCII appear
     expect(build().script).toMatch(/^[\x09\x0a\x20-\x7e]*$/);
   });
 });
@@ -101,9 +109,7 @@ describe("radio configuration", () => {
     // Guarding with `:if` alone is not enough — the command path can fail to resolve when the line
     // is read, not when it runs.
     for (const menu of ["/interface wifi set", "/interface wifiwave2 set"]) {
-      const line = statements(build().script).find((l) => l.includes(menu));
-      expect(line).toBeDefined();
-      expect(line!).toContain(":parse");
+      expect(lineWith(build().script, menu)).toContain(":parse");
     }
   });
 
@@ -123,7 +129,6 @@ describe("radio configuration", () => {
     // the board and says so if a radio is still disabled.
     expect(build().script).toContain("Radio is still disabled");
   });
-
 });
 
 describe("quoting", () => {
@@ -144,14 +149,12 @@ describe("quoting", () => {
     // The command travels as a RouterOS string *containing* RouterOS source, so the quotes the
     // template puts around the SSID are themselves escaped. Getting this wrong corrupts SSIDs
     // rather than failing loudly, which is why it is pinned here.
-    const line = statements(build().script).find((l) => l.includes("/interface wifi set"))!;
+    const line = lineWith(build().script, "/interface wifi set");
     expect(line).toContain('ssid=\\"VenueWiFi\\"');
   });
 
   test("a quote in the SSID survives both levels of escaping", () => {
-    const line = statements(build({ ssid: 'The "Cafe"' }).script).find((l) =>
-      l.includes("/interface wifi set"),
-    )!;
+    const line = lineWith(build({ ssid: 'The "Cafe"' }).script, "/interface wifi set");
     // rosQuote once → \"Cafe\" ; embedded in :parse → \\\"Cafe\\\"
     expect(line).toContain('\\\\\\"Cafe\\\\\\"');
   });

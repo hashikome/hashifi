@@ -1,52 +1,14 @@
-"use client"
+"use client";
 
+import type { PackagesResponse } from "@hashifi/types";
 import {
-  useMemo,
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  type CSSProperties,
-  type ChangeEvent,
-} from "react"
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { ImageCropDialog } from "@/components/image-crop-dialog"
-import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
-import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth-context"
-import type { Package } from "@/lib/types"
-import {
-  DURATION_BUCKETS,
-  durationShort,
-  formatDuration,
-  type DurationBucketKey,
-} from "@/lib/duration"
-import {
+  AlertCircle,
   Check,
   CreditCard,
   FileText,
   Image,
   Loader,
   Palette,
-  AlertCircle,
   Save,
   ShieldCheck,
   Smartphone,
@@ -55,36 +17,76 @@ import {
   Upload,
   Wifi,
   X,
-} from "lucide-react"
-import { QRCodeSVG } from "qrcode.react"
-import { toast } from "sonner"
+} from "lucide-react";
+import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
+import {
+  type ChangeEvent,
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { toast } from "sonner";
+import { ImageCropDialog } from "@/components/image-crop-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useAuth } from "@/lib/auth-context";
+import {
+  DURATION_BUCKETS,
+  type DurationBucketKey,
+  durationShort,
+  formatDuration,
+} from "@/lib/duration";
+import { errorMessage } from "@/lib/errors";
+import type { Package } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
-const PORTAL_LOGIN_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login"
-const BRAND_PLACEHOLDER = "Your brand name"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const PORTAL_LOGIN_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login";
+const BRAND_PLACEHOLDER = "Your brand name";
 
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
-const MAX_RAW_SIZE_MB = 20
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_RAW_SIZE_MB = 20;
 
 type PortalForm = {
-  brandName: string
-  logoText: string
-  logoUrl: string | null
-  backgroundImageUrl: string | null
-  headline: string
-  message: string
-  primaryColor: string
-  accentColor: string
-  backgroundColor: string
-  backgroundStyle: "solid" | "soft" | "split"
-  radius: number
-  voucherLabel: string
-  voucherPrefix: string
-  voucherHelp: string
-  ticketTitle: string
-  ticketFooter: string
-  requireTerms: boolean
-}
+  brandName: string;
+  logoText: string;
+  logoUrl: string | null;
+  backgroundImageUrl: string | null;
+  headline: string;
+  message: string;
+  primaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  backgroundStyle: "solid" | "soft" | "split";
+  radius: number;
+  voucherLabel: string;
+  voucherPrefix: string;
+  voucherHelp: string;
+  ticketTitle: string;
+  ticketFooter: string;
+  requireTerms: boolean;
+};
 
 const DEFAULT_FORM: PortalForm = {
   brandName: "",
@@ -104,55 +106,55 @@ const DEFAULT_FORM: PortalForm = {
   ticketTitle: "Internet Access Voucher",
   ticketFooter: "Thank you for your purchase",
   requireTerms: true,
-}
+};
 
 const colorPresets = [
   { name: "Sunset", primary: "#D97757", accent: "#0F766E", background: "#1F2937" },
   { name: "Signal", primary: "#2563EB", accent: "#10B981", background: "#0F172A" },
   { name: "Coral", primary: "#E11D48", accent: "#0891B2", background: "#18181B" },
   { name: "Forest", primary: "#15803D", accent: "#F59E0B", background: "#102018" },
-]
+];
 
 export default function PortalPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   // ── Main state ────────────────────────────────────────────────────────────
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [portal, setPortal] = useState<PortalForm>(DEFAULT_FORM)
-  const [savedPortal, setSavedPortal] = useState<PortalForm>(DEFAULT_FORM)
-  const [packages, setPackages] = useState<Package[]>([])
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [portal, setPortal] = useState<PortalForm>(DEFAULT_FORM);
+  const [savedPortal, setSavedPortal] = useState<PortalForm>(DEFAULT_FORM);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   const isDirty = useMemo(
     () => JSON.stringify(portal) !== JSON.stringify(savedPortal),
     [portal, savedPortal],
-  )
-  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSaving)
+  );
+  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSaving);
 
   // ── Image upload state ────────────────────────────────────────────────────
-  const [cropSrc, setCropSrc] = useState<string | null>(null)
-  const [cropField, setCropField] = useState<"logo" | "background" | null>(null)
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
-  const [isUploadingBg, setIsUploadingBg] = useState(false)
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropField, setCropField] = useState<"logo" | "background" | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingBg, setIsUploadingBg] = useState(false);
 
-  const logoInputRef = useRef<HTMLInputElement>(null)
-  const bgInputRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const bgInputRef = useRef<HTMLInputElement>(null);
 
   // ── Load portal settings + packages ──────────────────────────────────────
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     async function load() {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
         const [portalRes, pkgRes] = await Promise.all([
           fetch(`${API_URL}/api/portal`, { credentials: "include" }),
           fetch(`${API_URL}/api/packages`, { credentials: "include" }),
-        ])
+        ]);
 
         if (!cancelled && portalRes.ok) {
-          const data = await portalRes.json()
-          const s = data.settings
+          const data = await portalRes.json();
+          const s = data.settings;
           const loaded: PortalForm = {
             brandName: s.brandName,
             logoText: s.logoText,
@@ -171,17 +173,17 @@ export default function PortalPage() {
             ticketTitle: s.ticketTitle,
             ticketFooter: s.ticketFooter,
             requireTerms: s.requireTerms,
-          }
-          setPortal(loaded)
-          setSavedPortal(loaded)
+          };
+          setPortal(loaded);
+          setSavedPortal(loaded);
         }
         // 404 → no settings yet, use DEFAULT_FORM
 
         if (!cancelled && pkgRes.ok) {
-          const data = await pkgRes.json()
-          const mapped: Package[] = (data.packages ?? [])
-            .filter((p: any) => p.isActive)
-            .map((p: any) => ({
+          const data: PackagesResponse = await pkgRes.json();
+          const mapped: Package[] = data.packages
+            .filter((p) => p.isActive)
+            .map((p) => ({
               id: p.id,
               name: p.name,
               speed: p.downloadSpeedMbps,
@@ -191,162 +193,162 @@ export default function PortalPage() {
               description: p.description ?? "",
               features: [],
               isActive: p.isActive,
-            }))
-          setPackages(mapped)
+            }));
+          setPackages(mapped);
         }
       } catch {
-        if (!cancelled) toast.error("Failed to load portal settings")
+        if (!cancelled) toast.error("Failed to load portal settings");
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) setIsLoading(false);
       }
     }
-    load()
+    load();
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   // ── Computed preview background ───────────────────────────────────────────
   const previewBackground = useMemo(() => {
-    if (portal.backgroundStyle === "solid") return portal.backgroundColor
+    if (portal.backgroundStyle === "solid") return portal.backgroundColor;
     if (portal.backgroundStyle === "split") {
-      return `linear-gradient(150deg, ${portal.backgroundColor} 0%, ${portal.backgroundColor} 52%, ${portal.primaryColor} 52%, ${portal.accentColor} 100%)`
+      return `linear-gradient(150deg, ${portal.backgroundColor} 0%, ${portal.backgroundColor} 52%, ${portal.primaryColor} 52%, ${portal.accentColor} 100%)`;
     }
-    return `radial-gradient(circle at top left, ${portal.primaryColor}55, transparent 35%), radial-gradient(circle at bottom right, ${portal.accentColor}55, transparent 38%), ${portal.backgroundColor}`
-  }, [portal.accentColor, portal.backgroundColor, portal.backgroundStyle, portal.primaryColor])
+    return `radial-gradient(circle at top left, ${portal.primaryColor}55, transparent 35%), radial-gradient(circle at bottom right, ${portal.accentColor}55, transparent 38%), ${portal.backgroundColor}`;
+  }, [portal.accentColor, portal.backgroundColor, portal.backgroundStyle, portal.primaryColor]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const updatePortal = <K extends keyof PortalForm>(key: K, value: PortalForm[K]) =>
-    setPortal((prev) => ({ ...prev, [key]: value }))
+    setPortal((prev) => ({ ...prev, [key]: value }));
 
   // ── Save all settings ─────────────────────────────────────────────────────
   const savePortal = async () => {
     if (!portal.brandName.trim()) {
-      toast.error("Brand name is required before saving portal settings")
-      return
+      toast.error("Brand name is required before saving portal settings");
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
       const res = await fetch(`${API_URL}/api/portal`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(portal),
-      })
+      });
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to save")
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save");
       }
-      setSavedPortal(portal)
-      toast.success("Portal settings saved")
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save portal settings")
+      setSavedPortal(portal);
+      toast.success("Portal settings saved");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to save portal settings"));
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   // ── File picker ───────────────────────────────────────────────────────────
   const handleFileSelect = useCallback(
     (field: "logo" | "background") => (e: ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      e.target.value = "" // reset so the same file can be re-selected
-      if (!file) return
+      const file = e.target.files?.[0];
+      e.target.value = ""; // reset so the same file can be re-selected
+      if (!file) return;
 
       if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-        toast.error("Please select a JPEG, PNG, WebP, or GIF image")
-        return
+        toast.error("Please select a JPEG, PNG, WebP, or GIF image");
+        return;
       }
       if (file.size > MAX_RAW_SIZE_MB * 1024 * 1024) {
-        toast.error(`Image must be under ${MAX_RAW_SIZE_MB} MB`)
-        return
+        toast.error(`Image must be under ${MAX_RAW_SIZE_MB} MB`);
+        return;
       }
 
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (ev) => {
-        setCropSrc(ev.target?.result as string)
-        setCropField(field)
-      }
-      reader.readAsDataURL(file)
+        setCropSrc(ev.target?.result as string);
+        setCropField(field);
+      };
+      reader.readAsDataURL(file);
     },
     [],
-  )
+  );
 
   // ── Upload cropped blob ───────────────────────────────────────────────────
   const handleUpload = useCallback(
     async (blob: Blob) => {
-      if (!cropField) return
-      const isLogo = cropField === "logo"
-      isLogo ? setIsUploadingLogo(true) : setIsUploadingBg(true)
+      if (!cropField) return;
+      const isLogo = cropField === "logo";
+      isLogo ? setIsUploadingLogo(true) : setIsUploadingBg(true);
 
       try {
-        const form = new FormData()
-        form.append("file", blob, `portal-${cropField}.jpg`)
-        form.append("field", cropField)
+        const form = new FormData();
+        form.append("file", blob, `portal-${cropField}.jpg`);
+        form.append("field", cropField);
 
         const res = await fetch(`${API_URL}/api/portal/upload`, {
           method: "POST",
           credentials: "include",
           body: form,
-        })
+        });
         if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || "Upload failed")
+          const data = await res.json();
+          throw new Error(data.error || "Upload failed");
         }
-        const data = await res.json()
+        const data = await res.json();
         setPortal((prev) => ({
           ...prev,
           [isLogo ? "logoUrl" : "backgroundImageUrl"]: data.url,
-        }))
-        toast.success(`${isLogo ? "Logo" : "Background"} uploaded`)
-      } catch (err: any) {
-        toast.error(err.message || "Upload failed")
-        throw err // keep crop dialog open on failure
+        }));
+        toast.success(`${isLogo ? "Logo" : "Background"} uploaded`);
+      } catch (err) {
+        toast.error(errorMessage(err, "Upload failed"));
+        throw err; // keep crop dialog open on failure
       } finally {
-        isLogo ? setIsUploadingLogo(false) : setIsUploadingBg(false)
+        isLogo ? setIsUploadingLogo(false) : setIsUploadingBg(false);
       }
     },
     [cropField],
-  )
+  );
 
   // ── Remove uploaded image ─────────────────────────────────────────────────
   const handleRemove = useCallback(
     async (field: "logo" | "background") => {
-      const isLogo = field === "logo"
-      const url = isLogo ? portal.logoUrl : portal.backgroundImageUrl
-      if (!url) return
+      const isLogo = field === "logo";
+      const url = isLogo ? portal.logoUrl : portal.backgroundImageUrl;
+      if (!url) return;
 
-      isLogo ? setIsUploadingLogo(true) : setIsUploadingBg(true)
+      isLogo ? setIsUploadingLogo(true) : setIsUploadingBg(true);
       try {
         const res = await fetch(`${API_URL}/api/portal/upload`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ url }),
-        })
+        });
         if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || "Failed to remove")
+          const data = await res.json();
+          throw new Error(data.error || "Failed to remove");
         }
         setPortal((prev) => ({
           ...prev,
           [isLogo ? "logoUrl" : "backgroundImageUrl"]: null,
-        }))
-        toast.success(`${isLogo ? "Logo" : "Background"} removed`)
-      } catch (err: any) {
-        toast.error(err.message || "Failed to remove image")
+        }));
+        toast.success(`${isLogo ? "Logo" : "Background"} removed`);
+      } catch (err) {
+        toast.error(errorMessage(err, "Failed to remove image"));
       } finally {
-        isLogo ? setIsUploadingLogo(false) : setIsUploadingBg(false)
+        isLogo ? setIsUploadingLogo(false) : setIsUploadingBg(false);
       }
     },
     [portal.backgroundImageUrl, portal.logoUrl],
-  )
+  );
 
   const closeCropDialog = useCallback(() => {
-    setCropSrc(null)
-    setCropField(null)
-  }, [])
+    setCropSrc(null);
+    setCropField(null);
+  }, []);
 
   // ── Loading state ─────────────────────────────────────────────────────────
   if (isLoading) {
@@ -354,7 +356,7 @@ export default function PortalPage() {
       <div className="flex items-center justify-center py-32">
         <Loader className="size-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    );
   }
 
   return (
@@ -532,7 +534,7 @@ export default function PortalPage() {
                         <div className="flex flex-wrap items-center gap-3">
                           {portal.logoUrl ? (
                             <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              {/* biome-ignore lint/performance/noImgElement: an uploaded portal image at its own size; image optimisation is off (next.config.mjs) */}
                               <img
                                 src={`${API_URL}${portal.logoUrl}`}
                                 alt="Logo"
@@ -595,7 +597,7 @@ export default function PortalPage() {
                         <div className="flex flex-wrap items-center gap-3">
                           {portal.backgroundImageUrl ? (
                             <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              {/* biome-ignore lint/performance/noImgElement: an uploaded portal image at its own size; image optimisation is off (next.config.mjs) */}
                               <img
                                 src={`${API_URL}${portal.backgroundImageUrl}`}
                                 alt="Background"
@@ -976,7 +978,7 @@ export default function PortalPage() {
         onApply={handleUpload}
       />
     </>
-  )
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -988,19 +990,19 @@ function BrandNameDisplay({
   className,
   placeholderClassName,
 }: {
-  brandName: string
-  className?: string
-  placeholderClassName?: string
+  brandName: string;
+  className?: string;
+  placeholderClassName?: string;
 }) {
-  const trimmed = brandName.trim()
+  const trimmed = brandName.trim();
   if (trimmed) {
-    return <span className={className}>{trimmed}</span>
+    return <span className={className}>{trimmed}</span>;
   }
-  return <span className={cn("italic", placeholderClassName, className)}>{BRAND_PLACEHOLDER}</span>
+  return <span className={cn("italic", placeholderClassName, className)}>{BRAND_PLACEHOLDER}</span>;
 }
 
 function sampleVoucherCode(prefix: string) {
-  return `${prefix}-8K2F-2026`
+  return `${prefix}-8K2F-2026`;
 }
 
 function PhonePreview({
@@ -1009,16 +1011,16 @@ function PhonePreview({
   packages,
   style,
 }: {
-  portal: PortalForm
-  previewBackground: string
-  packages: Package[]
-  style?: CSSProperties
+  portal: PortalForm;
+  previewBackground: string;
+  packages: Package[];
+  style?: CSSProperties;
 }) {
-  const [tab, setTab] = useState<"online" | "voucher">("online")
-  const [selectedPkg, setSelectedPkg] = useState<Package | null>(null)
+  const [tab, setTab] = useState<"online" | "voucher">("online");
+  const [selectedPkg, setSelectedPkg] = useState<Package | null>(null);
   // Seeded to the first bucket that actually has packages, not a hardcoded "hourly" — a venue
   // selling only per-minute passes would otherwise open on an empty tab.
-  const [durationFilter, setDurationFilter] = useState<DurationBucketKey | null>(null)
+  const [durationFilter, setDurationFilter] = useState<DurationBucketKey | null>(null);
 
   // `p.duration` is WHOLE MINUTES (it is `durationMinutes` off the API — see the mapping at
   // the fetch). These thresholds were still the pre-0014 hour values, so a 3-minute package
@@ -1026,26 +1028,27 @@ function PhonePreview({
   const availableFilters = DURATION_BUCKETS.map((b) => ({
     ...b,
     pkgs: packages.filter((p) => p.duration >= b.min && p.duration < b.max),
-  })).filter((f) => f.pkgs.length > 0)
-  const activeFilter = availableFilters.find((f) => f.key === durationFilter) ?? availableFilters[0]
-  const visiblePackages = activeFilter ? activeFilter.pkgs : []
-  const popularIdx = visiblePackages.length > 1 ? Math.floor(visiblePackages.length / 2) : -1
+  })).filter((f) => f.pkgs.length > 0);
+  const activeFilter =
+    availableFilters.find((f) => f.key === durationFilter) ?? availableFilters[0];
+  const visiblePackages = activeFilter ? activeFilter.pkgs : [];
+  const popularIdx = visiblePackages.length > 1 ? Math.floor(visiblePackages.length / 2) : -1;
 
-  const noPackages = packages.length === 0
-  const displayPkgs = visiblePackages
-  const showingEmpty = !noPackages && displayPkgs.length === 0 // filter active but 0 results in that bucket
+  const noPackages = packages.length === 0;
+  const displayPkgs = visiblePackages;
+  const showingEmpty = !noPackages && displayPkgs.length === 0; // filter active but 0 results in that bucket
 
   // Both of these were local hour-based copies that survived 0014. They now go through the
   // same helpers the backend renders the real portal with, so the preview cannot claim
   // something the customer will not see.
   function pkgFeatures(pkg: Package) {
-    const dataStr = pkg.dataLimit === -1 ? "Unlimited data" : `${pkg.dataLimit} GB data`
+    const dataStr = pkg.dataLimit === -1 ? "Unlimited data" : `${pkg.dataLimit} GB data`;
     return [
       `${formatDuration(pkg.duration)} browsing`,
       `${pkg.speed} Mbps speed`,
       dataStr,
       "Instant activation",
-    ]
+    ];
   }
 
   const bgStyle: CSSProperties = portal.backgroundImageUrl
@@ -1054,9 +1057,9 @@ function PhonePreview({
         backgroundSize: "cover",
         backgroundPosition: "center",
       }
-    : { background: previewBackground }
+    : { background: previewBackground };
 
-  const r = portal.radius + 4
+  const r = portal.radius + 4;
 
   return (
     <div className="mx-auto w-full max-w-[330px]" style={style}>
@@ -1075,7 +1078,7 @@ function PhonePreview({
               </div>
               <div className="flex items-center gap-2.5">
                 {portal.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                  // biome-ignore lint/performance/noImgElement: an uploaded portal image at its own size; image optimisation is off (next.config.mjs)
                   <img
                     src={`${API_URL}${portal.logoUrl}`}
                     alt="Logo"
@@ -1119,6 +1122,7 @@ function PhonePreview({
                 >
                   {(["online", "voucher"] as const).map((t) => (
                     <button
+                      type="button"
                       key={t}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] py-2 text-[11px] font-semibold transition-all"
                       style={
@@ -1131,8 +1135,8 @@ function PhonePreview({
                           : { color: "#a1a1aa" }
                       }
                       onClick={() => {
-                        setTab(t)
-                        setSelectedPkg(null)
+                        setTab(t);
+                        setSelectedPkg(null);
                       }}
                     >
                       {t === "online" ? (
@@ -1156,6 +1160,7 @@ function PhonePreview({
                       <div className="flex gap-1.5 overflow-x-auto px-4 py-2.5 scrollbar-hide">
                         {availableFilters.map((f) => (
                           <button
+                            type="button"
                             key={f.key}
                             onClick={() => setDurationFilter(f.key)}
                             className="shrink-0 rounded-full px-3.5 py-1.5 text-[10px] font-semibold"
@@ -1188,7 +1193,7 @@ function PhonePreview({
                     ) : (
                       <div className="px-4 pt-2">
                         {displayPkgs.map((pkg, idx) => {
-                          const isPopular = !noPackages && idx === popularIdx
+                          const isPopular = !noPackages && idx === popularIdx;
                           return (
                             <div
                               key={pkg.id}
@@ -1247,6 +1252,7 @@ function PhonePreview({
 
                                 {/* CTA */}
                                 <button
+                                  type="button"
                                   className="w-full rounded-xl py-2.5 text-[11px] font-bold"
                                   style={{
                                     border: "1.5px solid #d4d4d8",
@@ -1259,7 +1265,7 @@ function PhonePreview({
                                 </button>
                               </div>
                             </div>
-                          )
+                          );
                         })}
                       </div>
                     )}
@@ -1293,6 +1299,7 @@ function PhonePreview({
                         </div>
                       </div>
                       <button
+                        type="button"
                         className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-500"
                         onClick={() => setSelectedPkg(null)}
                       >
@@ -1318,6 +1325,7 @@ function PhonePreview({
                     </p>
 
                     <button
+                      type="button"
                       className="w-full rounded-xl py-3 text-[12px] font-bold text-white"
                       style={{ backgroundColor: portal.primaryColor }}
                     >
@@ -1346,6 +1354,7 @@ function PhonePreview({
                       </p>
                     )}
                     <button
+                      type="button"
                       className="mt-4 w-full rounded-xl py-3 text-[12px] font-bold text-white"
                       style={{ backgroundColor: portal.primaryColor }}
                     >
@@ -1371,13 +1380,13 @@ function PhonePreview({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function VoucherPreview({ portal, packages }: { portal: PortalForm; packages: Package[] }) {
-  const samplePackage = packages[1] ?? packages[0]
-  const voucherCode = sampleVoucherCode(portal.voucherPrefix)
-  const qrData = `${PORTAL_LOGIN_URL}?code=${voucherCode}`
+  const samplePackage = packages[1] ?? packages[0];
+  const voucherCode = sampleVoucherCode(portal.voucherPrefix);
+  const qrData = `${PORTAL_LOGIN_URL}?code=${voucherCode}`;
 
   return (
     <Card className="overflow-hidden">
@@ -1400,7 +1409,7 @@ function VoucherPreview({ portal, packages }: { portal: PortalForm; packages: Pa
             <div className="flex items-start justify-between gap-4 p-5">
               <div className="flex min-w-0 items-center gap-3">
                 {portal.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                  // biome-ignore lint/performance/noImgElement: an uploaded portal image at its own size; image optimisation is off (next.config.mjs)
                   <img
                     src={`${API_URL}${portal.logoUrl}`}
                     alt="Logo"
@@ -1512,7 +1521,7 @@ function VoucherPreview({ portal, packages }: { portal: PortalForm; packages: Pa
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function FlowSwitch({
@@ -1522,11 +1531,11 @@ function FlowSwitch({
   onCheckedChange,
   title,
 }: {
-  checked: boolean
-  description: string
-  icon: typeof CreditCard
-  onCheckedChange: (checked: boolean) => void
-  title: string
+  checked: boolean;
+  description: string;
+  icon: typeof CreditCard;
+  onCheckedChange: (checked: boolean) => void;
+  title: string;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 rounded-lg border bg-background p-4">
@@ -1541,5 +1550,5 @@ function FlowSwitch({
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>
-  )
+  );
 }

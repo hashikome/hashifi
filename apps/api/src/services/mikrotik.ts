@@ -335,19 +335,19 @@ export async function removeHotspotUser(conn: MikroTikConn, code: string): Promi
 
 export async function getSystemUptimeSeconds(conn: MikroTikConn): Promise<number> {
   const result = await conn.write("/system/resource/print");
-  const raw: string = Array.isArray(result) && result[0] ? String(result[0]["uptime"] ?? "") : "";
+  const raw: string = Array.isArray(result) && result[0] ? String(result[0].uptime ?? "") : "";
   if (!raw) return 0;
   let s = 0;
   const w = raw.match(/(\d+)w/);
-  if (w) s += parseInt(w[1]) * 604800;
+  if (w) s += parseInt(w[1], 10) * 604800;
   const d = raw.match(/(\d+)d/);
-  if (d) s += parseInt(d[1]) * 86400;
+  if (d) s += parseInt(d[1], 10) * 86400;
   const h = raw.match(/(\d+)h/);
-  if (h) s += parseInt(h[1]) * 3600;
+  if (h) s += parseInt(h[1], 10) * 3600;
   const m = raw.match(/(\d+)m/);
-  if (m) s += parseInt(m[1]) * 60;
+  if (m) s += parseInt(m[1], 10) * 60;
   const sec = raw.match(/(\d+)s/);
-  if (sec) s += parseInt(sec[1]);
+  if (sec) s += parseInt(sec[1], 10);
   return s;
 }
 
@@ -356,10 +356,10 @@ export async function getActiveClients(conn: MikroTikConn): Promise<MikroTikActi
   if (!Array.isArray(result)) return [];
   return result.map((r) => ({
     id: String(r[".id"] ?? ""),
-    user: String(r["user"] ?? ""),
+    user: String(r.user ?? ""),
     mac: String(r["mac-address"] ?? ""),
-    ip: String(r["address"] ?? ""),
-    uptime: String(r["uptime"] ?? "0s"),
+    ip: String(r.address ?? ""),
+    uptime: String(r.uptime ?? "0s"),
     idleTime: String(r["idle-time"] ?? "0s"),
     bytesIn: Number(r["bytes-in"] ?? 0),
     bytesOut: Number(r["bytes-out"] ?? 0),

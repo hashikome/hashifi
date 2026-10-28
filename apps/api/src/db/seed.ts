@@ -1,17 +1,16 @@
-import "dotenv/config";
 import { db, pool } from "./index.js";
 import { adminPreferences, adminUsers } from "./schema.js";
 
 const seedAdmins = [
   {
     id: "admin-1",
-    email: "admin@wifibilling.com",
+    email: "admin@example.com",
     name: "System Admin",
     role: "admin" as const,
   },
   {
     id: "manager-1",
-    email: "manager@wifibilling.com",
+    email: "manager@example.com",
     name: "Demo Manager",
     role: "manager" as const,
   },
@@ -45,6 +44,6 @@ for (const admin of seedAdmins) {
     });
 }
 
-console.log(`[WiFi Billing] Seeded ${seedAdmins.length} admin users`);
+console.log(`[HashiFi] Seeded ${seedAdmins.length} admin users`);
 
 await pool.end();

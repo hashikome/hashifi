@@ -1,9 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Check, ChevronsUpDown } from "lucide-react";
+import * as React from "react";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -11,23 +10,24 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 export interface SearchableSelectOption {
-  value: string
-  label: string
+  value: string;
+  label: string;
 }
 
 interface SearchableSelectProps {
-  options: SearchableSelectOption[]
-  value: string
-  onValueChange: (value: string) => void
-  placeholder?: string
-  searchPlaceholder?: string
-  emptyMessage?: string
-  disabled?: boolean
-  id?: string
+  options: SearchableSelectOption[];
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  emptyMessage?: string;
+  disabled?: boolean;
+  id?: string;
 }
 
 export function SearchableSelect({
@@ -40,9 +40,9 @@ export function SearchableSelect({
   disabled = false,
   id,
 }: SearchableSelectProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
-  const selectedLabel = options.find((option) => option.value === value)?.label
+  const selectedLabel = options.find((option) => option.value === value)?.label;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -73,8 +73,8 @@ export function SearchableSelect({
                   key={option.value}
                   value={option.label}
                   onSelect={() => {
-                    onValueChange(option.value === value ? "" : option.value)
-                    setOpen(false)
+                    onValueChange(option.value === value ? "" : option.value);
+                    setOpen(false);
                   }}
                 >
                   <Check
@@ -91,5 +91,5 @@ export function SearchableSelect({
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

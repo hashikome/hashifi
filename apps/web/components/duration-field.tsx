@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useEffect, useRef, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -10,17 +10,17 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   DURATION_PRESETS,
   DURATION_UNITS,
+  type DurationUnit,
   formatDuration,
   splitDuration,
   toMinutes,
-  type DurationUnit,
-} from "@/lib/duration"
+} from "@/lib/duration";
 
-const CUSTOM = "custom"
+const CUSTOM = "custom";
 
 /**
  * How long a package lasts, in whole minutes.
@@ -41,18 +41,18 @@ export function DurationField({
   label = "Duration *",
 }: {
   /** Whole minutes, or null when nothing has been chosen yet. */
-  value: number | null
-  onChange: (minutes: number | null) => void
-  id?: string
-  label?: string
+  value: number | null;
+  onChange: (minutes: number | null) => void;
+  id?: string;
+  label?: string;
 }) {
-  const isPreset = (minutes: number) => DURATION_PRESETS.some((p) => p.minutes === minutes)
+  const isPreset = (minutes: number) => DURATION_PRESETS.some((p) => p.minutes === minutes);
 
-  const [isCustom, setIsCustom] = useState(value !== null && !isPreset(value))
+  const [isCustom, setIsCustom] = useState(value !== null && !isPreset(value));
   const initial =
-    value !== null ? splitDuration(value) : { value: 1, unit: "hours" as DurationUnit }
-  const [customValue, setCustomValue] = useState(String(initial.value))
-  const [unit, setUnit] = useState<DurationUnit>(initial.unit)
+    value !== null ? splitDuration(value) : { value: 1, unit: "hours" as DurationUnit };
+  const [customValue, setCustomValue] = useState(String(initial.value));
+  const [unit, setUnit] = useState<DurationUnit>(initial.unit);
 
   /**
    * The last value this component itself sent up.
@@ -66,38 +66,37 @@ export function DurationField({
    * Comparing against this ref distinguishes "the parent gave us a new value" from "this is our own
    * change echoing back", which is the only case the effect should act on.
    */
-  const lastEmitted = useRef<number | null>(value)
+  const lastEmitted = useRef<number | null>(value);
 
   const emit = (minutes: number | null) => {
-    lastEmitted.current = minutes
-    onChange(minutes)
-  }
+    lastEmitted.current = minutes;
+    onChange(minutes);
+  };
 
   /*
    * Adopt a value that came from outside — the edit page fetches the package after mount, so the
    * first render has value === null and the custom row would otherwise stay closed on a package
    * whose duration is not one of the presets.
    */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: isPreset is a pure read of a module constant; re-running on it would defeat the ref guard
   useEffect(() => {
-    if (value === null || value === lastEmitted.current) return
-    lastEmitted.current = value
+    if (value === null || value === lastEmitted.current) return;
+    lastEmitted.current = value;
     if (isPreset(value)) {
-      setIsCustom(false)
-      return
+      setIsCustom(false);
+      return;
     }
-    const split = splitDuration(value)
-    setIsCustom(true)
-    setCustomValue(String(split.value))
-    setUnit(split.unit)
-    // isPreset is a pure read of a module constant; re-running on it would defeat the ref guard.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value])
+    const split = splitDuration(value);
+    setIsCustom(true);
+    setCustomValue(String(split.value));
+    setUnit(split.unit);
+  }, [value]);
 
   const emitCustom = (rawValue: string, rawUnit: DurationUnit) => {
     // null while the field is empty or invalid, so the form's own "duration is required" check
     // catches it rather than a 0 reaching the API.
-    emit(toMinutes(Number(rawValue), rawUnit))
-  }
+    emit(toMinutes(Number(rawValue), rawUnit));
+  };
 
   return (
     <div className="space-y-2">
@@ -109,15 +108,15 @@ export function DurationField({
             // Continue from the duration already showing rather than resetting to 1 hour, so
             // switching "24 Hours" to Custom starts at 24 / Hours and can be nudged to 36.
             const seed =
-              value !== null ? splitDuration(value) : { value: Number(customValue) || 1, unit }
-            setCustomValue(String(seed.value))
-            setUnit(seed.unit)
-            setIsCustom(true)
-            emitCustom(String(seed.value), seed.unit)
-            return
+              value !== null ? splitDuration(value) : { value: Number(customValue) || 1, unit };
+            setCustomValue(String(seed.value));
+            setUnit(seed.unit);
+            setIsCustom(true);
+            emitCustom(String(seed.value), seed.unit);
+            return;
           }
-          setIsCustom(false)
-          emit(Number(v))
+          setIsCustom(false);
+          emit(Number(v));
         }}
       >
         <SelectTrigger id={id}>
@@ -145,15 +144,15 @@ export function DurationField({
             className="w-28"
             value={customValue}
             onChange={(e) => {
-              setCustomValue(e.target.value)
-              emitCustom(e.target.value, unit)
+              setCustomValue(e.target.value);
+              emitCustom(e.target.value, unit);
             }}
           />
           <Select
             value={unit}
             onValueChange={(u) => {
-              setUnit(u as DurationUnit)
-              emitCustom(customValue, u as DurationUnit)
+              setUnit(u as DurationUnit);
+              emitCustom(customValue, u as DurationUnit);
             }}
           >
             <SelectTrigger className="w-36" aria-label="Duration unit">
@@ -184,5 +183,5 @@ export function DurationField({
         )}
       </p>
     </div>
-  )
+  );
 }

@@ -1,41 +1,45 @@
-"use client"
+"use client";
 
-import { useSearchParams } from "next/navigation"
-import { Suspense, useEffect, useState } from "react"
-import { PrintableVoucher } from "@/components/printable-voucher"
-import { Button } from "@/components/ui/button"
-import { Printer, ArrowLeft, Loader, TriangleAlert } from "lucide-react"
-import Link from "next/link"
+import type {
+  PortalSettingsRecord,
+  PortalSettingsResponse,
+  PrintableVoucher as PrintableVoucherRecord,
+  PrintableVouchersResponse,
+} from "@hashifi/types";
+import { ArrowLeft, Loader, Printer, TriangleAlert } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import type { VoucherPackageSummary } from "@/components/printable-voucher";
+import { PrintableVoucher } from "@/components/printable-voucher";
+import { Button } from "@/components/ui/button";
+import { initialPortalSettings } from "@/lib/portal-defaults";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+interface PrintRow extends PrintableVoucherRecord {
+  pkg: VoucherPackageSummary;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 // The URL customers reach from the WiFi network — set NEXT_PUBLIC_PORTAL_URL in .env.local
 // to the backend's LAN address (e.g. http://192.168.1.15:8080).
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || API_URL
-const PORTAL_URL_IS_LOCAL = PORTAL_URL.includes("localhost") || PORTAL_URL.includes("127.0.0.1")
+const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || API_URL;
+const PORTAL_URL_IS_LOCAL = PORTAL_URL.includes("localhost") || PORTAL_URL.includes("127.0.0.1");
 
 function PrintVouchersContent() {
-  const searchParams = useSearchParams()
-  const [vouchers, setVouchers] = useState<any[]>([])
-  const [portalSettings, setPortalSettings] = useState<any | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const searchParams = useSearchParams();
+  const [vouchers, setVouchers] = useState<PrintRow[]>([]);
+  const [portalSettings, setPortalSettings] = useState<PortalSettingsRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const codesParam = searchParams.get("codes")
-    Promise.all([
-      codesParam ? fetchVouchers(codesParam) : Promise.resolve(),
-      fetchPortalSettings(),
-    ]).finally(() => setIsLoading(false))
-  }, [searchParams])
-
-  const fetchVouchers = async (codes: string) => {
+  const fetchVouchers = useCallback(async (codes: string) => {
     try {
       const res = await fetch(`${API_URL}/api/vouchers/by-codes?codes=${codes}`, {
         credentials: "include",
-      })
-      if (!res.ok) throw new Error("Failed to fetch vouchers")
-      const data = await res.json()
+      });
+      if (!res.ok) throw new Error("Failed to fetch vouchers");
+      const data: PrintableVouchersResponse = await res.json();
       setVouchers(
-        data.vouchers.map((v: any) => ({
+        data.vouchers.map((v) => ({
           ...v,
           pkg: {
             name: v.packageName,
@@ -45,24 +49,35 @@ function PrintVouchersContent() {
             dataLimit: v.dataLimitGb ?? -1,
           },
         })),
-      )
+      );
     } catch (err) {
-      console.error(err)
+      console.error(err);
     }
-  }
+  }, []);
 
-  const fetchPortalSettings = async () => {
+  const fetchPortalSettings = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/portal`, { credentials: "include" })
-      if (res.ok) setPortalSettings((await res.json()).settings)
+      const res = await fetch(`${API_URL}/api/portal`, { credentials: "include" });
+      if (res.ok) {
+        const data: PortalSettingsResponse = await res.json();
+        setPortalSettings(data.settings);
+      }
     } catch {
-      // fall through — will render with null settings
+      // Fall through: vouchers print with the default portal settings.
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const codesParam = searchParams.get("codes");
+    Promise.all([
+      codesParam ? fetchVouchers(codesParam) : Promise.resolve(),
+      fetchPortalSettings(),
+    ]).finally(() => setIsLoading(false));
+  }, [searchParams, fetchVouchers, fetchPortalSettings]);
 
   const handlePrint = () => {
-    window.print()
-  }
+    window.print();
+  };
 
   if (isLoading) {
     return (
@@ -70,7 +85,7 @@ function PrintVouchersContent() {
         <Loader className="size-8 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground">Preparing vouchers for printing...</p>
       </div>
-    )
+    );
   }
 
   if (vouchers.length === 0) {
@@ -84,7 +99,7 @@ function PrintVouchersContent() {
           </Link>
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -135,7 +150,7 @@ function PrintVouchersContent() {
               key={voucher.id}
               code={voucher.code}
               pkg={voucher.pkg}
-              settings={portalSettings}
+              settings={portalSettings ?? initialPortalSettings}
               venueName={voucher.venueName}
               portalUrl={PORTAL_URL}
             />
@@ -161,7 +176,7 @@ function PrintVouchersContent() {
         }
       `}</style>
     </div>
-  )
+  );
 }
 
 export default function PrintVouchersPage() {
@@ -169,7 +184,7 @@ export default function PrintVouchersPage() {
     <Suspense fallback={<PrintVouchersLoading />}>
       <PrintVouchersContent />
     </Suspense>
-  )
+  );
 }
 
 function PrintVouchersLoading() {
@@ -178,5 +193,5 @@ function PrintVouchersLoading() {
       <Loader className="size-8 animate-spin text-primary mb-4" />
       <p className="text-muted-foreground">Preparing vouchers for printing...</p>
     </div>
-  )
+  );
 }

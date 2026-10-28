@@ -12,9 +12,9 @@
 import { randomUUID } from "node:crypto";
 import {
   classifyRouterError,
-  redactParams,
   RouterError,
   type RouterErrorContext,
+  redactParams,
 } from "./mikrotik-errors.js";
 
 export type RouterLogLevel = "debug" | "info" | "warn" | "error";
@@ -159,10 +159,7 @@ export class RouterLogger {
    * Run one RouterOS command with timing, redaction, and error classification.
    * Throws a typed `RouterError` — never a raw driver error.
    */
-  async run<T>(
-    ctx: RouterErrorContext & { command: string },
-    fn: () => Promise<T>,
-  ): Promise<T> {
+  async run<T>(ctx: RouterErrorContext & { command: string }, fn: () => Promise<T>): Promise<T> {
     const started = Date.now();
     const params = redactParams(ctx.params);
     try {

@@ -54,7 +54,7 @@ export interface Dialect {
 }
 
 export function dialectFor(profile: RouterProfile): Dialect {
-  const { capabilities, wirelessStack, rosVersion } = profile;
+  const { capabilities, wirelessStack } = profile;
 
   const wirelessMenu =
     wirelessStack === "wifi"

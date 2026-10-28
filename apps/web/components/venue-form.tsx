@@ -1,53 +1,54 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useMemo } from "react"
-import { flushSync } from "react-dom"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Save, MapPin, Building2, Search, Loader, Crosshair } from "lucide-react"
-import { toast } from "sonner"
-import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
-import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
-import { SearchableSelect } from "@/components/searchable-select"
-import VenueLocationMap from "@/components/venue-location-map"
-import type { Venue } from "@/lib/types"
+import { ArrowLeft, Building2, Crosshair, Loader, MapPin, Save, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
+import { toast } from "sonner";
+import { SearchableSelect } from "@/components/searchable-select";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
+import VenueLocationMap from "@/components/venue-location-map";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { reverseGeocodeCoordinates } from "@/lib/geocoding";
 import {
   COUNTRIES,
   detectCountryFromCoords,
-  getRegionsForCountry,
   getCitiesForRegion,
-  getRegionCoordinates,
-  getCountryCenter,
-  getCountryDefaultZoom,
   getCountryBounds,
+  getCountryCenter,
   getCountryCode,
+  getCountryDefaultZoom,
+  getRegionCoordinates,
+  getRegionsForCountry,
   isWithinCountry,
-} from "@/lib/location-data"
-import { reverseGeocodeCoordinates } from "@/lib/geocoding"
+  TANZANIA_BOUNDS,
+} from "@/lib/location-data";
+import type { Venue } from "@/lib/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface VenueFormData {
-  name: string
-  address: string
-  road: string
-  street: string
-  ward: string
-  district: string
-  city: string
-  region: string
-  country: string
-  postalCode: string
-  contactPhone: string
-  contactEmail: string
-  description: string
-  status: Venue["status"]
-  latitude: string
-  longitude: string
+  name: string;
+  address: string;
+  road: string;
+  street: string;
+  ward: string;
+  district: string;
+  city: string;
+  region: string;
+  country: string;
+  postalCode: string;
+  contactPhone: string;
+  contactEmail: string;
+  description: string;
+  status: Venue["status"];
+  latitude: string;
+  longitude: string;
 }
 
 const emptyFormData = (): VenueFormData => ({
@@ -67,7 +68,7 @@ const emptyFormData = (): VenueFormData => ({
   status: "active",
   latitude: "",
   longitude: "",
-})
+});
 
 function venueToFormData(venue: Venue): VenueFormData {
   return {
@@ -87,111 +88,111 @@ function venueToFormData(venue: Venue): VenueFormData {
     status: venue.status,
     latitude: venue.latitude ?? "",
     longitude: venue.longitude ?? "",
-  }
+  };
 }
 
 function withCurrentOption(options: { value: string; label: string }[], currentValue: string) {
   if (!currentValue || options.some((option) => option.value === currentValue)) {
-    return options
+    return options;
   }
-  return [{ value: currentValue, label: currentValue }, ...options]
+  return [{ value: currentValue, label: currentValue }, ...options];
 }
 
 interface VenueFormProps {
-  mode: "create" | "edit"
-  venueId?: string
+  mode: "create" | "edit";
+  venueId?: string;
 }
 
 export function VenueForm({ mode, venueId }: VenueFormProps) {
-  const router = useRouter()
-  const isEdit = mode === "edit"
+  const router = useRouter();
+  const isEdit = mode === "edit";
 
-  const [formData, setFormData] = useState<VenueFormData>(emptyFormData)
-  const [savedFormData, setSavedFormData] = useState<VenueFormData>(emptyFormData)
-  const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null)
-  const [mapCenter, setMapCenter] = useState<[number, number]>([-6.7924, 39.2083])
-  const [mapZoom, setMapZoom] = useState(7)
-  const [isClient, setIsClient] = useState(false)
-  const [isLoading, setIsLoading] = useState(isEdit)
-  const [isNavigating, setIsNavigating] = useState(false)
-  const [isLocating, setIsLocating] = useState(false)
-  const [isSearchingAddress, setIsSearchingAddress] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState<VenueFormData>(emptyFormData);
+  const [savedFormData, setSavedFormData] = useState<VenueFormData>(emptyFormData);
+  const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([-6.7924, 39.2083]);
+  const [mapZoom, setMapZoom] = useState(7);
+  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(isEdit);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isDirty = useMemo(
     () => JSON.stringify(formData) !== JSON.stringify(savedFormData),
     [formData, savedFormData],
-  )
-  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty)
+  );
+  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty);
 
   const countryBounds = useMemo(
-    () => getCountryBounds(formData.country) ?? getCountryBounds("Tanzania")!,
+    () => getCountryBounds(formData.country) ?? TANZANIA_BOUNDS,
     [formData.country],
-  )
+  );
 
   const regionOptions = useMemo(
     () => withCurrentOption(getRegionsForCountry(formData.country), formData.region),
     [formData.country, formData.region],
-  )
+  );
 
   const cityOptions = useMemo(
     () => withCurrentOption(getCitiesForRegion(formData.country, formData.region), formData.city),
     [formData.country, formData.region, formData.city],
-  )
+  );
 
   useEffect(() => {
-    setIsClient(true)
-  }, [])
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
-    if (!isEdit || !venueId) return
+    if (!isEdit || !venueId) return;
 
     const fetchVenue = async () => {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
         const res = await fetch(`${API_URL}/api/venues/${venueId}`, {
           credentials: "include",
-        })
-        if (!res.ok) throw new Error("Failed to load venue")
+        });
+        if (!res.ok) throw new Error("Failed to load venue");
 
-        const data = await res.json()
-        const venue = data.venue as Venue
-        const nextForm = venueToFormData(venue)
-        setFormData(nextForm)
-        setSavedFormData(nextForm)
+        const data = await res.json();
+        const venue = data.venue as Venue;
+        const nextForm = venueToFormData(venue);
+        setFormData(nextForm);
+        setSavedFormData(nextForm);
 
-        const lat = venue.latitude ? parseFloat(venue.latitude) : NaN
-        const lng = venue.longitude ? parseFloat(venue.longitude) : NaN
+        const lat = venue.latitude ? parseFloat(venue.latitude) : NaN;
+        const lng = venue.longitude ? parseFloat(venue.longitude) : NaN;
 
         if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-          setSelectedLocation([lat, lng])
-          setMapCenter([lat, lng])
-          setMapZoom(14)
+          setSelectedLocation([lat, lng]);
+          setMapCenter([lat, lng]);
+          setMapZoom(14);
         } else {
-          setMapCenter(getCountryCenter(nextForm.country))
-          setMapZoom(getCountryDefaultZoom(nextForm.country))
+          setMapCenter(getCountryCenter(nextForm.country));
+          setMapZoom(getCountryDefaultZoom(nextForm.country));
         }
       } catch {
-        toast.error("Failed to load venue details")
-        router.push("/admin/venues")
+        toast.error("Failed to load venue details");
+        router.push("/admin/venues");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchVenue()
-  }, [isEdit, venueId, router])
+    fetchVenue();
+  }, [isEdit, venueId, router]);
 
   const handleInputChange = (field: keyof VenueFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const applyGeocodedAddress = async (latitude: number, longitude: number) => {
-    setSelectedLocation([latitude, longitude])
-    setMapCenter([latitude, longitude])
-    setMapZoom(14)
+    setSelectedLocation([latitude, longitude]);
+    setMapCenter([latitude, longitude]);
+    setMapZoom(14);
 
-    const geocoded = await reverseGeocodeCoordinates(latitude, longitude)
+    const geocoded = await reverseGeocodeCoordinates(latitude, longitude);
 
     setFormData((prev) => ({
       ...prev,
@@ -206,39 +207,39 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
       district: geocoded?.district || prev.district,
       postalCode: geocoded?.postalCode || prev.postalCode,
       address: geocoded?.address || prev.address,
-    }))
-  }
+    }));
+  };
 
   const handleLocationSelect = (lat: number, lng: number) => {
-    setSelectedLocation([lat, lng])
+    setSelectedLocation([lat, lng]);
     setFormData((prev) => ({
       ...prev,
       latitude: lat.toFixed(6),
       longitude: lng.toFixed(6),
-    }))
-  }
+    }));
+  };
 
   const handleRegionChange = (region: string) => {
     setFormData((prev) => ({
       ...prev,
       region,
       city: prev.region === region ? prev.city : "",
-    }))
+    }));
 
-    const coords = getRegionCoordinates(formData.country, region)
+    const coords = getRegionCoordinates(formData.country, region);
     if (coords) {
-      setMapCenter(coords)
-      setMapZoom(8)
+      setMapCenter(coords);
+      setMapZoom(8);
     }
-  }
+  };
 
   const handleCityChange = (city: string) => {
-    setFormData((prev) => ({ ...prev, city }))
-  }
+    setFormData((prev) => ({ ...prev, city }));
+  };
 
   const handleCountryChange = (country: string) => {
-    const center = getCountryCenter(country)
-    const zoom = getCountryDefaultZoom(country)
+    const center = getCountryCenter(country);
+    const zoom = getCountryDefaultZoom(country);
 
     setFormData((prev) => ({
       ...prev,
@@ -247,96 +248,96 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
       city: "",
       latitude: "",
       longitude: "",
-    }))
-    setSelectedLocation(null)
-    setMapCenter(center)
-    setMapZoom(zoom)
-  }
+    }));
+    setSelectedLocation(null);
+    setMapCenter(center);
+    setMapZoom(zoom);
+  };
 
   const handleCoordinateChange = (field: "latitude" | "longitude", value: string) => {
     setFormData((prev) => {
-      const next = { ...prev, [field]: value }
-      const lat = parseFloat(field === "latitude" ? value : prev.latitude)
-      const lng = parseFloat(field === "longitude" ? value : prev.longitude)
+      const next = { ...prev, [field]: value };
+      const lat = parseFloat(field === "latitude" ? value : prev.latitude);
+      const lng = parseFloat(field === "longitude" ? value : prev.longitude);
 
       if (!Number.isNaN(lat) && !Number.isNaN(lng) && isWithinCountry(prev.country, lat, lng)) {
-        setSelectedLocation([lat, lng])
-        setMapCenter([lat, lng])
-        setMapZoom(14)
+        setSelectedLocation([lat, lng]);
+        setMapCenter([lat, lng]);
+        setMapZoom(14);
       }
 
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   const validateCountryLocation = (lat: number, lng: number) => {
     if (!isWithinCountry(formData.country, lat, lng)) {
-      toast.error(`Location must be within ${formData.country} boundaries`)
-      return false
+      toast.error(`Location must be within ${formData.country} boundaries`);
+      return false;
     }
-    return true
-  }
+    return true;
+  };
 
   const handleGPSNavigation = () => {
-    const lat = selectedLocation?.[0] ?? parseFloat(formData.latitude)
-    const lng = selectedLocation?.[1] ?? parseFloat(formData.longitude)
+    const lat = selectedLocation?.[0] ?? parseFloat(formData.latitude);
+    const lng = selectedLocation?.[1] ?? parseFloat(formData.longitude);
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
-      toast.error("Please select a location on the map first")
-      return
+      toast.error("Please select a location on the map first");
+      return;
     }
 
-    setIsNavigating(true)
-    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
-    window.open(googleMapsUrl, "_blank")
+    setIsNavigating(true);
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    window.open(googleMapsUrl, "_blank");
 
     setTimeout(() => {
-      setIsNavigating(false)
-      toast.success("Navigation opened in Google Maps")
-    }, 1000)
-  }
+      setIsNavigating(false);
+      toast.success("Navigation opened in Google Maps");
+    }, 1000);
+  };
 
   const handleGeolocation = () => {
     if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser")
-      return
+      toast.error("Geolocation is not supported by your browser");
+      return;
     }
 
-    setIsLocating(true)
+    setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const { latitude, longitude } = position.coords
-          const country = detectCountryFromCoords(latitude, longitude)
+          const { latitude, longitude } = position.coords;
+          const country = detectCountryFromCoords(latitude, longitude);
 
           if (!country) {
-            toast.error("Your location is outside the supported countries")
-            return
+            toast.error("Your location is outside the supported countries");
+            return;
           }
 
-          await applyGeocodedAddress(latitude, longitude)
-          toast.success("Location and address fields filled!")
+          await applyGeocodedAddress(latitude, longitude);
+          toast.success("Location and address fields filled!");
         } catch {
-          toast.error("Unable to detect your location")
+          toast.error("Unable to detect your location");
         } finally {
-          setIsLocating(false)
+          setIsLocating(false);
         }
       },
       () => {
-        toast.error("Unable to detect your location")
-        setIsLocating(false)
+        toast.error("Unable to detect your location");
+        setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    )
-  }
+    );
+  };
 
   const handleAddressSearch = async () => {
     if (!formData.city || !formData.region) {
-      toast.error("Please select region and city first")
-      return
+      toast.error("Please select region and city first");
+      return;
     }
 
-    setIsSearchingAddress(true)
+    setIsSearchingAddress(true);
     try {
       const addressParts = [
         formData.road,
@@ -350,33 +351,33 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
         formData.country || "Tanzania",
       ]
         .filter(Boolean)
-        .join(", ")
+        .join(", ");
 
-      const countryCode = getCountryCode(formData.country)
+      const countryCode = getCountryCode(formData.country);
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressParts)}&countrycodes=${countryCode}&limit=1`,
-      )
-      const data = await response.json()
+      );
+      const data = await response.json();
 
       if (data?.length > 0) {
-        const latitude = parseFloat(data[0].lat)
-        const longitude = parseFloat(data[0].lon)
+        const latitude = parseFloat(data[0].lat);
+        const longitude = parseFloat(data[0].lon);
 
-        if (!validateCountryLocation(latitude, longitude)) return
+        if (!validateCountryLocation(latitude, longitude)) return;
 
-        setMapCenter([latitude, longitude])
-        setMapZoom(14)
-        handleLocationSelect(latitude, longitude)
-        toast.success("Location found on map!")
+        setMapCenter([latitude, longitude]);
+        setMapZoom(14);
+        handleLocationSelect(latitude, longitude);
+        toast.success("Location found on map!");
       } else {
-        toast.error("Address not found. Try selecting the location manually on the map.")
+        toast.error("Address not found. Try selecting the location manually on the map.");
       }
     } catch {
-      toast.error("Error searching address. Please select location manually on the map.")
+      toast.error("Error searching address. Please select location manually on the map.");
     } finally {
-      setIsSearchingAddress(false)
+      setIsSearchingAddress(false);
     }
-  }
+  };
 
   const buildRequestBody = () => {
     const body: Record<string, unknown> = {
@@ -385,80 +386,80 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
       city: formData.city,
       country: formData.country,
       status: formData.status,
-    }
+    };
 
-    if (formData.description) body.description = formData.description
-    if (formData.address) body.address = formData.address
-    if (formData.road) body.road = formData.road
-    if (formData.street) body.street = formData.street
-    if (formData.ward) body.ward = formData.ward
-    if (formData.district) body.district = formData.district
-    if (formData.postalCode) body.postalCode = formData.postalCode
-    if (formData.contactPhone) body.contactPhone = formData.contactPhone
-    if (formData.contactEmail) body.contactEmail = formData.contactEmail
-    if (formData.latitude) body.latitude = parseFloat(formData.latitude)
-    if (formData.longitude) body.longitude = parseFloat(formData.longitude)
+    if (formData.description) body.description = formData.description;
+    if (formData.address) body.address = formData.address;
+    if (formData.road) body.road = formData.road;
+    if (formData.street) body.street = formData.street;
+    if (formData.ward) body.ward = formData.ward;
+    if (formData.district) body.district = formData.district;
+    if (formData.postalCode) body.postalCode = formData.postalCode;
+    if (formData.contactPhone) body.contactPhone = formData.contactPhone;
+    if (formData.contactEmail) body.contactEmail = formData.contactEmail;
+    if (formData.latitude) body.latitude = parseFloat(formData.latitude);
+    if (formData.longitude) body.longitude = parseFloat(formData.longitude);
 
-    return body
-  }
+    return body;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!formData.name || !formData.region || !formData.city || !formData.country) {
-      toast.error("Venue name, region, city, and country are required")
-      return
+      toast.error("Venue name, region, city, and country are required");
+      return;
     }
 
-    setIsSubmitting(true)
-    let createSuccess = false
+    setIsSubmitting(true);
+    let createSuccess = false;
     try {
-      const body = buildRequestBody()
-      const url = isEdit ? `${API_URL}/api/venues/${venueId}` : `${API_URL}/api/venues`
-      const method = isEdit ? "PATCH" : "POST"
+      const body = buildRequestBody();
+      const url = isEdit ? `${API_URL}/api/venues/${venueId}` : `${API_URL}/api/venues`;
+      const method = isEdit ? "PATCH" : "POST";
 
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(body),
-      })
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || `Failed to ${isEdit ? "update" : "create"} venue`)
+        const data = await res.json();
+        throw new Error(data.error || `Failed to ${isEdit ? "update" : "create"} venue`);
       }
 
-      toast.success(isEdit ? "Venue updated successfully!" : "Venue created successfully!")
+      toast.success(isEdit ? "Venue updated successfully!" : "Venue created successfully!");
 
       if (isEdit) {
-        setSavedFormData(formData)
-        return
+        setSavedFormData(formData);
+        return;
       }
 
-      createSuccess = true
-      flushSync(() => setSavedFormData(formData))
-      router.push("/admin/venues")
+      createSuccess = true;
+      flushSync(() => setSavedFormData(formData));
+      router.push("/admin/venues");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "An error occurred"
-      toast.error(message)
+      const message = err instanceof Error ? err.message : "An error occurred";
+      toast.error(message);
     } finally {
       if (!createSuccess) {
-        setIsSubmitting(false)
+        setIsSubmitting(false);
       }
     }
-  }
+  };
 
   const hasCoordinates =
     selectedLocation !== null ||
-    (!Number.isNaN(parseFloat(formData.latitude)) && !Number.isNaN(parseFloat(formData.longitude)))
+    (!Number.isNaN(parseFloat(formData.latitude)) && !Number.isNaN(parseFloat(formData.longitude)));
 
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader className="size-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   return (
@@ -728,5 +729,5 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
         </div>
       </form>
     </div>
-  )
+  );
 }

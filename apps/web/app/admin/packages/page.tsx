@@ -1,12 +1,27 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { toast } from "sonner"
-
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import type { PackageRecord, PackagesResponse } from "@hashifi/types";
+import {
+  Clock,
+  Eye,
+  HardDrive,
+  Loader,
+  Package,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Zap,
+} from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { PackageViewDialog } from "@/components/package-view-dialog";
+import { TableDeleteButton, TableEditButton } from "@/components/table-action-buttons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,73 +29,66 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import {
-  Package,
-  Plus,
-  Zap,
-  HardDrive,
-  Clock,
-  RefreshCw,
-  Loader,
-  Eye,
-  Pause,
-  Play,
-} from "lucide-react"
-import { ConfirmModal } from "@/components/confirm-modal"
-import { TableEditButton, TableDeleteButton } from "@/components/table-action-buttons"
-import { PackageViewDialog } from "@/components/package-view-dialog"
+} from "@/components/ui/table";
+import { useAuth } from "@/lib/auth-context";
+import { durationShort } from "@/lib/duration";
+import { errorMessage } from "@/lib/errors";
+import { statusPill } from "@/lib/status-pill";
 
-import { useAuth } from "@/lib/auth-context"
-import { statusPill } from "@/lib/status-pill"
-import { durationShort } from "@/lib/duration"
+/** A package with the fields this page displays. */
+interface PackageRow extends PackageRecord {
+  speed: number;
+  dataLimit: number;
+  duration: number;
+  price: number;
+}
 
 export default function PackagesPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
-  const [packages, setPackages] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [packageToDelete, setPackageToDelete] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [togglingId, setTogglingId] = useState<string | null>(null)
-  const [viewPackage, setViewPackage] = useState<any | null>(null)
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [packages, setPackages] = useState<PackageRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [packageToDelete, setPackageToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [viewPackage, setViewPackage] = useState<PackageRow | null>(null);
 
-  const fetchPackages = async () => {
-    setIsLoading(true)
+  const fetchPackages = useCallback(async () => {
+    setIsLoading(true);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/packages`,
         {
           credentials: "include",
         },
-      )
-      if (!res.ok) throw new Error("Failed to fetch packages")
-      const data = await res.json()
+      );
+      if (!res.ok) throw new Error("Failed to fetch packages");
+      const data: PackagesResponse = await res.json();
       setPackages(
-        data.packages.map((p: any) => ({
+        data.packages.map((p) => ({
           ...p,
           speed: p.downloadSpeedMbps,
           dataLimit: p.dataLimitGb ?? -1,
           duration: p.durationMinutes,
           price: Number(p.priceTsh),
         })),
-      )
+      );
     } catch (err) {
-      console.error(err)
-      toast.error("Failed to refresh packages")
+      console.error(err);
+      toast.error("Failed to refresh packages");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    fetchPackages()
-  }, [])
+    fetchPackages();
+  }, [fetchPackages]);
 
   const handleDeleteConfirm = async () => {
-    if (!packageToDelete) return
+    if (!packageToDelete) return;
 
-    setIsDeleting(true)
+    setIsDeleting(true);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/packages/${packageToDelete}`,
@@ -88,28 +96,28 @@ export default function PackagesPage() {
           method: "DELETE",
           credentials: "include",
         },
-      )
+      );
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to delete package")
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete package");
       }
 
-      setPackages((prev) => prev.filter((p) => p.id !== packageToDelete))
-      toast.success("Package deleted successfully")
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || "Failed to delete package")
+      setPackages((prev) => prev.filter((p) => p.id !== packageToDelete));
+      toast.success("Package deleted successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error(errorMessage(err, "Failed to delete package"));
     } finally {
-      setIsDeleting(false)
-      setPackageToDelete(null)
+      setIsDeleting(false);
+      setPackageToDelete(null);
     }
-  }
+  };
 
-  const handleToggleActive = async (pkg: any) => {
-    setTogglingId(pkg.id)
-    const newActive = !pkg.isActive
-    setPackages((prev) => prev.map((p) => (p.id === pkg.id ? { ...p, isActive: newActive } : p)))
+  const handleToggleActive = async (pkg: PackageRow) => {
+    setTogglingId(pkg.id);
+    const newActive = !pkg.isActive;
+    setPackages((prev) => prev.map((p) => (p.id === pkg.id ? { ...p, isActive: newActive } : p)));
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/packages/${pkg.id}`,
@@ -119,23 +127,23 @@ export default function PackagesPage() {
           credentials: "include",
           body: JSON.stringify({ isActive: newActive }),
         },
-      )
-      if (!res.ok) throw new Error()
-      toast.success(newActive ? `"${pkg.name}" activated` : `"${pkg.name}" paused`)
+      );
+      if (!res.ok) throw new Error();
+      toast.success(newActive ? `"${pkg.name}" activated` : `"${pkg.name}" paused`);
     } catch {
       setPackages((prev) =>
         prev.map((p) => (p.id === pkg.id ? { ...p, isActive: pkg.isActive } : p)),
-      )
-      toast.error("Failed to update package")
+      );
+      toast.error("Failed to update package");
     } finally {
-      setTogglingId(null)
+      setTogglingId(null);
     }
-  }
+  };
 
-  const activePackages = packages.filter((p) => p.isActive).length
+  const activePackages = packages.filter((p) => p.isActive).length;
   const avgPriceValue =
-    packages.length > 0 ? packages.reduce((sum, p) => sum + p.price, 0) / packages.length : 0
-  const avgPrice = Math.round(avgPriceValue).toLocaleString()
+    packages.length > 0 ? packages.reduce((sum, p) => sum + p.price, 0) / packages.length : 0;
+  const avgPrice = Math.round(avgPriceValue).toLocaleString();
 
   return (
     <div className="space-y-6">
@@ -255,6 +263,7 @@ export default function PackagesPage() {
                   <TableRow key={pkg.id}>
                     <TableCell>
                       <button
+                        type="button"
                         onClick={() => setViewPackage(pkg)}
                         className="flex items-center gap-2 hover:underline underline-offset-4 text-left"
                       >
@@ -280,9 +289,7 @@ export default function PackagesPage() {
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Clock className="size-3 text-muted-foreground" />
-                        <span>
-                          {durationShort(pkg.duration)}
-                        </span>
+                        <span>{durationShort(pkg.duration)}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-medium">
@@ -348,7 +355,7 @@ export default function PackagesPage() {
       <ConfirmModal
         isOpen={!!packageToDelete}
         onClose={() => {
-          if (!isDeleting) setPackageToDelete(null)
+          if (!isDeleting) setPackageToDelete(null);
         }}
         onConfirm={handleDeleteConfirm}
         title="Delete Package?"
@@ -367,5 +374,5 @@ export default function PackagesPage() {
         isLoading={isDeleting}
       />
     </div>
-  )
+  );
 }

@@ -2,11 +2,10 @@
  * One-shot script: marks migration 0006 as applied (the column already exists
  * from a prior db:push) so that db:migrate can proceed to run 0007.
  */
-import "dotenv/config";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import mysql from "mysql2/promise";
 import { readMigrationFiles } from "drizzle-orm/migrator";
+import mysql from "mysql2/promise";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.resolve(__dirname, "../../drizzle");

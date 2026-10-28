@@ -1,37 +1,55 @@
-"use client"
+"use client";
 
-import { useMemo, useState, useEffect } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import type { PackageRecord, PackagesResponse } from "@hashifi/types";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  AlertCircle,
+  ArrowLeft,
+  Building2,
+  Copy,
+  Loader,
+  Package,
+  Printer,
+  Save,
+  Ticket,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { ArrowLeft, Save, Ticket, Copy, Package, Printer, Loader, AlertCircle } from "lucide-react"
-import { toast } from "sonner"
-import { VoucherPreview } from "@/components/voucher-preview"
-import { useAuth } from "@/lib/auth-context"
-import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
-import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
-import { Building2 } from "lucide-react"
-import type { Venue } from "@/lib/types"
-import { formatDuration } from "@/lib/duration"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
+import { VoucherPreview } from "@/components/voucher-preview";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useAuth } from "@/lib/auth-context";
+import { formatDuration } from "@/lib/duration";
+import { errorMessage } from "@/lib/errors";
+import type { Venue } from "@/lib/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+/** An active package offered for a voucher batch. */
+interface PackageOption extends PackageRecord {
+  price: string;
+  duration: number;
+  dataLimit: number;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 const FORM_DEFAULTS = {
   venueId: "",
@@ -42,45 +60,48 @@ const FORM_DEFAULTS = {
   price: "",
   expiryDays: "30",
   prefix: "WIFI",
-}
+};
 
 export default function CreateVoucherPage() {
-  const router = useRouter()
-  const { user } = useAuth()
-  const [formData, setFormData] = useState(FORM_DEFAULTS)
-  const [baseline, setBaseline] = useState(FORM_DEFAULTS)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const router = useRouter();
+  const { user } = useAuth();
+  const [formData, setFormData] = useState(FORM_DEFAULTS);
+  const [baseline, setBaseline] = useState(FORM_DEFAULTS);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const isDirty = useMemo(
     () => JSON.stringify(formData) !== JSON.stringify(baseline),
     [formData, baseline],
-  )
-  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isGenerating)
-  const [showSuccess, setShowSuccess] = useState(false)
-  const [generatedCodes, setGeneratedCodes] = useState<string[]>([])
-  const [packages, setPackages] = useState<any[]>([])
-  const [venues, setVenues] = useState<Venue[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  );
+  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isGenerating);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
+  const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const loadPackages = async (venueId?: string) => {
-    const url =
-      venueId && user?.role === "manager"
-        ? `${API_URL}/api/packages?venueId=${venueId}`
-        : `${API_URL}/api/packages`
-    const pkgRes = await fetch(url, { credentials: "include" })
-    if (!pkgRes.ok) throw new Error("Failed to fetch packages")
-    const data = await pkgRes.json()
-    setPackages(
-      data.packages
-        .filter((pkg: any) => pkg.isActive)
-        .map((p: any) => ({
-          ...p,
-          price: p.priceTsh,
-          duration: p.durationMinutes,
-          dataLimit: p.dataLimitGb ?? -1,
-        })),
-    )
-  }
+  const loadPackages = useCallback(
+    async (venueId?: string) => {
+      const url =
+        venueId && user?.role === "manager"
+          ? `${API_URL}/api/packages?venueId=${venueId}`
+          : `${API_URL}/api/packages`;
+      const pkgRes = await fetch(url, { credentials: "include" });
+      if (!pkgRes.ok) throw new Error("Failed to fetch packages");
+      const data: PackagesResponse = await pkgRes.json();
+      setPackages(
+        data.packages
+          .filter((pkg) => pkg.isActive)
+          .map((p) => ({
+            ...p,
+            price: p.priceTsh,
+            duration: p.durationMinutes,
+            dataLimit: p.dataLimitGb ?? -1,
+          })),
+      );
+    },
+    [user?.role],
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,56 +109,55 @@ export default function CreateVoucherPage() {
         const [portalRes, venuesRes] = await Promise.all([
           fetch(`${API_URL}/api/portal`, { credentials: "include" }),
           fetch(`${API_URL}/api/venues`, { credentials: "include" }),
-        ])
+        ]);
 
-        let prefix = FORM_DEFAULTS.prefix
+        let prefix = FORM_DEFAULTS.prefix;
         if (portalRes.ok) {
-          const portalData = await portalRes.json()
+          const portalData = await portalRes.json();
           if (portalData.settings?.voucherPrefix) {
-            prefix = portalData.settings.voucherPrefix
+            prefix = portalData.settings.voucherPrefix;
           }
         }
 
-        const loaded = { ...FORM_DEFAULTS, prefix }
-        setFormData(loaded)
-        setBaseline(loaded)
+        const loaded = { ...FORM_DEFAULTS, prefix };
+        setFormData(loaded);
+        setBaseline(loaded);
 
-        let loadedVenues: Venue[] = []
+        let loadedVenues: Venue[] = [];
         if (venuesRes.ok) {
-          const venuesData = await venuesRes.json()
-          loadedVenues = venuesData.venues.filter((v: Venue) => v.status === "active")
-          setVenues(loadedVenues)
+          const venuesData = await venuesRes.json();
+          loadedVenues = venuesData.venues.filter((v: Venue) => v.status === "active");
+          setVenues(loadedVenues);
         }
 
         // For managers with exactly one venue, auto-select it and load its packages immediately
         if (user?.role === "manager" && loadedVenues.length === 1) {
-          const autoVenueId = loadedVenues[0].id
-          setFormData((prev) => ({ ...prev, venueId: autoVenueId }))
-          setBaseline((prev) => ({ ...prev, venueId: autoVenueId }))
-          await loadPackages(autoVenueId)
+          const autoVenueId = loadedVenues[0].id;
+          setFormData((prev) => ({ ...prev, venueId: autoVenueId }));
+          setBaseline((prev) => ({ ...prev, venueId: autoVenueId }));
+          await loadPackages(autoVenueId);
         } else {
-          await loadPackages()
+          await loadPackages();
         }
       } catch (err) {
-        console.error(err)
-        toast.error("Failed to load voucher settings")
+        console.error(err);
+        toast.error("Failed to load voucher settings");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
-    fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    };
+    fetchData();
+  }, [user?.role, loadPackages]);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handlePackageChange = (packageId: string) => {
-    setFormData((prev) => ({ ...prev, packageId }))
+    setFormData((prev) => ({ ...prev, packageId }));
 
     if (packageId) {
-      const selectedPackage = packages.find((pkg) => pkg.id === packageId)
+      const selectedPackage = packages.find((pkg) => pkg.id === packageId);
       if (selectedPackage) {
         setFormData((prev) => ({
           ...prev,
@@ -145,7 +165,7 @@ export default function CreateVoucherPage() {
           dataLimit: selectedPackage.dataLimit === -1 ? "" : selectedPackage.dataLimit.toString(),
           duration: selectedPackage.duration.toString(),
           price: selectedPackage.price.toString(),
-        }))
+        }));
       }
     } else {
       setFormData((prev) => ({
@@ -154,24 +174,24 @@ export default function CreateVoucherPage() {
         dataLimit: "10",
         duration: "24",
         price: "",
-      }))
+      }));
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!formData.venueId) {
-      toast.error("Please select a venue")
-      return
+      toast.error("Please select a venue");
+      return;
     }
 
     if (!formData.packageId) {
-      toast.error("Please select a package")
-      return
+      toast.error("Please select a package");
+      return;
     }
 
-    setIsGenerating(true)
+    setIsGenerating(true);
     try {
       const res = await fetch(`${API_URL}/api/vouchers/generate`, {
         method: "POST",
@@ -179,47 +199,47 @@ export default function CreateVoucherPage() {
         credentials: "include",
         body: JSON.stringify({
           packageId: formData.packageId,
-          quantity: parseInt(formData.quantity),
+          quantity: parseInt(formData.quantity, 10),
           prefix: formData.prefix.trim().toUpperCase() || FORM_DEFAULTS.prefix,
-          expiryDays: parseInt(formData.expiryDays),
+          expiryDays: parseInt(formData.expiryDays, 10),
           venueId: formData.venueId || undefined,
         }),
-      })
+      });
 
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || "Failed to generate vouchers")
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to generate vouchers");
       }
 
-      const data = await res.json()
-      setGeneratedCodes(data.codes)
+      const data = await res.json();
+      setGeneratedCodes(data.codes);
       const next = {
         ...FORM_DEFAULTS,
         prefix: (data.prefix as string) || formData.prefix.trim().toUpperCase(),
-      }
-      setFormData(next)
-      setBaseline(next)
-      setShowSuccess(true)
-      toast.success(`${data.count} voucher(s) generated successfully!`)
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || "An error occurred")
+      };
+      setFormData(next);
+      setBaseline(next);
+      setShowSuccess(true);
+      toast.success(`${data.count} voucher(s) generated successfully!`);
+    } catch (err) {
+      console.error(err);
+      toast.error(errorMessage(err, "An error occurred"));
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
   const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-    toast.success(`Copied: ${code}`)
-  }
+    navigator.clipboard.writeText(code);
+    toast.success(`Copied: ${code}`);
+  };
 
   const copyAllCodes = () => {
-    navigator.clipboard.writeText(generatedCodes.join("\n"))
-    toast.success("All codes copied to clipboard")
-  }
+    navigator.clipboard.writeText(generatedCodes.join("\n"));
+    toast.success("All codes copied to clipboard");
+  };
 
-  const selectedPackageData = packages.find((pkg) => pkg.id === formData.packageId)
+  const selectedPackageData = packages.find((pkg) => pkg.id === formData.packageId);
 
   return (
     <>
@@ -314,11 +334,11 @@ export default function CreateVoucherPage() {
                       <Select
                         value={formData.venueId}
                         onValueChange={async (v) => {
-                          handleInputChange("venueId", v)
+                          handleInputChange("venueId", v);
                           // Reset package selection and reload packages scoped to the new venue for managers
-                          handleInputChange("packageId", "")
+                          handleInputChange("packageId", "");
                           if (user?.role === "manager") {
-                            await loadPackages(v)
+                            await loadPackages(v);
                           }
                         }}
                         required
@@ -499,14 +519,11 @@ export default function CreateVoucherPage() {
           <div className="lg:sticky lg:top-6 lg:self-start">
             <VoucherPreview
               prefix={formData.prefix}
-              packageName={selectedPackageData?.name}
-              downloadSpeed={selectedPackageData?.downloadSpeedMbps}
-              uploadSpeed={selectedPackageData?.uploadSpeedMbps}
-              dataLimit={
-                selectedPackageData?.dataLimit === -1 ? "" : selectedPackageData?.dataLimit
-              }
-              duration={selectedPackageData?.duration}
-              price={selectedPackageData?.price}
+              packageName={selectedPackageData?.name ?? null}
+              downloadSpeed={selectedPackageData?.downloadSpeedMbps ?? null}
+              dataLimitGb={selectedPackageData?.dataLimitGb ?? null}
+              durationMinutes={selectedPackageData?.durationMinutes ?? null}
+              priceTsh={selectedPackageData?.priceTsh ?? null}
             />
           </div>
         </div>
@@ -526,9 +543,9 @@ export default function CreateVoucherPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const codesStr = generatedCodes.join(",")
-                    const pkgId = formData.packageId
-                    router.push(`/admin/vouchers/print?codes=${codesStr}&packageId=${pkgId}`)
+                    const codesStr = generatedCodes.join(",");
+                    const pkgId = formData.packageId;
+                    router.push(`/admin/vouchers/print?codes=${codesStr}&packageId=${pkgId}`);
                   }}
                 >
                   <Printer className="size-4 mr-2" />
@@ -540,9 +557,9 @@ export default function CreateVoucherPage() {
                 </Button>
               </div>
               <div className="max-h-64 overflow-y-auto space-y-2">
-                {generatedCodes.map((code, index) => (
+                {generatedCodes.map((code) => (
                   <div
-                    key={index}
+                    key={code}
                     className="flex items-center justify-between p-2 bg-muted rounded"
                   >
                     <code className="font-mono">{code}</code>
@@ -555,8 +572,8 @@ export default function CreateVoucherPage() {
               <Button
                 className="w-full"
                 onClick={() => {
-                  setShowSuccess(false)
-                  router.push("/admin/vouchers")
+                  setShowSuccess(false);
+                  router.push("/admin/vouchers");
                 }}
               >
                 Done
@@ -568,5 +585,5 @@ export default function CreateVoucherPage() {
 
       <UnsavedChangesDialog open={showDialog} onLeave={confirmLeave} onStay={cancelLeave} />
     </>
-  )
+  );
 }

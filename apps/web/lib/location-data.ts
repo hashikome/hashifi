@@ -1,42 +1,42 @@
 export interface LocationOption {
-  value: string
-  label: string
+  value: string;
+  label: string;
 }
 
 export interface RegionOption extends LocationOption {
-  lat: number
-  lng: number
+  lat: number;
+  lng: number;
 }
 
 export interface CountryBounds {
-  north: number
-  south: number
-  east: number
-  west: number
+  north: number;
+  south: number;
+  east: number;
+  west: number;
 }
 
 export interface CountryData {
-  code: string
-  center: [number, number]
-  defaultZoom: number
-  bounds: CountryBounds
-  regions: RegionOption[]
-  citiesByRegion: Record<string, string[]>
+  code: string;
+  center: [number, number];
+  defaultZoom: number;
+  bounds: CountryBounds;
+  regions: RegionOption[];
+  citiesByRegion: Record<string, string[]>;
 }
 
-function region(value: string, lat: number, lng: number, cities?: string[]): RegionOption {
-  return { value, label: value, lat, lng }
+function region(value: string, lat: number, lng: number): RegionOption {
+  return { value, label: value, lat, lng };
 }
 
 function citiesForRegions(
   regions: RegionOption[],
   extra: Record<string, string[]> = {},
 ): Record<string, string[]> {
-  const map: Record<string, string[]> = {}
+  const map: Record<string, string[]> = {};
   for (const r of regions) {
-    map[r.value] = extra[r.value] ?? [r.value]
+    map[r.value] = extra[r.value] ?? [r.value];
   }
-  return map
+  return map;
 }
 
 const TZ_REGIONS: RegionOption[] = [
@@ -71,7 +71,7 @@ const TZ_REGIONS: RegionOption[] = [
   region("Kaskazini Unguja", -5.9, 39.3),
   region("Kusini Unguja", -6.25, 39.45),
   region("Mjini Magharibi", -6.1659, 39.2026),
-]
+];
 
 const KENYA_REGIONS: RegionOption[] = [
   region("Mombasa", -4.0435, 39.6682),
@@ -121,14 +121,14 @@ const KENYA_REGIONS: RegionOption[] = [
   region("Kisii", -0.6773, 34.7796),
   region("Nyamira", -0.5667, 34.95),
   region("Nairobi", -1.2864, 36.8172),
-]
+];
 
 const UGANDA_REGIONS: RegionOption[] = [
   region("Central", 0.3476, 32.5825),
   region("Eastern", 0.4244, 33.2041),
   region("Northern", 2.7746, 32.298),
   region("Western", 0.6114, 30.6578),
-]
+];
 
 const RWANDA_REGIONS: RegionOption[] = [
   region("Kigali", -1.9441, 30.0619),
@@ -136,7 +136,7 @@ const RWANDA_REGIONS: RegionOption[] = [
   region("Northern", -1.5, 29.75),
   region("Southern", -2.35, 29.75),
   region("Western", -2.0667, 29.35),
-]
+];
 
 const BURUNDI_REGIONS: RegionOption[] = [
   region("Bujumbura Mairie", -3.3614, 29.3599),
@@ -157,7 +157,7 @@ const BURUNDI_REGIONS: RegionOption[] = [
   region("Ruyigi", -3.4764, 30.2486),
   region("Cankuzo", -3.2167, 30.55),
   region("Rutovu", -3.9, 29.99),
-]
+];
 
 const ZAMBIA_REGIONS: RegionOption[] = [
   region("Central", -14.1333, 28.45),
@@ -170,13 +170,13 @@ const ZAMBIA_REGIONS: RegionOption[] = [
   region("North-Western", -12.85, 24.65),
   region("Southern", -16.8167, 27.85),
   region("Western", -15.0, 23.0),
-]
+];
 
 const MALAWI_REGIONS: RegionOption[] = [
   region("Northern", -10.3, 34.0),
   region("Central", -13.9669, 33.7873),
   region("Southern", -15.7861, 35.0058),
-]
+];
 
 const MOZAMBIQUE_REGIONS: RegionOption[] = [
   region("Maputo", -25.9655, 32.5832),
@@ -189,7 +189,7 @@ const MOZAMBIQUE_REGIONS: RegionOption[] = [
   region("Nampula", -15.1167, 39.2667),
   region("Cabo Delgado", -12.973, 40.5178),
   region("Niassa", -13.3167, 35.25),
-]
+];
 
 const DRC_REGIONS: RegionOption[] = [
   region("Kinshasa", -4.4419, 15.2663),
@@ -217,7 +217,7 @@ const DRC_REGIONS: RegionOption[] = [
   region("Haut-Lomami", -8.0, 25.0),
   region("Lualaba", -10.5, 25.5),
   region("Haut-Katanga", -11.5, 27.5),
-]
+];
 
 export const COUNTRIES: LocationOption[] = [
   { value: "Tanzania", label: "Tanzania" },
@@ -229,7 +229,7 @@ export const COUNTRIES: LocationOption[] = [
   { value: "Malawi", label: "Malawi" },
   { value: "Mozambique", label: "Mozambique" },
   { value: "Democratic Republic of the Congo", label: "Democratic Republic of the Congo" },
-]
+];
 
 export const LOCATION_BY_COUNTRY: Record<string, CountryData> = {
   Tanzania: {
@@ -429,59 +429,59 @@ export const LOCATION_BY_COUNTRY: Record<string, CountryData> = {
       "Haut-Katanga": ["Lubumbashi", "Likasi", "Kipushi"],
     }),
   },
-}
+};
 
 export function getCountryData(country: string): CountryData | undefined {
-  return LOCATION_BY_COUNTRY[country]
+  return LOCATION_BY_COUNTRY[country];
 }
 
 export function getRegionsForCountry(country: string): LocationOption[] {
-  const data = getCountryData(country)
-  if (!data) return []
-  return data.regions.map((r) => ({ value: r.value, label: r.label }))
+  const data = getCountryData(country);
+  if (!data) return [];
+  return data.regions.map((r) => ({ value: r.value, label: r.label }));
 }
 
 export function getCitiesForRegion(country: string, region: string): LocationOption[] {
-  const data = getCountryData(country)
-  if (!data) return []
-  const cities = data.citiesByRegion[region] ?? []
-  return cities.map((city) => ({ value: city, label: city }))
+  const data = getCountryData(country);
+  if (!data) return [];
+  const cities = data.citiesByRegion[region] ?? [];
+  return cities.map((city) => ({ value: city, label: city }));
 }
 
 export function getRegionCoordinates(country: string, region: string): [number, number] | null {
-  const data = getCountryData(country)
-  const match = data?.regions.find((r) => r.value === region)
-  return match ? [match.lat, match.lng] : null
+  const data = getCountryData(country);
+  const match = data?.regions.find((r) => r.value === region);
+  return match ? [match.lat, match.lng] : null;
 }
 
 export function getCountryCenter(country: string): [number, number] {
-  return getCountryData(country)?.center ?? [-6.7924, 39.2083]
+  return getCountryData(country)?.center ?? [-6.7924, 39.2083];
 }
 
 export function getCountryDefaultZoom(country: string): number {
-  return getCountryData(country)?.defaultZoom ?? 6
+  return getCountryData(country)?.defaultZoom ?? 6;
 }
 
 export function getCountryBounds(country: string): CountryBounds | null {
-  return getCountryData(country)?.bounds ?? null
+  return getCountryData(country)?.bounds ?? null;
 }
 
 export function getCountryCode(country: string): string {
-  return getCountryData(country)?.code ?? "tz"
+  return getCountryData(country)?.code ?? "tz";
 }
 
 export function isWithinCountry(country: string, lat: number, lng: number): boolean {
-  const bounds = getCountryBounds(country)
-  if (!bounds) return true
-  return lat >= bounds.south && lat <= bounds.north && lng >= bounds.west && lng <= bounds.east
+  const bounds = getCountryBounds(country);
+  if (!bounds) return true;
+  return lat >= bounds.south && lat <= bounds.north && lng >= bounds.west && lng <= bounds.east;
 }
 
 // Backward-compatible aliases
-export const TANZANIA_BOUNDS = LOCATION_BY_COUNTRY.Tanzania.bounds
-export const TANZANIA_REGIONS = LOCATION_BY_COUNTRY.Tanzania.regions
+export const TANZANIA_BOUNDS = LOCATION_BY_COUNTRY.Tanzania.bounds;
+export const TANZANIA_REGIONS = LOCATION_BY_COUNTRY.Tanzania.regions;
 
 export function isWithinTanzania(lat: number, lng: number) {
-  return isWithinCountry("Tanzania", lat, lng)
+  return isWithinCountry("Tanzania", lat, lng);
 }
 
 function normalizeLocationName(value: string) {
@@ -490,51 +490,51 @@ function normalizeLocationName(value: string) {
     .replace(/\b(region|county|district|province|municipality)\b/g, "")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
+    .trim();
 }
 
 export function findBestLocationMatch(value: string, options: LocationOption[]): string | null {
-  if (!value || options.length === 0) return null
+  if (!value || options.length === 0) return null;
 
-  const normalized = normalizeLocationName(value)
+  const normalized = normalizeLocationName(value);
   const exact = options.find(
     (option) =>
       normalizeLocationName(option.label) === normalized ||
       normalizeLocationName(option.value) === normalized,
-  )
-  if (exact) return exact.value
+  );
+  if (exact) return exact.value;
 
   const partial = options.find((option) => {
-    const optionName = normalizeLocationName(option.label)
-    return optionName.includes(normalized) || normalized.includes(optionName)
-  })
-  if (partial) return partial.value
+    const optionName = normalizeLocationName(option.label);
+    return optionName.includes(normalized) || normalized.includes(optionName);
+  });
+  if (partial) return partial.value;
 
-  const tokens = normalized.split(" ").filter(Boolean)
+  const tokens = normalized.split(" ").filter(Boolean);
   const tokenMatch = options.find((option) => {
-    const optionName = normalizeLocationName(option.label)
-    return tokens.some((token) => token.length > 2 && optionName.includes(token))
-  })
-  return tokenMatch?.value ?? null
+    const optionName = normalizeLocationName(option.label);
+    return tokens.some((token) => token.length > 2 && optionName.includes(token));
+  });
+  return tokenMatch?.value ?? null;
 }
 
 export function detectCountryFromCoords(lat: number, lng: number): string | null {
   for (const country of COUNTRIES) {
     if (isWithinCountry(country.value, lat, lng)) {
-      return country.value
+      return country.value;
     }
   }
-  return null
+  return null;
 }
 
 export function matchCountryName(countryName: string): string | null {
-  return findBestLocationMatch(countryName, COUNTRIES)
+  return findBestLocationMatch(countryName, COUNTRIES);
 }
 
 export function matchRegionName(country: string, regionName: string): string | null {
-  return findBestLocationMatch(regionName, getRegionsForCountry(country))
+  return findBestLocationMatch(regionName, getRegionsForCountry(country));
 }
 
 export function matchCityName(country: string, region: string, cityName: string): string | null {
-  return findBestLocationMatch(cityName, getCitiesForRegion(country, region))
+  return findBestLocationMatch(cityName, getCitiesForRegion(country, region));
 }

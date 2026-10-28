@@ -6,12 +6,11 @@
  * `db:migrate` run them would fail on "Duplicate column name". This records them in
  * `__drizzle_migrations` so the migrator skips them and moves on to genuinely new ones.
  *
- *   pnpm db:migrate:mark 0009_router_capabilities 0010_provisioning_state
+ *   bun run db:migrate:mark 0009_router_capabilities 0010_provisioning_state
  *
  * Only ever use this when you have verified the schema change is already present in the
- * target database. For anything not yet applied, use `pnpm db:migrate`.
+ * target database. For anything not yet applied, use `bun run db:migrate`.
  */
-import "dotenv/config";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -30,8 +29,8 @@ if (!process.env.DATABASE_URL) {
 
 const tags = process.argv.slice(2);
 if (tags.length === 0) {
-  console.error("Usage: pnpm db:migrate:mark <tag> [<tag>...]");
-  console.error("Example: pnpm db:migrate:mark 0011_router_ssid");
+  console.error("Usage: bun run db:migrate:mark <tag> [<tag>...]");
+  console.error("Example: bun run db:migrate:mark 0011_router_ssid");
   process.exit(1);
 }
 

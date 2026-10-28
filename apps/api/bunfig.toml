@@ -1,0 +1,3 @@
+[test]
+# The database module requires DATABASE_URL at import; unit tests never connect.
+preload = ["./test/setup.ts"]

@@ -1,12 +1,12 @@
-import { Router } from "express";
 import { and, count, desc, eq } from "drizzle-orm";
+import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db/index.js";
-import { venues, routers } from "../db/schema.js";
+import { routers, venues } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
-import { asyncRoute } from "../utils/route.js";
 import { logAction } from "../utils/audit.js";
+import { asyncRoute } from "../utils/route.js";
 
 const router = Router();
 

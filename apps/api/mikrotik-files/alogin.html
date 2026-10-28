@@ -299,7 +299,7 @@
           <circle cx="12" cy="20" r="1" fill="#fff" stroke="none" />
         </svg>
       </div>
-      <span class="brand-name">WiFi Billing</span>
+      <span class="brand-name">HashiFi</span>
     </div>
 
     <div class="card">
@@ -351,7 +351,7 @@
       <button type="button" id="retry-btn" style="display: none">Check again</button>
     </div>
 
-    <div class="footer">WiFi Billing System</div>
+    <div class="footer">HashiFi</div>
 
     <script>
       var raw = "$(link-orig)";
@@ -391,7 +391,7 @@
           "https://www.google.com/favicon.ico",
           "https://www.cloudflare.com/favicon.ico",
         ];
-        return new Promise(function (resolve) {
+        return new Promise((resolve) => {
           var settled = false;
           var remaining = hosts.length;
 
@@ -402,21 +402,21 @@
             resolve(result);
           }
 
-          var timer = setTimeout(function () {
+          var timer = setTimeout(() => {
             finish(false);
           }, timeoutMs);
 
-          hosts.forEach(function (host) {
+          hosts.forEach((host) => {
             var img = new Image();
-            img.onload = function () {
+            img.onload = () => {
               finish(true);
             };
-            img.onerror = function () {
+            img.onerror = () => {
               remaining--;
               if (remaining === 0) finish(false);
             };
             // Cache-buster: a cached hit would prove nothing about right now.
-            img.src = host + "?cb=" + Date.now() + "-" + Math.random();
+            img.src = `${host}?cb=${Date.now()}-${Math.random()}`;
           });
         });
       }
@@ -452,14 +452,14 @@
       // captive-portal mini-browsers, and older Android WebViews predate ES2017.
       function verifyConnection() {
         showChecking();
-        probeInternet(6000).then(function (ok) {
+        probeInternet(6000).then((ok) => {
           if (ok) {
             showConnected();
             return;
           }
           // One retry — the first probe often races the router finishing authentication.
-          setTimeout(function () {
-            probeInternet(6000).then(function (okAgain) {
+          setTimeout(() => {
+            probeInternet(6000).then((okAgain) => {
               if (okAgain) showConnected();
               else showNotConnected();
             });
@@ -483,7 +483,7 @@
       var timeState = null;
 
       function pad(n) {
-        return n < 10 ? "0" + n : "" + n;
+        return n < 10 ? `0${n}` : `${n}`;
       }
 
       function formatDuration(total) {
@@ -491,14 +491,14 @@
         var h = Math.floor(total / 3600);
         var m = Math.floor((total % 3600) / 60);
         var s = total % 60;
-        return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s);
+        return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
       }
 
       function formatBytes(bytes) {
-        if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + " GB";
-        if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
-        if (bytes >= 1024) return Math.round(bytes / 1024) + " KB";
-        return bytes + " B";
+        if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(2)} GB`;
+        if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+        if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+        return `${bytes} B`;
       }
 
       /**
@@ -528,7 +528,7 @@
        */
       function applyUsage(data) {
         var t = data.time;
-        if (t && t.unlimited) {
+        if (t?.unlimited) {
           // No countdown to run, but the user should know there isn't a clock on them.
           timeState = null;
           timeValue.textContent = "∞";
@@ -548,18 +548,18 @@
         }
 
         var d = data.data;
-        if (d && d.unlimited) {
+        if (d?.unlimited) {
           // A progress bar against no limit is meaningless — label only.
           dataBarWrap.style.display = "none";
           dataLabel.textContent = "Unlimited data";
           dataMetric.style.display = "";
-        } else if (d && d.limitBytes) {
+        } else if (d?.limitBytes) {
           var pct = Math.min(100, Math.round((d.usedBytes / d.limitBytes) * 100));
-          dataBar.style.width = pct + "%";
+          dataBar.style.width = `${pct}%`;
           dataBar.className = pct >= 90 ? "bar-fill low" : "bar-fill";
           dataBarWrap.style.display = "";
           dataLabel.textContent =
-            formatBytes(d.remainingBytes) + " of " + formatBytes(d.limitBytes) + " left";
+            `${formatBytes(d.remainingBytes)} of ${formatBytes(d.limitBytes)} left`;
           dataMetric.style.display = "";
         } else {
           dataMetric.style.display = "none";
@@ -586,11 +586,9 @@
         if (syncing) return;
         syncing = true;
 
-        fetch(API + "/portal/session-status?mac=" + encodeURIComponent(mac))
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (data) {
+        fetch(`${API}/portal/session-status?mac=${encodeURIComponent(mac)}`)
+          .then((r) => r.json())
+          .then((data) => {
             syncing = false;
             // An expired or invalid voucher goes back to the portal rather than sitting
             // on a stale "connected" screen.
@@ -601,7 +599,7 @@
             applyUsage(data);
             afterFirstSync();
           })
-          .catch(function () {
+          .catch(() => {
             syncing = false;
             // Backend unreachable — keep the last known figures rather than inventing
             // new ones, and still find out whether the internet works.

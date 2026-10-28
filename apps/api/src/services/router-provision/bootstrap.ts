@@ -22,6 +22,7 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { intToIpv4, ipv4ToInt } from "./ipv4.js";
 
 export interface BootstrapInput {
   /** Becomes `/system identity` — also how the router names itself in Neighbors. */
@@ -76,31 +77,25 @@ function generatePassword(length = 24): string {
   const alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789-_";
   const bytes = randomBytes(length);
   let out = "";
-  for (let i = 0; i < length; i++) out += alphabet[bytes[i]! % alphabet.length];
+  for (const byte of bytes) out += alphabet[byte % alphabet.length];
   return out;
 }
 
 function firstHostOf(ip: string, prefix: number): string | null {
-  const parts = ip.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) return null;
-  const asInt = ((parts[0]! << 24) | (parts[1]! << 16) | (parts[2]! << 8) | parts[3]!) >>> 0;
+  const asInt = ipv4ToInt(ip);
+  if (asInt === null) return null;
   const mask = (0xffffffff << (32 - prefix)) >>> 0;
   const network = (asInt & mask) >>> 0;
   const host = (network + 1) >>> 0;
-  return [(host >>> 24) & 255, (host >>> 16) & 255, (host >>> 8) & 255, host & 255].join(".");
+  return intToIpv4(host);
 }
 
 function sameSubnet(a: string, b: string, prefix: number): boolean {
-  const toInt = (ip: string) => {
-    const p = ip.split(".").map(Number);
-    if (p.length !== 4 || p.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null;
-    return ((p[0]! << 24) | (p[1]! << 16) | (p[2]! << 8) | p[3]!) >>> 0;
-  };
-  const left = toInt(a);
-  const right = toInt(b);
+  const left = ipv4ToInt(a);
+  const right = ipv4ToInt(b);
   if (left === null || right === null) return false;
   const mask = (0xffffffff << (32 - prefix)) >>> 0;
-  return ((left & mask) >>> 0) === ((right & mask) >>> 0);
+  return (left & mask) >>> 0 === (right & mask) >>> 0;
 }
 
 /**
@@ -264,7 +259,7 @@ export function buildBootstrapScript(input: BootstrapInput): BootstrapScript {
   );
 
   return {
-    script: lines.join("\n") + "\n",
+    script: `${lines.join("\n")}\n`,
     warnings,
     resolved: {
       routerName,

@@ -1,6 +1,6 @@
-import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { Router } from "express";
 import { UAParser } from "ua-parser-js";
 import { db } from "../db/index.js";
 import {
@@ -12,29 +12,24 @@ import {
   wifiCustomers,
   wifiSessions,
 } from "../db/schema.js";
-import { asyncRoute } from "../utils/route.js";
-import { normalizeTzPhone } from "../utils/phone.js";
 import {
-  DURATION_BUCKETS,
-  durationShort,
-  formatDuration,
-  minutesToMs,
-} from "../utils/duration.js";
-import {
-  SNIPPE_TERMINAL_FAILURE_STATUSES,
-  markPaymentFailed,
-  processPaymentCompleted,
-} from "../utils/snippe.js";
+  PORTAL_FILES,
+  type PortalFileName,
+  renderPortalFile,
+} from "../services/router-provision/portal-files.js";
 import {
   describeFailures,
   ensureVoucherOnVenueRouters,
   outcomeOk,
 } from "../services/router-sync.js";
+import { DURATION_BUCKETS, durationShort, formatDuration, minutesToMs } from "../utils/duration.js";
+import { normalizeTzPhone } from "../utils/phone.js";
+import { asyncRoute } from "../utils/route.js";
 import {
-  PORTAL_FILES,
-  renderPortalFile,
-  type PortalFileName,
-} from "../services/router-provision/portal-files.js";
+  markPaymentFailed,
+  processPaymentCompleted,
+  SNIPPE_TERMINAL_FAILURE_STATUSES,
+} from "../utils/snippe.js";
 
 export const captivePortalRouter = Router();
 
@@ -782,7 +777,7 @@ function renderAutoReconnect(d: AutoReconnectData): string {
     <div class="heading" id="title">Reconnecting…</div>
     <div class="msg" id="msg">You have an active plan —<br>no need to sign in again.</div>
   </div>
-  <div class="footer">WiFi Billing System</div>
+  <div class="footer">HashiFi</div>
   <form id="f" method="POST" action="${esc(d.linkLogin)}" style="display:none">
     <input name="username" value="${esc(d.code)}">
     <input name="password" value="${esc(d.code)}">
@@ -905,9 +900,7 @@ function renderPortalPage(d: PageData): string {
   const bucketDefs = DURATION_BUCKETS.map((b) => ({
     key: b.key,
     label: b.label,
-    pkgs: d.packages.filter(
-      (p) => p.durationMinutes >= b.min && p.durationMinutes < b.max,
-    ),
+    pkgs: d.packages.filter((p) => p.durationMinutes >= b.min && p.durationMinutes < b.max),
   })).filter((b) => b.pkgs.length > 0);
 
   const firstBucketKey = bucketDefs[0]?.key ?? "";

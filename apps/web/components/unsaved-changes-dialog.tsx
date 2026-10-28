@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   AlertDialog,
@@ -9,16 +9,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
 export function UnsavedChangesDialog({
   open,
   onLeave,
   onStay,
 }: {
-  open: boolean
-  onLeave: () => void
-  onStay: () => void
+  open: boolean;
+  onLeave: () => void;
+  onStay: () => void;
 }) {
   return (
     <AlertDialog open={open}>
@@ -40,5 +40,5 @@ export function UnsavedChangesDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { type Request, type Response, type NextFunction } from "express";
+import { type NextFunction, type Request, type Response } from "express";
 
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {

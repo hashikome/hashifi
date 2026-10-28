@@ -10,12 +10,11 @@ External documents are references only. Keep this file short: it is a map, not a
 
 ## Current state
 
-`apps/api` (Express, Drizzle, MySQL) and `apps/web` (Next.js) are a purchased system imported
-as received in commit `45ebd53`. They are being ported to the stack below by
-[docs/exec-plans/active/adopt-purchased-billing-system.md](docs/exec-plans/active/adopt-purchased-billing-system.md):
-read it before changing anything under `apps/`. Until its toolchain milestone lands, the root
-commands below are the target, not yet working, and the vendor READMEs in `apps/*/README.md`
-describe the code as received.
+`apps/api` (Express, Drizzle, MySQL) and `apps/web` (Next.js) began as a purchased system,
+imported as received in commit `45ebd53`. The toolchain milestone (M1) is done: Bun, Biome,
+pinned versions, `@hashifi/types`. `apps/api` is still Express on MySQL until the
+[adoption plan](docs/exec-plans/active/adopt-purchased-billing-system.md) ports it (M3 Prisma,
+M4 NestJS): read the plan before changing anything under `apps/`.
 
 ## Map
 
@@ -53,7 +52,13 @@ describe the code as received.
   Client or generated Prisma types.
 - Before editing Next.js code, read the version-matched guide under
   `apps/web/node_modules/next/dist/docs/`; framework APIs change between releases.
-- Biome formats and lints (`bun run check`).
+- Biome formats and lints code and configuration (`bun run check`); it does not reformat
+  Markdown.
+- Email through Resend. Queues, where needed, are BullMQ on Redis with PostgreSQL
+  authoritative.
+- Sign-in comes from the shared Hashikome identity service
+  ([ADR-0005](docs/engineering-decisions/0005-shared-identity.md)); HashiFi owns roles, venue
+  scoping and audit.
 - Conventional Commits: `feat(api): ...`, `fix(web): ...`, `docs: ...`, `chore: ...`.
 
 ## Pre-deployment compatibility
@@ -70,6 +75,9 @@ approval.
   ([ADR-0003](docs/engineering-decisions/0003-api-owns-logic-web-presents.md)). That includes
   the captive portal: the API decides, the web renders. Totals, statuses and durations come
   from the API. Authorization is enforced by the API, never inferred from what the UI shows.
+- **No `any`, no `undefined`, no `!`** ([ADR-0004](docs/engineering-decisions/0004-types-without-any-or-undefined.md)).
+  Absence is `null`; unknown shapes are `unknown` and narrowed. The web reads API responses
+  through `@hashifi/types`.
 - **Nothing reports success before the router confirms it.** A paid voucher or an `active`
   row is not a device online. Vouchers go `unused → pending_activation → active` only after
   the router reads the user back; any new path that grants access follows the same rule.
@@ -85,7 +93,7 @@ approval.
   (database dumps, uploads). It stays out of the repository, `ref/` and logs. Development uses
   seeded, invented data only.
 - **Secrets**: Docker secrets (`<NAME>_FILE`) for sensitive values, an env file for the rest
-  (`.env.example` lists each key); the application never depends on a password manager
+  (each app's `.env.example` lists its keys); the application never depends on a password manager
   ([docs/SECURITY.md](docs/SECURITY.md#credentials)).
 - `ref/` is for disposable, git-ignored references and handoffs
   ([docs/runbooks/reference-context.md](docs/runbooks/reference-context.md)); never secrets,

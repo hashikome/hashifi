@@ -1,49 +1,51 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Ticket, Loader } from "lucide-react"
-import { QRCodeSVG } from "qrcode.react"
-import { useState, useEffect } from "react"
+import { Loader, Ticket } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { formatDuration } from "@/lib/duration";
+import { initialPortalSettings } from "@/lib/portal-defaults";
 
-import { initialPortalSettings } from "@/lib/portal-defaults"
-import { formatDuration } from "@/lib/duration"
-
+/** The selected package's details, or null for each while none is selected. */
 interface VoucherPreviewProps {
-  prefix: string
-  packageName: string
-  downloadSpeed: string
-  uploadSpeed: string
-  dataLimit: string
-  /** Whole minutes (0014). Arrives as a number from the package list. */
-  duration: string | number
-  price: string
+  prefix: string;
+  packageName: string | null;
+  /** Mbps. */
+  downloadSpeed: number | null;
+  /** GB; null is unlimited. */
+  dataLimitGb: number | null;
+  /** Whole minutes. */
+  durationMinutes: number | null;
+  /** TSH, as the API serialises decimals. */
+  priceTsh: string | null;
 }
 
 export function VoucherPreview({
   prefix,
   packageName,
   downloadSpeed,
-  uploadSpeed,
-  dataLimit,
-  duration,
-  price,
+  dataLimitGb,
+  durationMinutes,
+  priceTsh,
 }: VoucherPreviewProps) {
-  const portal = initialPortalSettings
-  const [isGenerating, setIsGenerating] = useState(false)
+  const portal = initialPortalSettings;
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login"
-  const voucherCode = `${prefix || "WIFI"}-8K2F-2026`
-  const qrData = `${portalUrl}?code=${voucherCode}`
+  const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login";
+  const voucherCode = `${prefix || "WIFI"}-8K2F-2026`;
+  const qrData = `${portalUrl}?code=${voucherCode}`;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: replays the preview animation whenever a shown value changes
   useEffect(() => {
     if (packageName) {
-      setIsGenerating(true)
-      const timer = setTimeout(() => setIsGenerating(false), 800)
-      return () => clearTimeout(timer)
+      setIsGenerating(true);
+      const timer = setTimeout(() => setIsGenerating(false), 800);
+      return () => clearTimeout(timer);
     }
-  }, [packageName, prefix, downloadSpeed, dataLimit, duration, price])
+  }, [packageName, prefix, downloadSpeed, dataLimitGb, durationMinutes, priceTsh]);
 
   return (
     <Card className="overflow-hidden">
@@ -101,21 +103,21 @@ export function VoucherPreview({
                       <p className="font-medium">
                         {!packageName
                           ? "---"
-                          : dataLimit === "" || dataLimit === "-1"
+                          : dataLimitGb === null
                             ? "Unlimited"
-                            : `${dataLimit} GB`}
+                            : `${dataLimitGb} GB`}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Validity</p>
                       <p className="font-medium">
-                        {!packageName ? "---" : formatDuration(Number(duration))}
+                        {!packageName ? "---" : formatDuration(durationMinutes ?? 0)}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Price</p>
                       <p className="font-medium">
-                        TSH {price ? Number(price).toLocaleString() : "---"}
+                        TSH {priceTsh ? Math.floor(Number(priceTsh)).toLocaleString() : "---"}
                       </p>
                     </div>
                   </div>
@@ -146,6 +148,7 @@ export function VoucherPreview({
                     <div className="grid grid-cols-5 gap-1 opacity-20">
                       {Array.from({ length: 25 }).map((_, index) => (
                         <span
+                          // biome-ignore lint/suspicious/noArrayIndexKey: a fixed grid of decorative squares
                           key={index}
                           className="size-2 rounded-[2px]"
                           style={{
@@ -181,5 +184,5 @@ export function VoucherPreview({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

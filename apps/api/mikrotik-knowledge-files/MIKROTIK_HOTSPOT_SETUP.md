@@ -62,7 +62,7 @@ and returns the credentials. MikroTik does the final authentication check itself
 
 - MikroTik router with hotspot license
 - **RouterOS 7: the `hotspot` package must be installed — see below. It is NOT in the core build.**
-- Laptop running the backend (`npm run dev` or `node dist/server.js`) on port **8080**
+- Laptop running the backend (`bun run dev`) on port **8080**
 - Laptop and MikroTik on the same LAN (e.g. 192.168.0.0/24)
 - Laptop IP **must be static** (see §1) — hotspot clients route through MikroTik to reach it
 - Backend `.env` has `PORT=8080`

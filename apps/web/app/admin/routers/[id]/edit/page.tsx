@@ -1,54 +1,55 @@
-"use client"
+"use client";
 
-import { useMemo, useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  AlertCircle,
+  ArrowLeft,
+  KeyRound,
+  Loader,
+  Router as RouterIcon,
+  Save,
+  Terminal,
+  Wifi,
+} from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { RouterBootstrapDialog } from "@/components/router-bootstrap-dialog";
+import {
+  HotspotInterfacePicker,
+  RouterConnectionTest,
+  type RouterInterfaceInfo,
+} from "@/components/router-connection-test";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog"
-import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
-import {
-  ArrowLeft,
-  Save,
-  Router as RouterIcon,
-  KeyRound,
-  Loader,
-  AlertCircle,
-  Wifi,
-  Terminal,
-} from "lucide-react"
-import { toast } from "sonner"
-import {
-  HotspotInterfacePicker,
-  RouterConnectionTest,
-  type RouterInterfaceInfo,
-} from "@/components/router-connection-test"
-import { RouterBootstrapDialog } from "@/components/router-bootstrap-dialog"
-import { hotspotRangeClashesWithIp } from "@/lib/utils"
-import type { Venue } from "@/lib/types"
+} from "@/components/ui/select";
+import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { errorMessage } from "@/lib/errors";
+import type { Venue } from "@/lib/types";
+import { hotspotRangeClashesWithIp } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface FormData {
-  venueId: string
-  name: string
-  ipAddress: string
-  hotspotInterface: string
-  ssid: string
-  networkRange: string
-  hotspotGatewayIp: string
-  hotspotName: string
-  model: string
-  apiUsername: string
-  apiPassword: string
+  venueId: string;
+  name: string;
+  ipAddress: string;
+  hotspotInterface: string;
+  ssid: string;
+  networkRange: string;
+  hotspotGatewayIp: string;
+  hotspotName: string;
+  model: string;
+  apiUsername: string;
+  apiPassword: string;
 }
 
 const EMPTY_FORM: FormData = {
@@ -63,33 +64,33 @@ const EMPTY_FORM: FormData = {
   model: "",
   apiUsername: "",
   apiPassword: "",
-}
+};
 
 export default function EditRouterPage() {
-  const router = useRouter()
-  const params = useParams()
-  const id = params.id as string
+  const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
 
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [notFound, setNotFound] = useState(false)
-  const [venues, setVenues] = useState<Venue[]>([])
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [venues, setVenues] = useState<Venue[]>([]);
 
-  const [formData, setFormData] = useState<FormData>(EMPTY_FORM)
-  const [savedFormData, setSavedFormData] = useState<FormData>(EMPTY_FORM)
-  const [discoveredInterfaces, setDiscoveredInterfaces] = useState<RouterInterfaceInfo[]>([])
-  const [bootstrapOpen, setBootstrapOpen] = useState(false)
+  const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
+  const [savedFormData, setSavedFormData] = useState<FormData>(EMPTY_FORM);
+  const [discoveredInterfaces, setDiscoveredInterfaces] = useState<RouterInterfaceInfo[]>([]);
+  const [bootstrapOpen, setBootstrapOpen] = useState(false);
 
   const isDirty = useMemo(
     () => JSON.stringify(formData) !== JSON.stringify(savedFormData),
     [formData, savedFormData],
-  )
-  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSubmitting)
+  );
+  const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSubmitting);
 
   const rangeClash = useMemo(
     () => hotspotRangeClashesWithIp(formData.networkRange, formData.ipAddress),
     [formData.networkRange, formData.ipAddress],
-  )
+  );
 
   useEffect(() => {
     const loadData = async () => {
@@ -97,18 +98,18 @@ export default function EditRouterPage() {
         const [routerRes, venuesRes] = await Promise.all([
           fetch(`${API_URL}/api/routers/${id}`, { credentials: "include" }),
           fetch(`${API_URL}/api/venues`, { credentials: "include" }),
-        ])
+        ]);
 
         if (routerRes.status === 404) {
-          setNotFound(true)
-          return
+          setNotFound(true);
+          return;
         }
-        if (!routerRes.ok) throw new Error("Failed to fetch router")
+        if (!routerRes.ok) throw new Error("Failed to fetch router");
 
-        const { router: r } = await routerRes.json()
-        const { venues: v } = venuesRes.ok ? await venuesRes.json() : { venues: [] }
+        const { router: r } = await routerRes.json();
+        const { venues: v } = venuesRes.ok ? await venuesRes.json() : { venues: [] };
 
-        setVenues(v)
+        setVenues(v);
 
         const loaded: FormData = {
           venueId: r.venueId ?? "",
@@ -122,26 +123,26 @@ export default function EditRouterPage() {
           model: r.model ?? "",
           apiUsername: r.apiUsername ?? "",
           apiPassword: "",
-        }
-        setFormData(loaded)
-        setSavedFormData(loaded)
+        };
+        setFormData(loaded);
+        setSavedFormData(loaded);
       } catch {
-        toast.error("Failed to load router")
+        toast.error("Failed to load router");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
-    loadData()
-  }, [id])
+    };
+    loadData();
+  }, [id]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    let submitSuccess = false
+    e.preventDefault();
+    setIsSubmitting(true);
+    let submitSuccess = false;
 
     try {
       const body: Record<string, unknown> = {
@@ -155,42 +156,42 @@ export default function EditRouterPage() {
         networkRange: formData.networkRange.trim() || null,
         hotspotGatewayIp: formData.hotspotGatewayIp || null,
         hotspotName: formData.hotspotName.trim() || null,
-      }
-      if (formData.model) body.model = formData.model
-      if (formData.apiUsername) body.apiUsername = formData.apiUsername
-      if (formData.apiPassword) body.apiPassword = formData.apiPassword
+      };
+      if (formData.model) body.model = formData.model;
+      if (formData.apiUsername) body.apiUsername = formData.apiUsername;
+      if (formData.apiPassword) body.apiPassword = formData.apiPassword;
 
       const res = await fetch(`${API_URL}/api/routers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(body),
-      })
+      });
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to update router")
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update router");
       }
 
-      const next = { ...formData, apiPassword: "" }
-      setFormData(next)
-      setSavedFormData(next)
-      toast.success("Router updated successfully!")
-      submitSuccess = true
-      setTimeout(() => router.push("/admin/routers"), 300)
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred")
+      const next = { ...formData, apiPassword: "" };
+      setFormData(next);
+      setSavedFormData(next);
+      toast.success("Router updated successfully!");
+      submitSuccess = true;
+      setTimeout(() => router.push("/admin/routers"), 300);
+    } catch (err) {
+      toast.error(errorMessage(err, "An error occurred"));
     } finally {
-      if (!submitSuccess) setIsSubmitting(false)
+      if (!submitSuccess) setIsSubmitting(false);
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader className="size-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    );
   }
 
   if (notFound) {
@@ -202,7 +203,7 @@ export default function EditRouterPage() {
           Back to Routers
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -529,5 +530,5 @@ export default function EditRouterPage() {
 
       <UnsavedChangesDialog open={showDialog} onLeave={confirmLeave} onStay={cancelLeave} />
     </>
-  )
+  );
 }

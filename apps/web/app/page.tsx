@@ -1,82 +1,82 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Wifi, ArrowRight, Loader } from "lucide-react"
-import { toast } from "sonner"
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
+import { ArrowRight, Loader, Wifi } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const { sendOtp, login, user, isLoading } = useAuth()
-  const [email, setEmail] = useState("")
-  const [otp, setOtp] = useState("")
-  const [step, setStep] = useState<"email" | "otp">("email")
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter();
+  const { sendOtp, login, user, isLoading } = useAuth();
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<"email" | "otp">("email");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
     if (!isLoading && user) {
-      router.push("/admin")
+      router.push("/admin");
     }
-  }, [isLoading, user, router])
+  }, [isLoading, user, router]);
 
   if (user) {
-    return null
+    return null;
   }
 
   const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!email) {
-      toast.error("Please enter your email")
-      return
+      toast.error("Please enter your email");
+      return;
     }
 
-    setIsSubmitting(true)
-    const result = await sendOtp(email)
-    setIsSubmitting(false)
+    setIsSubmitting(true);
+    const result = await sendOtp(email);
+    setIsSubmitting(false);
 
     if (result.success) {
-      setStep("otp")
+      setStep("otp");
       toast.success("OTP sent", {
         description: "Check your email for the 6-digit login code.",
-      })
+      });
     } else {
-      toast.error(result.error || "Email not found. Please use a valid admin email.")
+      toast.error(result.error || "Email not found. Please use a valid admin email.");
     }
-  }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (otp.length !== 6) {
-      toast.error("Please enter the 6-digit OTP")
-      return
+      toast.error("Please enter the 6-digit OTP");
+      return;
     }
 
-    setIsSubmitting(true)
-    const result = await login(email, otp)
+    setIsSubmitting(true);
+    const result = await login(email, otp);
 
     if (result.success) {
-      toast.success("Welcome back!")
-      router.push("/admin")
+      toast.success("Welcome back!");
+      router.push("/admin");
       // button stays loading — navigating away
     } else {
-      setIsSubmitting(false)
-      toast.error(result.error || "Invalid OTP. Request a new code if it expired.")
+      setIsSubmitting(false);
+      toast.error(result.error || "Invalid OTP. Request a new code if it expired.");
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader className="size-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   return (
@@ -88,7 +88,7 @@ export default function LoginPage() {
             <div className="flex items-center justify-center size-12 rounded-full bg-primary text-primary-foreground">
               <Wifi className="size-6" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">WiFi Billing</h1>
+            <h1 className="text-2xl font-bold text-foreground">HashiFi</h1>
           </div>
           <p className="text-muted-foreground">Enterprise Admin Portal</p>
         </div>
@@ -111,7 +111,7 @@ export default function LoginPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@wifibilling.com"
+                    placeholder="admin@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isSubmitting}
@@ -158,8 +158,8 @@ export default function LoginPage() {
                   variant="ghost"
                   className="w-full"
                   onClick={() => {
-                    setStep("email")
-                    setOtp("")
+                    setStep("email");
+                    setOtp("");
                   }}
                 >
                   Use a different email
@@ -170,5 +170,5 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

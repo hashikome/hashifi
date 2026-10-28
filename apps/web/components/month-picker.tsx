@@ -1,39 +1,40 @@
-"use client"
+"use client";
 
-import { useRef, useEffect } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 
-export type MonthValue = { year: number; month: number }
+export type MonthValue = { year: number; month: number };
 
 function generateMonths(count = 18): (MonthValue & { label: string })[] {
-  const now = new Date()
+  const now = new Date();
   return Array.from({ length: count }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (count - 1 - i), 1)
+    const d = new Date(now.getFullYear(), now.getMonth() - (count - 1 - i), 1);
     return {
       year: d.getFullYear(),
       month: d.getMonth() + 1,
       label: d.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-    }
-  })
+    };
+  });
 }
 
 interface MonthPickerProps {
-  value: MonthValue
-  onChange: (m: MonthValue) => void
+  value: MonthValue;
+  onChange: (m: MonthValue) => void;
 }
 
 export function MonthPicker({ value, onChange }: MonthPickerProps) {
-  const months = generateMonths(18)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const selectedRef = useRef<HTMLButtonElement>(null)
+  const months = generateMonths(18);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scrolls the newly selected month into view
   useEffect(() => {
-    selectedRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" })
-  }, [value.year, value.month])
+    selectedRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [value.year, value.month]);
 
   function scroll(dir: "left" | "right") {
-    scrollRef.current?.scrollBy({ left: dir === "left" ? -180 : 180, behavior: "smooth" })
+    scrollRef.current?.scrollBy({ left: dir === "left" ? -180 : 180, behavior: "smooth" });
   }
 
   return (
@@ -52,9 +53,10 @@ export function MonthPicker({ value, onChange }: MonthPickerProps) {
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {months.map((m) => {
-          const isSelected = m.year === value.year && m.month === value.month
+          const isSelected = m.year === value.year && m.month === value.month;
           return (
             <button
+              type="button"
               key={`${m.year}-${m.month}`}
               ref={isSelected ? selectedRef : undefined}
               onClick={() => onChange({ year: m.year, month: m.month })}
@@ -67,7 +69,7 @@ export function MonthPicker({ value, onChange }: MonthPickerProps) {
             >
               {m.label}
             </button>
-          )
+          );
         })}
       </div>
       <Button
@@ -79,26 +81,26 @@ export function MonthPicker({ value, onChange }: MonthPickerProps) {
         <ChevronRight className="size-4" />
       </Button>
     </div>
-  )
+  );
 }
 
 export function currentMonth(): MonthValue {
-  const now = new Date()
-  return { year: now.getFullYear(), month: now.getMonth() + 1 }
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth() + 1 };
 }
 
 export function monthRange(m: MonthValue): { from: string; to: string } {
-  const lastDay = new Date(m.year, m.month, 0).getDate()
-  const pad = (n: number) => String(n).padStart(2, "0")
+  const lastDay = new Date(m.year, m.month, 0).getDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
   return {
     from: `${m.year}-${pad(m.month)}-01`,
     to: `${m.year}-${pad(m.month)}-${pad(lastDay)}`,
-  }
+  };
 }
 
 export function monthLabel(m: MonthValue): string {
   return new Date(m.year, m.month - 1, 1).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
-  })
+  });
 }

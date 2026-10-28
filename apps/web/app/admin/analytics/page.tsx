@@ -1,74 +1,74 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useMemo } from "react"
-import { useAuth } from "@/lib/auth-context"
-import {
-  MonthPicker,
-  currentMonth,
-  monthRange,
-  monthLabel,
-  type MonthValue,
-} from "@/components/month-picker"
-import { parseLocalDate } from "@/lib/utils"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   BarChart3,
+  Building2,
+  DollarSign,
+  Download,
+  Laptop,
+  Monitor,
+  Smartphone,
+  Tablet,
   TrendingUp,
   Upload,
-  Download,
-  DollarSign,
   Users,
-  Smartphone,
-  Laptop,
-  Tablet,
-  Monitor,
-  Building2,
-} from "lucide-react"
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  CartesianGrid,
-  Legend,
-} from "recharts"
+} from "recharts";
+import {
+  currentMonth,
+  MonthPicker,
+  type MonthValue,
+  monthLabel,
+  monthRange,
+} from "@/components/month-picker";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth-context";
+import { parseLocalDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 type DailyUsage = {
-  date: string
-  upload: number
-  download: number
-  revenue: number
-}
+  date: string;
+  upload: number;
+  download: number;
+  revenue: number;
+};
 
-type MonthlyPoint = { month: string; revenue: number }
-type UserGrowthPoint = { month: string; users: number }
-type PackageItem = { package: string; count: number; percentage: number }
-type DeviceItem = { type: string; count: number; percentage: number }
-type VenueItem = { venue: string; users: number; revenue: number }
+type MonthlyPoint = { month: string; revenue: number };
+type UserGrowthPoint = { month: string; users: number };
+type PackageItem = { package: string; count: number; percentage: number };
+type DeviceItem = { type: string; count: number; percentage: number };
+type VenueItem = { venue: string; users: number; revenue: number };
 
 type AnalyticsState = {
-  dailyUsage: DailyUsage[]
-  monthlyRevenue: MonthlyPoint[]
-  userGrowth: UserGrowthPoint[]
-  packageDistribution: PackageItem[]
-  deviceTypes: DeviceItem[]
-  topVenues: VenueItem[]
-  totalCustomers: number
-  allTimeUploadBytes: number
-  allTimeDownloadBytes: number
-}
+  dailyUsage: DailyUsage[];
+  monthlyRevenue: MonthlyPoint[];
+  userGrowth: UserGrowthPoint[];
+  packageDistribution: PackageItem[];
+  deviceTypes: DeviceItem[];
+  topVenues: VenueItem[];
+  totalCustomers: number;
+  allTimeUploadBytes: number;
+  allTimeDownloadBytes: number;
+};
 
 const EMPTY: AnalyticsState = {
   dailyUsage: [],
@@ -80,36 +80,36 @@ const EMPTY: AnalyticsState = {
   totalCustomers: 0,
   allTimeUploadBytes: 0,
   allTimeDownloadBytes: 0,
-}
+};
 
 function bytesToGb(bytes: number): number {
-  return parseFloat((bytes / (1024 * 1024 * 1024)).toFixed(1))
+  return parseFloat((bytes / (1024 * 1024 * 1024)).toFixed(1));
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${bytes} B`
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
 }
 
 function formatGb(gb: number): string {
-  if (gb >= 1) return `${gb.toFixed(2)} GB`
-  const mb = gb * 1024
-  if (mb >= 1) return `${mb.toFixed(1)} MB`
-  return `${(mb * 1024).toFixed(0)} KB`
+  if (gb >= 1) return `${gb.toFixed(2)} GB`;
+  const mb = gb * 1024;
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+  return `${(mb * 1024).toFixed(0)} KB`;
 }
 
 function getDeviceIcon(type: string) {
   switch (type.toLowerCase()) {
     case "mobile":
-      return Smartphone
+      return Smartphone;
     case "laptop":
-      return Laptop
+      return Laptop;
     case "tablet":
-      return Tablet
+      return Tablet;
     default:
-      return Monitor
+      return Monitor;
   }
 }
 
@@ -121,24 +121,24 @@ const PIE_COLORS = [
   "var(--chart-3)",
   "var(--chart-4)",
   "var(--chart-5)",
-]
+];
 
 export default function AnalyticsPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
-  const [data, setData] = useState<AnalyticsState>(EMPTY)
-  const [loading, setLoading] = useState(true)
-  const [selectedMonth, setSelectedMonth] = useState<MonthValue>(currentMonth)
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [data, setData] = useState<AnalyticsState>(EMPTY);
+  const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState<MonthValue>(currentMonth);
 
-  const periodLabel = useMemo(() => monthLabel(selectedMonth), [selectedMonth])
+  const periodLabel = useMemo(() => monthLabel(selectedMonth), [selectedMonth]);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     async function load() {
-      setLoading(true)
+      setLoading(true);
       try {
-        const { from, to } = monthRange(selectedMonth)
+        const { from, to } = monthRange(selectedMonth);
 
         const baseRequests = [
           fetch(`${API_URL}/api/analytics/daily-usage?from=${from}&to=${to}`, {
@@ -147,20 +147,20 @@ export default function AnalyticsPage() {
           fetch(`${API_URL}/api/analytics/packages`, { credentials: "include" }),
           fetch(`${API_URL}/api/analytics/devices`, { credentials: "include" }),
           fetch(`${API_URL}/api/analytics/summary`, { credentials: "include" }),
-        ]
+        ];
         const adminRequests = isAdmin
           ? [
               fetch(`${API_URL}/api/analytics/monthly`, { credentials: "include" }),
               fetch(`${API_URL}/api/analytics/venues`, { credentials: "include" }),
             ]
-          : []
+          : [];
 
         const [dailyRes, pkgRes, devRes, summaryRes, monthlyRes, venueRes] = await Promise.all([
           ...baseRequests,
           ...adminRequests,
-        ])
+        ]);
 
-        if (!mounted) return
+        if (!mounted) return;
 
         const [daily, pkg, dev, summary, monthly, venue] = await Promise.all([
           dailyRes.ok ? dailyRes.json() : { dailyUsage: [] },
@@ -169,23 +169,23 @@ export default function AnalyticsPage() {
           summaryRes.ok ? summaryRes.json() : { totalCustomers: 0 },
           monthlyRes?.ok ? monthlyRes.json() : { monthly: [] },
           venueRes?.ok ? venueRes.json() : { topVenues: [] },
-        ])
+        ]);
 
-        if (!mounted) return
+        if (!mounted) return;
 
         const dailyUsage: DailyUsage[] = (daily.dailyUsage ?? []).map(
           (d: {
-            date: string
-            uploadBytes: number
-            downloadBytes: number
-            revenueTsh: number
+            date: string;
+            uploadBytes: number;
+            downloadBytes: number;
+            revenueTsh: number;
           }) => ({
             date: d.date,
             upload: bytesToGb(d.uploadBytes),
             download: bytesToGb(d.downloadBytes),
             revenue: d.revenueTsh,
           }),
-        )
+        );
 
         setData({
           dailyUsage,
@@ -205,23 +205,23 @@ export default function AnalyticsPage() {
           totalCustomers: summary.totalCustomers ?? 0,
           allTimeUploadBytes: summary.allTimeUploadBytes ?? 0,
           allTimeDownloadBytes: summary.allTimeDownloadBytes ?? 0,
-        })
+        });
       } catch {
         // keep empty state
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) setLoading(false);
       }
     }
 
-    load()
+    load();
     return () => {
-      mounted = false
-    }
-  }, [selectedMonth, isAdmin])
+      mounted = false;
+    };
+  }, [selectedMonth, isAdmin]);
 
-  const totalUpload = data.dailyUsage.reduce((s, d) => s + d.upload, 0)
-  const totalDownload = data.dailyUsage.reduce((s, d) => s + d.download, 0)
-  const monthlyRevenueStat = data.dailyUsage.reduce((s, d) => s + d.revenue, 0)
+  const totalUpload = data.dailyUsage.reduce((s, d) => s + d.upload, 0);
+  const totalDownload = data.dailyUsage.reduce((s, d) => s + d.download, 0);
+  const monthlyRevenueStat = data.dailyUsage.reduce((s, d) => s + d.revenue, 0);
 
   return (
     <div className="w-full space-y-6">
@@ -339,7 +339,11 @@ export default function AnalyticsPage() {
           ) : (
             <ResponsiveContainer width="100%" height={320} minHeight={0}>
               <BarChart data={data.dailyUsage} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-chart-grid" vertical={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-chart-grid"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="date"
                   tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
@@ -358,7 +362,7 @@ export default function AnalyticsPage() {
                 <Tooltip
                   cursor={{ fill: "var(--muted)", opacity: 0.6 }}
                   content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
+                    if (active && payload?.length) {
                       return (
                         <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                           <p className="text-sm font-medium mb-1">
@@ -385,9 +389,9 @@ export default function AnalyticsPage() {
                             </p>
                           </div>
                         </div>
-                      )
+                      );
                     }
-                    return null
+                    return null;
                   }}
                 />
                 <Legend
@@ -410,12 +414,7 @@ export default function AnalyticsPage() {
                     </div>
                   )}
                 />
-                <Bar
-                  dataKey="upload"
-                  fill="var(--chart-2)"
-                  radius={[4, 4, 0, 0]}
-                  name="Upload"
-                />
+                <Bar dataKey="upload" fill="var(--chart-2)" radius={[4, 4, 0, 0]} name="Upload" />
                 <Bar
                   dataKey="download"
                   fill="var(--chart-1)"
@@ -452,7 +451,11 @@ export default function AnalyticsPage() {
                       <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-chart-grid" vertical={false} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-chart-grid"
+                    vertical={false}
+                  />
                   <XAxis
                     dataKey="date"
                     tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
@@ -471,7 +474,7 @@ export default function AnalyticsPage() {
                   <Tooltip
                     cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
                     content={({ active, payload, label }) => {
-                      if (active && payload && payload.length && label) {
+                      if (active && payload?.length && label) {
                         return (
                           <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                             <p className="text-sm font-medium">
@@ -481,16 +484,13 @@ export default function AnalyticsPage() {
                                 day: "numeric",
                               })}
                             </p>
-                            <p
-                              className="text-lg font-bold"
-                              style={{ color: "var(--chart-1)" }}
-                            >
+                            <p className="text-lg font-bold" style={{ color: "var(--chart-1)" }}>
                               TSH {payload[0]?.value?.toLocaleString()}
                             </p>
                           </div>
-                        )
+                        );
                       }
-                      return null
+                      return null;
                     }}
                   />
                   <Area
@@ -537,14 +537,14 @@ export default function AnalyticsPage() {
                       // hairlines on a dark card. Match the surface instead.
                       stroke="var(--card)"
                     >
-                      {data.packageDistribution.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      {data.packageDistribution.map((item, index) => (
+                        <Cell key={item.package} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip
                       content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const item = payload[0].payload as PackageItem
+                        if (active && payload?.length) {
+                          const item = payload[0].payload as PackageItem;
                           return (
                             <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                               <p className="text-sm font-medium">{item.package}</p>
@@ -552,9 +552,9 @@ export default function AnalyticsPage() {
                                 {item.count} vouchers ({item.percentage}%)
                               </p>
                             </div>
-                          )
+                          );
                         }
-                        return null
+                        return null;
                       }}
                     />
                   </PieChart>
@@ -587,7 +587,7 @@ export default function AnalyticsPage() {
             ) : (
               <div className="space-y-4 pt-4">
                 {data.deviceTypes.map((device, index) => {
-                  const Icon = getDeviceIcon(device.type)
+                  const Icon = getDeviceIcon(device.type);
                   return (
                     <div key={device.type} className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -612,7 +612,7 @@ export default function AnalyticsPage() {
                         />
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             )}
@@ -639,7 +639,11 @@ export default function AnalyticsPage() {
               ) : (
                 <ResponsiveContainer width="100%" height={256} minHeight={0}>
                   <LineChart data={data.monthlyRevenue}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-chart-grid" vertical={false} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      className="stroke-chart-grid"
+                      vertical={false}
+                    />
                     <XAxis
                       dataKey="month"
                       tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
@@ -655,20 +659,17 @@ export default function AnalyticsPage() {
                     <Tooltip
                       cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
                       content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
+                        if (active && payload?.length) {
                           return (
                             <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                               <p className="text-sm font-medium">{payload[0].payload.month}</p>
-                              <p
-                                className="text-sm font-bold"
-                                style={{ color: "var(--chart-1)" }}
-                              >
+                              <p className="text-sm font-bold" style={{ color: "var(--chart-1)" }}>
                                 TSH {payload[0].value?.toLocaleString()}
                               </p>
                             </div>
-                          )
+                          );
                         }
-                        return null
+                        return null;
                       }}
                     />
                     <Line
@@ -701,7 +702,11 @@ export default function AnalyticsPage() {
               ) : (
                 <ResponsiveContainer width="100%" height={256} minHeight={0}>
                   <BarChart data={data.userGrowth}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-chart-grid" vertical={false} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      className="stroke-chart-grid"
+                      vertical={false}
+                    />
                     <XAxis
                       dataKey="month"
                       tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
@@ -716,7 +721,7 @@ export default function AnalyticsPage() {
                     <Tooltip
                       cursor={{ fill: "var(--muted)", opacity: 0.6 }}
                       content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
+                        if (active && payload?.length) {
                           return (
                             <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                               <p className="text-sm font-medium">{payload[0].payload.month}</p>
@@ -724,9 +729,9 @@ export default function AnalyticsPage() {
                                 {payload[0].value} new users
                               </p>
                             </div>
-                          )
+                          );
                         }
-                        return null
+                        return null;
                       }}
                     />
                     <Bar dataKey="users" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
@@ -783,5 +788,5 @@ export default function AnalyticsPage() {
         </Card>
       )}
     </div>
-  )
+  );
 }

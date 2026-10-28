@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  FlaskConical,
+  Loader,
+  Search,
+  Wand2,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { ReadinessChecklist, type ReadinessReport } from "@/components/readiness-checklist";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import {
-  Loader,
-  Search,
-  FlaskConical,
-  Wand2,
-  AlertTriangle,
-  CheckCircle2,
-  ChevronRight,
-} from "lucide-react"
-import { toast } from "sonner"
-import { ReadinessChecklist, type ReadinessReport } from "@/components/readiness-checklist"
+} from "@/components/ui/dialog";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 /**
  * A labelled group inside the dialog.
@@ -37,9 +37,9 @@ function Section({
   hint,
   children,
 }: {
-  title: string
-  hint?: string
-  children: React.ReactNode
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
 }) {
   return (
     <section className="space-y-2">
@@ -49,96 +49,96 @@ function Section({
       </h3>
       {children}
     </section>
-  )
+  );
 }
 
-type StepState = "satisfied" | "applied" | "would-apply" | "skipped" | "failed"
+type StepState = "satisfied" | "applied" | "would-apply" | "skipped" | "failed";
 
 interface StepResult {
-  id: string
-  title: string
-  state: StepState
-  critical: boolean
-  durationMs: number
-  message?: string
+  id: string;
+  title: string;
+  state: StepState;
+  critical: boolean;
+  durationMs: number;
+  message?: string;
 }
 
 interface RouterProfile {
-  boardName: string | null
-  architecture: string | null
-  rosVersion: { raw: string }
-  identity: string | null
-  wirelessStack: string
-  capabilities: Record<string, boolean>
-  compatibility: { ok: boolean; reasons: string[]; warnings: string[] }
+  boardName: string | null;
+  architecture: string | null;
+  rosVersion: { raw: string };
+  identity: string | null;
+  wirelessStack: string;
+  capabilities: Record<string, boolean>;
+  compatibility: { ok: boolean; reasons: string[]; warnings: string[] };
 }
 
-type SetupPhaseId = "probe" | "readiness" | "dry-run" | "provision" | "verify" | "self-test"
-type SetupPhaseStatus = "pass" | "warn" | "fail" | "skipped"
+type SetupPhaseId = "probe" | "readiness" | "dry-run" | "provision" | "verify" | "self-test";
+type SetupPhaseStatus = "pass" | "warn" | "fail" | "skipped";
 
 interface SetupPhase {
-  id: SetupPhaseId
-  title: string
-  status: SetupPhaseStatus
-  detail: string
-  durationMs: number
+  id: SetupPhaseId;
+  title: string;
+  status: SetupPhaseStatus;
+  detail: string;
+  durationMs: number;
 }
 
 interface VerifyReport {
-  ok: boolean
-  checks: ReadinessReport["checks"]
-  manual: string[]
-  summary: ReadinessReport["summary"]
+  ok: boolean;
+  checks: ReadinessReport["checks"];
+  manual: string[];
+  summary: ReadinessReport["summary"];
 }
 
 interface SetupReport {
-  ok: boolean
-  stoppedAt: SetupPhaseId | null
-  forced: boolean
-  phases: SetupPhase[]
-  blockers: { reason: string; fix?: string }[]
-  profile: RouterProfile | null
-  plan: HotspotPlan | null
-  readiness: ReadinessReport | null
-  provision: ProvisionReport | null
-  verify: ProvisionReport | null
-  selfTest: VerifyReport | null
+  ok: boolean;
+  stoppedAt: SetupPhaseId | null;
+  forced: boolean;
+  phases: SetupPhase[];
+  blockers: { reason: string; fix?: string }[];
+  profile: RouterProfile | null;
+  plan: HotspotPlan | null;
+  readiness: ReadinessReport | null;
+  provision: ProvisionReport | null;
+  verify: ProvisionReport | null;
+  selfTest: VerifyReport | null;
 }
 
 interface HotspotPlan {
-  interface: string
-  interfaceIsRadio: boolean
-  ssid: string | null
-  network: string
-  gatewayIp: string
-  poolRange: string
+  interface: string;
+  interfaceIsRadio: boolean;
+  ssid: string | null;
+  network: string;
+  gatewayIp: string;
+  poolRange: string;
 }
 
 interface ProvisionReport {
-  ok: boolean
-  aborted: boolean
-  dryRun: boolean
-  profile: RouterProfile | null
-  steps: StepResult[]
+  ok: boolean;
+  aborted: boolean;
+  dryRun: boolean;
+  profile: RouterProfile | null;
+  steps: StepResult[];
   summary: {
-    total: number
-    satisfied: number
-    applied: number
-    wouldApply: number
-    skipped: number
-    failed: number
-  }
-  blockingReasons: string[]
+    total: number;
+    satisfied: number;
+    applied: number;
+    wouldApply: number;
+    skipped: number;
+    failed: number;
+  };
+  blockingReasons: string[];
 }
 
 interface LogLine {
-  seq: number
-  message: string
-  command?: string
-  params?: string[]
-  durationMs?: number
-  outcome?: string
-  level: string
+  seq: number;
+  message: string;
+  command?: string;
+  params?: string[];
+  durationMs?: number;
+  outcome?: string;
+  level: string;
 }
 
 const STATE_STYLES: Record<StepState, string> = {
@@ -147,7 +147,7 @@ const STATE_STYLES: Record<StepState, string> = {
   "would-apply": "text-amber-600 dark:text-amber-400",
   skipped: "text-muted-foreground/60",
   failed: "text-destructive",
-}
+};
 
 const STATE_LABEL: Record<StepState, string> = {
   satisfied: "already correct",
@@ -155,7 +155,7 @@ const STATE_LABEL: Record<StepState, string> = {
   "would-apply": "would apply",
   skipped: "skipped",
   failed: "failed",
-}
+};
 
 export function ProvisionDialog({
   routerId,
@@ -164,25 +164,25 @@ export function ProvisionDialog({
   onOpenChange,
   onComplete,
 }: {
-  routerId: string
-  routerName: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onComplete?: () => void
+  routerId: string;
+  routerName: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onComplete?: () => void;
 }) {
-  const [busy, setBusy] = useState<"setup" | "probe" | "dry" | "apply" | "verify" | null>(null)
-  const [report, setReport] = useState<ProvisionReport | null>(null)
-  const [profile, setProfile] = useState<RouterProfile | null>(null)
-  const [readiness, setReadiness] = useState<ReadinessReport | null>(null)
-  const [plan, setPlan] = useState<HotspotPlan | null>(null)
-  const [lines, setLines] = useState<LogLine[]>([])
-  const [confirmApply, setConfirmApply] = useState(false)
-  const [setup, setSetup] = useState<SetupReport | null>(null)
-  const [consoleOpen, setConsoleOpen] = useState(false)
-  const [confirmSetup, setConfirmSetup] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [selfTest, setSelfTest] = useState<VerifyReport | null>(null)
-  const logRef = useRef<HTMLDivElement>(null)
+  const [busy, setBusy] = useState<"setup" | "probe" | "dry" | "apply" | "verify" | null>(null);
+  const [report, setReport] = useState<ProvisionReport | null>(null);
+  const [profile, setProfile] = useState<RouterProfile | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessReport | null>(null);
+  const [plan, setPlan] = useState<HotspotPlan | null>(null);
+  const [lines, setLines] = useState<LogLine[]>([]);
+  const [confirmApply, setConfirmApply] = useState(false);
+  const [setup, setSetup] = useState<SetupReport | null>(null);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [confirmSetup, setConfirmSetup] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selfTest, setSelfTest] = useState<VerifyReport | null>(null);
+  const logRef = useRef<HTMLDivElement>(null);
 
   /*
    * Follow the run: open the console while something is in flight so the commands can be watched
@@ -190,80 +190,81 @@ export function ProvisionDialog({
    * a wall of RouterOS commands. Manual toggling still wins until the next run starts.
    */
   useEffect(() => {
-    setConsoleOpen(busy !== null)
-  }, [busy])
+    setConsoleOpen(busy !== null);
+  }, [busy]);
 
   // Live command transcript over the shared /ws/live socket.
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
 
-    const wsUrl = API_URL.replace(/^http/, "ws") + "/ws/live"
-    let socket: WebSocket | null = null
+    const wsUrl = `${API_URL.replace(/^http/, "ws")}/ws/live`;
+    let socket: WebSocket | null = null;
 
     try {
-      socket = new WebSocket(wsUrl)
+      socket = new WebSocket(wsUrl);
     } catch {
-      return // live log is a nicety; the final report still arrives over HTTP
+      return; // live log is a nicety; the final report still arrives over HTTP
     }
 
     socket.onmessage = (evt) => {
       try {
-        const msg = JSON.parse(evt.data)
-        if (msg.type !== "provision_log") return
-        setLines((prev) => [...prev, msg.event as LogLine])
+        const msg = JSON.parse(evt.data);
+        if (msg.type !== "provision_log") return;
+        setLines((prev) => [...prev, msg.event as LogLine]);
       } catch {
         /* ignore malformed frames */
       }
-    }
+    };
 
-    return () => socket?.close()
-  }, [open])
+    return () => socket?.close();
+  }, [open]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: follows the log as new lines arrive
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
-  }, [lines])
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+  }, [lines]);
 
   useEffect(() => {
     if (!open) {
-      setReport(null)
-      setProfile(null)
-      setReadiness(null)
-      setPlan(null)
-      setLines([])
-      setConfirmApply(false)
-      setSetup(null)
-      setConfirmSetup(false)
-      setShowAdvanced(false)
-      setSelfTest(null)
+      setReport(null);
+      setProfile(null);
+      setReadiness(null);
+      setPlan(null);
+      setLines([]);
+      setConfirmApply(false);
+      setSetup(null);
+      setConfirmSetup(false);
+      setShowAdvanced(false);
+      setSelfTest(null);
     }
-  }, [open])
+  }, [open]);
 
   const runProbe = useCallback(async () => {
-    setBusy("probe")
-    setLines([])
-    setReport(null)
+    setBusy("probe");
+    setLines([]);
+    setReport(null);
     try {
       const res = await fetch(`${API_URL}/api/routers/${routerId}/probe`, {
         method: "POST",
         credentials: "include",
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Probe failed")
-      setProfile(data.profile)
-      setReadiness(data.readiness ?? null)
-      setPlan(data.plan ?? null)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Probe failed");
+      setProfile(data.profile);
+      setReadiness(data.readiness ?? null);
+      setPlan(data.plan ?? null);
 
-      const failed = data.readiness?.summary?.fail ?? 0
-      if (!data.profile.compatibility.ok) toast.error("Router cannot run the hotspot")
+      const failed = data.readiness?.summary?.fail ?? 0;
+      if (!data.profile.compatibility.ok) toast.error("Router cannot run the hotspot");
       else if (failed > 0)
-        toast.error(`${failed} problem${failed === 1 ? "" : "s"} would stop this working`)
-      else toast.success("Router is ready to provision")
+        toast.error(`${failed} problem${failed === 1 ? "" : "s"} would stop this working`);
+      else toast.success("Router is ready to provision");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Probe failed")
+      toast.error(err instanceof Error ? err.message : "Probe failed");
     } finally {
-      setBusy(null)
+      setBusy(null);
     }
-  }, [routerId])
+  }, [routerId]);
 
   /**
    * The whole procedure. `force` proceeds past failing readiness checks — offered only after
@@ -271,96 +272,96 @@ export function ProvisionDialog({
    */
   const runSetup = useCallback(
     async (force: boolean) => {
-      setBusy("setup")
-      setLines([])
-      setReport(null)
-      setSetup(null)
-      setSelfTest(null)
+      setBusy("setup");
+      setLines([]);
+      setReport(null);
+      setSetup(null);
+      setSelfTest(null);
       try {
         const res = await fetch(
           `${API_URL}/api/routers/${routerId}/setup${force ? "?force=1" : ""}`,
           { method: "POST", credentials: "include" },
-        )
-        const data: SetupReport = await res.json()
+        );
+        const data: SetupReport = await res.json();
         if (!res.ok)
-          throw new Error((data as unknown as { error?: string }).error || "Setup failed")
+          throw new Error((data as unknown as { error?: string }).error || "Setup failed");
 
-        setSetup(data)
-        setProfile(data.profile)
-        setPlan(data.plan)
-        setReadiness(data.readiness)
-        setSelfTest(data.selfTest)
+        setSetup(data);
+        setProfile(data.profile);
+        setPlan(data.plan);
+        setReadiness(data.readiness);
+        setSelfTest(data.selfTest);
         // Show whichever run last touched steps, so the step list stays meaningful.
-        setReport(data.verify ?? data.provision ?? null)
+        setReport(data.verify ?? data.provision ?? null);
 
-        if (data.ok) toast.success("Router is set up and verified")
+        if (data.ok) toast.success("Router is set up and verified");
         else if (data.stoppedAt === "readiness")
-          toast.error("Stopped before writing anything — the site is not ready")
-        else toast.error(`Stopped at: ${data.phases.find((p) => p.id === data.stoppedAt)?.title}`)
+          toast.error("Stopped before writing anything — the site is not ready");
+        else toast.error(`Stopped at: ${data.phases.find((p) => p.id === data.stoppedAt)?.title}`);
 
-        if (data.provision) onComplete?.()
+        if (data.provision) onComplete?.();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Setup failed")
+        toast.error(err instanceof Error ? err.message : "Setup failed");
       } finally {
-        setBusy(null)
-        setConfirmSetup(false)
+        setBusy(null);
+        setConfirmSetup(false);
       }
     },
     [routerId, onComplete],
-  )
+  );
 
   /** Re-check an in-service router without changing its configuration. */
   const runVerify = useCallback(async () => {
-    setBusy("verify")
-    setLines([])
+    setBusy("verify");
+    setLines([]);
     try {
       const res = await fetch(`${API_URL}/api/routers/${routerId}/verify`, {
         method: "POST",
         credentials: "include",
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Could not check the router")
-      setSelfTest(data.verify)
-      if (data.ok) toast.success("Hotspot is serving")
-      else toast.error(`${data.verify.summary.fail} check(s) show it would not serve`)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not check the router");
+      setSelfTest(data.verify);
+      if (data.ok) toast.success("Hotspot is serving");
+      else toast.error(`${data.verify.summary.fail} check(s) show it would not serve`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not check the router")
+      toast.error(err instanceof Error ? err.message : "Could not check the router");
     } finally {
-      setBusy(null)
+      setBusy(null);
     }
-  }, [routerId])
+  }, [routerId]);
 
   const runProvision = useCallback(
     async (dryRun: boolean) => {
-      setBusy(dryRun ? "dry" : "apply")
-      setLines([])
-      setReport(null)
+      setBusy(dryRun ? "dry" : "apply");
+      setLines([]);
+      setReport(null);
       try {
         const res = await fetch(
           `${API_URL}/api/routers/${routerId}/provision${dryRun ? "?dryRun=1" : ""}`,
           { method: "POST", credentials: "include" },
-        )
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Provisioning failed")
-        setReport(data)
-        setProfile(data.profile)
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Provisioning failed");
+        setReport(data);
+        setProfile(data.profile);
 
-        if (data.aborted) toast.error("Aborted — router is not compatible")
-        else if (data.ok) toast.success(dryRun ? "Dry run complete" : "Router provisioned")
-        else toast.error(`${data.summary.failed} step(s) failed`)
+        if (data.aborted) toast.error("Aborted — router is not compatible");
+        else if (data.ok) toast.success(dryRun ? "Dry run complete" : "Router provisioned");
+        else toast.error(`${data.summary.failed} step(s) failed`);
 
-        if (!dryRun) onComplete?.()
+        if (!dryRun) onComplete?.();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Provisioning failed")
+        toast.error(err instanceof Error ? err.message : "Provisioning failed");
       } finally {
-        setBusy(null)
-        setConfirmApply(false)
+        setBusy(null);
+        setConfirmApply(false);
       }
     },
     [routerId, onComplete],
-  )
+  );
 
-  const compat = profile?.compatibility
+  const compat = profile?.compatibility;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -511,6 +512,7 @@ export function ProvisionDialog({
                   </p>
                   <ol className="space-y-2">
                     {setup.blockers.map((b, i) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: an ordered list replaced as a whole; reasons can repeat, so position is the identity
                       <li key={`${b.reason}-${i}`} className="text-xs">
                         <span className="font-medium">{b.reason}</span>
                         {b.fix && <span className="block text-muted-foreground">{b.fix}</span>}
@@ -686,5 +688,5 @@ export function ProvisionDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

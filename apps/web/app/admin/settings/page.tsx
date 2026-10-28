@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/lib/auth-context"
-import { toast } from "sonner"
-import { Monitor, Moon, Sun, Save, Loader, ShieldCheck, User } from "lucide-react"
+import { Loader, Monitor, Moon, Save, ShieldCheck, Sun, User } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/lib/auth-context";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function getInitials(name: string) {
   return name
@@ -18,40 +18,40 @@ function getInitials(name: string) {
     .map((w) => w[0])
     .join("")
     .toUpperCase()
-    .slice(0, 2)
+    .slice(0, 2);
 }
 
 export default function SettingsPage() {
-  const { user, updateUser } = useAuth()
-  const { theme, setTheme } = useTheme()
-  const [name, setName] = useState(user?.name ?? "")
-  const [isSaving, setIsSaving] = useState(false)
+  const { user, updateUser } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [name, setName] = useState(user?.name ?? "");
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error("Name cannot be empty")
-      return
+      toast.error("Name cannot be empty");
+      return;
     }
-    setIsSaving(true)
+    setIsSaving(true);
     try {
       const res = await fetch(`${API_URL}/api/auth/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ name: name.trim() }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to save")
-      updateUser({ name: name.trim() })
-      toast.success("Settings saved")
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save");
+      updateUser({ name: name.trim() });
+      toast.success("Settings saved");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred")
+      toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
-  const isAdmin = user?.role === "admin"
+  const isAdmin = user?.role === "admin";
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -134,6 +134,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-3 gap-3">
           {/* Light */}
           <button
+            type="button"
             onClick={() => setTheme("light")}
             className={`relative rounded-xl border-2 overflow-hidden transition-all ${theme === "light" ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground/40"}`}
           >
@@ -157,6 +158,7 @@ export default function SettingsPage() {
 
           {/* Dark */}
           <button
+            type="button"
             onClick={() => setTheme("dark")}
             className={`relative rounded-xl border-2 overflow-hidden transition-all ${theme === "dark" ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground/40"}`}
           >
@@ -180,6 +182,7 @@ export default function SettingsPage() {
 
           {/* System */}
           <button
+            type="button"
             onClick={() => setTheme("system")}
             className={`relative rounded-xl border-2 overflow-hidden transition-all ${theme === "system" ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground/40"}`}
           >
@@ -203,5 +206,5 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

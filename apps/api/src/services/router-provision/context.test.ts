@@ -171,7 +171,9 @@ describe("buildHotspotPlan", () => {
 
   test("rejects a network overlapping an address the router already holds", () => {
     // The router is on 192.168.0.161/24; a hotspot there would collide with the management LAN.
-    expect(() => buildHotspotPlan(router({ networkRange: "192.168.0.0/24" }), radioProfile)).toThrow();
+    expect(() =>
+      buildHotspotPlan(router({ networkRange: "192.168.0.0/24" }), radioProfile),
+    ).toThrow();
   });
 
   test("allows a network that overlaps only the hotspot interface's own address", () => {

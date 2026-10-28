@@ -50,6 +50,6 @@ export const statusPill = {
   neutral:
     "bg-muted text-muted-foreground ring-1 ring-inset ring-border " +
     "dark:bg-muted dark:text-muted-foreground",
-} as const
+} as const;
 
-export type StatusTone = keyof typeof statusPill
+export type StatusTone = keyof typeof statusPill;

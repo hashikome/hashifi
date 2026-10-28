@@ -100,16 +100,16 @@ describe("packageCanThrottle", () => {
 
 describe("throttledRateLimitFor", () => {
   test("is up/down, matching rateLimitFor's argument order", () => {
-    expect(
-      throttledRateLimitFor({ throttledDownloadMbps: 2, throttledUploadMbps: 1 }),
-    ).toBe("1M/2M");
+    expect(throttledRateLimitFor({ throttledDownloadMbps: 2, throttledUploadMbps: 1 })).toBe(
+      "1M/2M",
+    );
   });
 
   test("mirrors the throttled download when no throttled upload is set", () => {
     // Not "leave upload uncapped" — that would let a throttled customer keep full upload.
-    expect(
-      throttledRateLimitFor({ throttledDownloadMbps: 2, throttledUploadMbps: null }),
-    ).toBe("2M/2M");
+    expect(throttledRateLimitFor({ throttledDownloadMbps: 2, throttledUploadMbps: null })).toBe(
+      "2M/2M",
+    );
   });
 
   test("returns null when the package has no throttle configured", () => {

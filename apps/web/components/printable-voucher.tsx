@@ -1,15 +1,41 @@
-import { QRCodeSVG } from "qrcode.react"
-import { PortalSettings, Package } from "@/lib/types"
-import { formatDuration } from "@/lib/duration"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
+import type { PortalSettingsRecord } from "@hashifi/types";
+import { QRCodeSVG } from "qrcode.react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { formatDuration } from "@/lib/duration";
+
+/** The portal settings a printed voucher is drawn with. */
+export type VoucherTicketSettings = Pick<
+  PortalSettingsRecord,
+  | "backgroundColor"
+  | "brandName"
+  | "logoText"
+  | "primaryColor"
+  | "radius"
+  | "ticketFooter"
+  | "ticketTitle"
+  | "voucherHelp"
+>;
+
+/** What a printed voucher shows about its package. */
+export interface VoucherPackageSummary {
+  name: string | null;
+  /** Download speed in Mbps. */
+  speed: number | null;
+  /** Price in TSH. */
+  price: number;
+  /** Whole minutes. */
+  duration: number | null;
+  /** GB, or -1 for unlimited. */
+  dataLimit: number;
+}
 
 interface PrintableVoucherProps {
-  code: string
-  pkg?: Package
-  settings: PortalSettings
-  portalUrl?: string
-  venueName?: string | null
+  code: string;
+  pkg: VoucherPackageSummary | null;
+  settings: VoucherTicketSettings;
+  portalUrl: string | null;
+  venueName: string | null;
 }
 
 export function PrintableVoucher({
@@ -19,7 +45,7 @@ export function PrintableVoucher({
   portalUrl,
   venueName,
 }: PrintableVoucherProps) {
-  const qrValue = portalUrl ? `${portalUrl}/portal/login?code=${code}` : code
+  const qrValue = portalUrl ? `${portalUrl}/portal/login?code=${code}` : code;
   return (
     <div
       className="voucher-print-card w-full max-w-100 border rounded-xl overflow-hidden bg-white text-zinc-950 shadow-sm print:shadow-none print:border-zinc-300"
@@ -41,11 +67,7 @@ export function PrintableVoucher({
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{settings.brandName}</p>
-            {(venueName ?? settings.venueName) && (
-              <p className="truncate text-[10px] text-white/70">
-                {venueName ?? settings.venueName}
-              </p>
-            )}
+            {venueName && <p className="truncate text-[10px] text-white/70">{venueName}</p>}
           </div>
         </div>
         <Badge className="border-white/15 bg-white/10 text-[10px] text-white py-0 h-5">
@@ -117,5 +139,5 @@ export function PrintableVoucher({
         </div>
       </div>
     </div>
-  )
+  );
 }

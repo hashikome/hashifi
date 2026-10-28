@@ -1,10 +1,10 @@
+import { createHash } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
-import { createHash } from "node:crypto";
 import { db } from "../db/index.js";
 import { adminSessions, adminUsers } from "../db/schema.js";
 
-const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? "wifi_admin_session";
+const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? "hashifi_session";
 
 export function hashSecret(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -47,7 +47,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       .where(eq(adminUsers.id, session.adminUserId))
       .limit(1);
 
-    if (!user || user.status !== "active") {
+    if (user?.status !== "active") {
       res.clearCookie(sessionCookieName, {
         httpOnly: true,
         sameSite: "lax",

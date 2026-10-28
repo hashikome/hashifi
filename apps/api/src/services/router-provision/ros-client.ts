@@ -11,6 +11,13 @@ import type { RouterLogger } from "../router-log.js";
 
 export type RosRow = Record<string, string | undefined>;
 
+/** A row's RouterOS `.id`. Every row the router returns carries one; a row without it is a protocol fault. */
+export function rowId(row: RosRow): string {
+  const id = row[".id"];
+  if (!id) throw new Error("RouterOS returned a row without an .id");
+  return id;
+}
+
 function toRows(result: unknown): RosRow[] {
   return Array.isArray(result) ? (result as RosRow[]) : [];
 }

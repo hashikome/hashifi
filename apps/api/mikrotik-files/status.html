@@ -424,7 +424,7 @@
     <p class="footer">Keep this page to check your remaining time</p>
 
     <script>
-      (function () {
+      (() => {
         "use strict";
 
         // Substituted by the router. The backend URL is rewritten at push time by
@@ -469,11 +469,11 @@
           var h = Math.floor((seconds % 86400) / 3600);
           var m = Math.floor((seconds % 3600) / 60);
           var s = seconds % 60;
-          if (d > 0) return d + "d " + h + "h";
-          if (h > 0) return h + "h " + (m < 10 ? "0" : "") + m + "m";
+          if (d > 0) return `${d}d ${h}h`;
+          if (h > 0) return `${h}h ${m < 10 ? "0" : ""}${m}m`;
           // Under an hour the seconds matter to someone watching it run out.
-          if (m > 0) return m + "m " + (s < 10 ? "0" : "") + s + "s";
-          return s + "s";
+          if (m > 0) return `${m}m ${s < 10 ? "0" : ""}${s}s`;
+          return `${s}s`;
         }
 
         /* ── When does it end? ─────────────────────────────────────────
@@ -488,11 +488,11 @@
         var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
         function ordinal(n) {
-          if (n > 3 && n < 21) return n + "th";
-          if (n % 10 === 1) return n + "st";
-          if (n % 10 === 2) return n + "nd";
-          if (n % 10 === 3) return n + "rd";
-          return n + "th";
+          if (n > 3 && n < 21) return `${n}th`;
+          if (n % 10 === 1) return `${n}st`;
+          if (n % 10 === 2) return `${n}nd`;
+          if (n % 10 === 3) return `${n}rd`;
+          return `${n}th`;
         }
 
         function clockOf(date) {
@@ -501,7 +501,7 @@
           var suffix = h < 12 ? "am" : "pm";
           var h12 = h % 12;
           if (h12 === 0) h12 = 12;
-          return h12 + ":" + (m < 10 ? "0" : "") + m + " " + suffix;
+          return `${h12}:${m < 10 ? "0" : ""}${m} ${suffix}`;
         }
 
         function sameDay(a, b) {
@@ -515,8 +515,8 @@
         function formatWhen(date) {
           var now = new Date();
           var tomorrow = new Date(now.getTime() + 86400000);
-          if (sameDay(date, now)) return "today at " + clockOf(date);
-          if (sameDay(date, tomorrow)) return "tomorrow at " + clockOf(date);
+          if (sameDay(date, now)) return `today at ${clockOf(date)}`;
+          if (sameDay(date, tomorrow)) return `tomorrow at ${clockOf(date)}`;
           return (
             ordinal(date.getDate()) +
             " " +
@@ -532,17 +532,17 @@
 
         function showExpiry(date) {
           if (!expiresNote || !date || isNaN(date.getTime())) return;
-          expiresNote.textContent = "Runs out " + formatWhen(date);
+          expiresNote.textContent = `Runs out ${formatWhen(date)}`;
         }
 
         function formatBytes(bytes) {
           if (bytes === null || bytes === undefined) return "—";
-          if (bytes < 1024) return bytes + " B";
+          if (bytes < 1024) return `${bytes} B`;
           var kb = bytes / 1024;
-          if (kb < 1024) return Math.round(kb) + " KB";
+          if (kb < 1024) return `${Math.round(kb)} KB`;
           var mb = kb / 1024;
-          if (mb < 1024) return (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + " MB";
-          return (mb / 1024).toFixed(2) + " GB";
+          if (mb < 1024) return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+          return `${(mb / 1024).toFixed(2)} GB`;
         }
 
         /* ── Ticking countdown ─────────────────────────────────────────── */
@@ -560,20 +560,20 @@
 
           if (initialLeft && initialLeft > 0 && timeBar && timeBarWrap) {
             timeBarWrap.classList.remove("hidden");
-            timeBar.style.width = Math.max(0, Math.min(100, (secondsLeft / initialLeft) * 100)) + "%";
+            timeBar.style.width = `${Math.max(0, Math.min(100, (secondsLeft / initialLeft) * 100))}%`;
           }
         }
 
         if (secondsLeft !== null) {
           renderRemaining();
           showExpiry(new Date(Date.now() + secondsLeft * 1000));
-          setInterval(function () {
+          setInterval(() => {
             if (secondsLeft === null) return;
             secondsLeft = Math.max(0, secondsLeft - 1);
             renderRemaining();
             // Out of time: reload so RouterOS decides what the customer sees next, rather
             // than this page claiming a session that has ended.
-            if (secondsLeft === 0) setTimeout(function () { location.reload(); }, 1500);
+            if (secondsLeft === 0) setTimeout(() => { location.reload(); }, 1500);
           }, 1000);
         }
 
@@ -593,17 +593,17 @@
           var pct = Math.min(100, Math.round((used / d.limitBytes) * 100));
           dataRemaining.textContent = formatBytes(d.remainingBytes);
           dataRemaining.className = pct >= 90 ? "headline-value low" : "headline-value";
-          dataBar.style.width = pct + "%";
-          dataNote.textContent = formatBytes(used) + " of " + formatBytes(d.limitBytes) + " used";
+          dataBar.style.width = `${pct}%`;
+          dataNote.textContent = `${formatBytes(used)} of ${formatBytes(d.limitBytes)} used`;
           dataBlock.classList.remove("hidden");
         }
 
         function sync() {
           if (!window.fetch) return;
-          fetch(API + "/portal/session-status?mac=" + encodeURIComponent(mac))
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-              if (!data || !data.active) return;
+          fetch(`${API}/portal/session-status?mac=${encodeURIComponent(mac)}`)
+            .then((r) => r.json())
+            .then((data) => {
+              if (!data?.active) return;
               applyData(data.data);
               // Prefer the backend's wall-clock figure when the router did not give one
               // (an uptime-only voucher still has a real expiry in the database).
@@ -620,7 +620,7 @@
                 }
               }
             })
-            .catch(function () {
+            .catch(() => {
               /* backend down — the page is already complete without it */
             });
         }
@@ -638,7 +638,7 @@
         if (form && btn) {
           var armed = false;
           var disarm;
-          form.addEventListener("submit", function (e) {
+          form.addEventListener("submit", (e) => {
             if (armed) return; // second tap — let it through
             e.preventDefault();
             armed = true;
@@ -646,7 +646,7 @@
             btn.className = "confirming";
             if (note) note.textContent = "You will need your voucher code to get back online.";
             clearTimeout(disarm);
-            disarm = setTimeout(function () {
+            disarm = setTimeout(() => {
               armed = false;
               btn.textContent = "Disconnect";
               btn.className = "";

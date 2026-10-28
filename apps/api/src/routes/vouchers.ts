@@ -1,23 +1,23 @@
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { Router } from "express";
-import { and, eq, desc, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/index.js";
 import {
   packages,
   portalSettings,
+  venuePackages,
+  venues,
   voucherBatches,
   vouchers,
-  venues,
-  venuePackages,
 } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
-import { asyncRoute } from "../utils/route.js";
 import {
   pushVouchersToVenueRouters,
   removeVoucherFromVenueRouters,
   removeVouchersFromVenueRouters,
 } from "../services/router-sync.js";
+import { asyncRoute } from "../utils/route.js";
 
 const router = Router();
 
@@ -205,7 +205,7 @@ router.post(
       }
     }
 
-    let expiresAt: Date | undefined = undefined;
+    let expiresAt: Date | undefined;
     if (expiryDays) {
       expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + expiryDays);

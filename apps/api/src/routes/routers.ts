@@ -1,31 +1,31 @@
 import { randomUUID } from "node:crypto";
-import { Router } from "express";
 import { and, desc, eq } from "drizzle-orm";
+import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db/index.js";
 import { routers, venues } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
-import { asyncRoute } from "../utils/route.js";
-import { encrypt } from "../utils/encrypt.js";
-import { syncNewRouter } from "../services/router-sync.js";
+import { RouterError } from "../services/mikrotik-errors.js";
+import { getProvisioningBacklog } from "../services/reconcile-daemon.js";
 import { getRouterCredentials } from "../services/router-credentials.js";
-import { probeRouterMerged, type RouterProfile } from "../services/router-provision/probe.js";
-import { provisionRouter } from "../services/router-provision/index.js";
+import { RouterLogger } from "../services/router-log.js";
+import { buildBootstrapScript } from "../services/router-provision/bootstrap.js";
 import {
   buildHotspotPlan,
   isRadioInterfaceType,
   resolveBackendUrl,
 } from "../services/router-provision/context.js";
-import { buildBootstrapScript } from "../services/router-provision/bootstrap.js";
+import { dialectFor } from "../services/router-provision/dialect.js";
+import { provisionRouter } from "../services/router-provision/index.js";
+import { probeRouterMerged, type RouterProfile } from "../services/router-provision/probe.js";
 import { probeReadiness } from "../services/router-provision/readiness.js";
 import { setupRouter } from "../services/router-provision/setup.js";
 import { probeVerify } from "../services/router-provision/verify.js";
-import { dialectFor } from "../services/router-provision/dialect.js";
-import { getProvisioningBacklog } from "../services/reconcile-daemon.js";
+import { syncNewRouter } from "../services/router-sync.js";
 import { logSystemEvent } from "../utils/audit.js";
-import { RouterLogger } from "../services/router-log.js";
-import { RouterError } from "../services/mikrotik-errors.js";
+import { encrypt } from "../utils/encrypt.js";
+import { asyncRoute } from "../utils/route.js";
 
 const router = Router();
 
@@ -608,7 +608,6 @@ router.post(
       const backend = resolveBackendUrl(existing.ipAddress);
 
       const report = await probeVerify(creds, logger, {
-        profile,
         dialect: dialectFor(profile),
         plan,
         backendUrl: backend.url,

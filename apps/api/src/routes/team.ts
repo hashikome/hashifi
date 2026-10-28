@@ -1,28 +1,28 @@
-import { Router } from "express";
-import { and, count, desc, eq, ne } from "drizzle-orm";
-import { z } from "zod";
 import { randomUUID } from "node:crypto";
+import { and, count, desc, eq, ne } from "drizzle-orm";
+import { Router } from "express";
+import { z } from "zod";
 import { db } from "../db/index.js";
 import {
-  adminUsers,
-  adminPreferences,
   adminOtpCodes,
+  adminPreferences,
   adminSessions,
+  adminUsers,
   venues,
 } from "../db/schema.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
-import { asyncRoute } from "../utils/route.js";
-import {
-  sendWelcomeEmail,
-  sendAccountSuspendedEmail,
-  sendAccountReactivatedEmail,
-  sendPromotedToAdminEmail,
-  sendDemotedToManagerEmail,
-  sendAccountDeletedEmail,
-  sendProfileUpdatedEmail,
-} from "../utils/mailer.js";
 import { logAction } from "../utils/audit.js";
+import {
+  sendAccountDeletedEmail,
+  sendAccountReactivatedEmail,
+  sendAccountSuspendedEmail,
+  sendDemotedToManagerEmail,
+  sendProfileUpdatedEmail,
+  sendPromotedToAdminEmail,
+  sendWelcomeEmail,
+} from "../utils/mailer.js";
+import { asyncRoute } from "../utils/route.js";
 
 const router = Router();
 router.use(requireAuth, requireRole("admin"));

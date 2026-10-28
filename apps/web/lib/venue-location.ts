@@ -1,4 +1,4 @@
-import type { Venue } from "@/lib/types"
+import type { Venue } from "@/lib/types";
 
 type VenueLocationFields = Pick<
   Venue,
@@ -13,36 +13,36 @@ type VenueLocationFields = Pick<
   | "address"
   | "latitude"
   | "longitude"
->
+>;
 
 export function formatVenueArea(venue: VenueLocationFields) {
-  return [venue.city, venue.region, venue.country].filter(Boolean).join(", ")
+  return [venue.city, venue.region, venue.country].filter(Boolean).join(", ");
 }
 
 export function formatVenueStreet(venue: VenueLocationFields) {
-  return [venue.road, venue.street].filter(Boolean).join(", ")
+  return [venue.road, venue.street].filter(Boolean).join(", ");
 }
 
 export function formatVenueAdminArea(venue: VenueLocationFields) {
-  return [venue.ward, venue.district].filter(Boolean).join(" · ")
+  return [venue.ward, venue.district].filter(Boolean).join(" · ");
 }
 
 export function formatVenueCoordinates(venue: VenueLocationFields) {
-  if (!venue.latitude || !venue.longitude) return null
+  if (!venue.latitude || !venue.longitude) return null;
 
-  const lat = parseFloat(venue.latitude)
-  const lng = parseFloat(venue.longitude)
+  const lat = parseFloat(venue.latitude);
+  const lng = parseFloat(venue.longitude);
 
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return null
+  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
 
-  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 }
 
 export function getVenueLocationDetails(venue: VenueLocationFields) {
-  const area = formatVenueArea(venue)
-  const street = formatVenueStreet(venue)
-  const adminArea = formatVenueAdminArea(venue)
-  const coordinates = formatVenueCoordinates(venue)
+  const area = formatVenueArea(venue);
+  const street = formatVenueStreet(venue);
+  const adminArea = formatVenueAdminArea(venue);
+  const coordinates = formatVenueCoordinates(venue);
 
   return {
     area,
@@ -51,5 +51,5 @@ export function getVenueLocationDetails(venue: VenueLocationFields) {
     coordinates,
     postalCode: venue.postalCode,
     address: venue.address,
-  }
+  };
 }

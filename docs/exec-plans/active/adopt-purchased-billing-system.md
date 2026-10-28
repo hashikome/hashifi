@@ -25,7 +25,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - [x] (2026-10-28) Imported as received (`45ebd53`); repository scaffolded from the
   Hashikome template; FSL-1.1-ALv2; packages renamed `@hashifi/api` and `@hashifi/web`; pnpm
   and npm files removed.
-- [ ] M1 Toolchain and name.
+- [x] (2026-10-28) M1 Toolchain and name. One root `bun.lock` (Bun 1.4.4 isolated installs);
+  every dependency on its newest stable release, pinned; Biome replaces Prettier and ESLint;
+  `@hashifi/types` carries the API's JSON contract; unused code removed (the v0 starter
+  dashboard and its components, 36 unused UI and hook files, 30 unused dependencies, Vercel
+  Analytics, `next-maps`, `dotenv`, `tsx`); TypeScript 7 in both apps with type errors failing
+  the build; no `any` or `!` in kept code; HashiFi naming throughout; `ENCRYPTION_KEY` required.
+  `bun run verify` passes: 170/170 tests, both typechecks, lint, format, web build.
 - [ ] M2 Router lab on CHR.
 - [ ] M3 Prisma schema on PostgreSQL.
 - [ ] M4 NestJS API.
@@ -59,6 +65,20 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   4. Router passwords are encrypted with AES-256-CBC (unauthenticated) and a published
      fallback key when `ENCRYPTION_KEY` is unset.
      Evidence: `apps/api/src/utils/encrypt.ts:3`.
+- Observation: typing the web exposed defects that `any` hid: `lib/types.ts` no longer matches
+  the API (stale voucher statuses and removed portal fields); the voucher print page crashed
+  when portal settings were missing (now falls back to the defaults); the voucher preview's
+  props were declared as strings but received numbers and `undefined`; managers whose role
+  loaded after mount never got their single venue preselected on voucher creation (now
+  re-runs when the role arrives). An automatic lint fix would have turned a provisioning
+  report's `ok: false` into an absent field (caught by the typecheck and fixed).
+  Evidence: M1 commit; [ADR-0004](../../engineering-decisions/0004-types-without-any-or-undefined.md).
+- Observation: the package create and edit pages enforce business rules (minimum price 1,000
+  TSH; throttled speeds below the package speed) in the web.
+  Evidence: `apps/web/app/admin/packages/create/page.tsx`, `[id]/edit/page.tsx`.
+- Observation: Bun 1.4 workspaces install in isolated mode (`node_modules/.bun/`, symlinked per
+  app); the purchased `turbopack.root` pin stopped Next.js resolving itself and was removed.
+  Next.js finds the root `bun.lock`.
 - Observation: the root Django `.gitignore` hid `apps/web/lib/` from the first import commit;
   the commit was amended before publication to include it.
   Evidence: `git check-ignore` against the old `.gitignore` (`lib/`).
@@ -85,11 +105,27 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Rationale: a hotspot must sit on the guests' network, so production needs hardware at
   each venue, but everything except a phone joining real WiFi can be proved on CHR.
   Date/Author: 2026-10-28 / Paul, Claude
-- Decision: the repository stays private until M5's security fixes land, and the seller is
-  told about the flaws (and the personal data in their archive) before it becomes public.
-  Rationale: the findings below describe exploitable defects in code the seller very likely
-  still runs; publishing them with the code first would expose the seller's customers.
+- Decision: the repository stays private until M5's security fixes land.
+  Rationale: the findings above describe exploitable defects; the code is published once
+  they are fixed. The purchased code is HashiFi's to change or delete without the seller.
   Date/Author: 2026-10-28 / Paul
+- Decision: email through Resend; BullMQ on Redis where a queue is needed, or a better tool
+  with its reason recorded.
+  Rationale: [ADR-0002](../../engineering-decisions/0002-toolchain.md), as the other products.
+  Date/Author: 2026-10-28 / Paul
+- Decision: no `any` or `undefined` in types; absence is `null`.
+  Rationale: [ADR-0004](../../engineering-decisions/0004-types-without-any-or-undefined.md).
+  Date/Author: 2026-10-28 / Paul
+- Decision: no HashiFi sign-in implementation; admins sign in through the shared Hashikome
+  identity service, planned as cross-product workspace work.
+  Rationale: [ADR-0005](../../engineering-decisions/0005-shared-identity.md); a third copy of
+  ntumie. and Pigfarm's sign-in is the duplication the service removes.
+  Date/Author: 2026-10-28 / Paul
+- Decision: lint findings in code M3 and M4 replace (Express routes, middleware, `server.ts`,
+  the Drizzle layer, the router portal pages) are warnings until those milestones remove the
+  code, rather than typed now and deleted after.
+  Rationale: kept code (`services/`, `utils/`, the web) is fixed; the rest is rewritten.
+  Date/Author: 2026-10-28 / Claude
 - Decision: FSL-1.1-ALv2, Shikome Technology Limited as licensor.
   Rationale: public source without permitting a competing commercial service.
   Date/Author: 2026-10-28 / Paul
@@ -117,7 +153,7 @@ Not started beyond the import and scaffold.
 
 ### M1 Toolchain and name
 
-One root `bun.lock`; Biome replaces Prettier; root scripts from the template made real.
+Done (see Progress). One root `bun.lock`; Biome replaces Prettier; root scripts from the template made real.
 Dependencies moved to the newest stable releases and pinned (check `npm view <pkg>
 dist-tags`: Prisma's `latest` is a release candidate at the time of writing, so 7.10.1).
 Every "WiFi Billing" and `wifi_billing`/`wifibilling` name becomes HashiFi (UI strings,
@@ -148,6 +184,8 @@ Port `apps/api/src/db/schema.ts` to `prisma/schema.prisma`: `uuid` keys, `jsonb`
 - `CONVERT_TZ`/`DATE_FORMAT` in `routes/analytics.ts` (27 and 15 uses) and
   `onDuplicateKeyUpdate` (4 uses) become PostgreSQL equivalents;
 - the UTC-on-disk, Dar es Salaam-calendar rule.
+- `apps/api/src/db/schema.ts` is the source for `@hashifi/types`' record types: keep them
+  identical as the Prisma models are written.
 
 A fresh migration history starts at the Prisma baseline; Drizzle and `drizzle/` are removed.
 The seed uses invented data.
@@ -160,7 +198,14 @@ jobs become providers, with their tests carried over unchanged. Every query is s
 role and venue (finding 3). Router secrets use AES-256-GCM with a required key (finding 4). Configuration reads each secret through one helper that prefers `<NAME>_FILE` (a Docker
 secret) over the plain variable, as ntumie.'s `apps/api/src/config/secret.ts` does, and
 validates everything at startup ([SECURITY.md](../../SECURITY.md#credentials)).
-Totals and derived figures the admin pages compute today move into the responses. Snippe
+Totals and derived figures the admin pages compute today move into the responses, and the API
+enforces every rule the web pre-checks (the package price and throttle rules). The NestJS DTOs
+implement `@hashifi/types`, which grows to the whole contract, and `apps/web/lib/types.ts` (the
+stale hand-written copy) is deleted; raw `fetch` moves into one client module. `RosRow`
+(`Record<string, string | undefined>`) becomes a `null`-returning accessor at the RouterOS
+boundary (ADR-0004). Email moves to Resend. Sign-in is not ported: it comes from the shared
+identity service (ADR-0005); the vendor's OTP login, sessions and mailer templates for account
+events are removed with the Express app. The lint override in `biome.json` is removed. Snippe
 routes and the webhook are left out (backlog). The vendor's onboarding knowledge files move
 to `docs/runbooks/`.
 

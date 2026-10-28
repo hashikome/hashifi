@@ -1,8 +1,8 @@
-import { MapPin } from "lucide-react"
-import { Label } from "@/components/ui/label"
-import type { Venue } from "@/lib/types"
-import { getVenueLocationDetails } from "@/lib/venue-location"
-import { cn } from "@/lib/utils"
+import { MapPin } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import type { Venue } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { getVenueLocationDetails } from "@/lib/venue-location";
 
 type VenueLocationFields = Pick<
   Venue,
@@ -17,13 +17,13 @@ type VenueLocationFields = Pick<
   | "address"
   | "latitude"
   | "longitude"
->
+>;
 
 interface VenueLocationSummaryProps {
-  venue: VenueLocationFields
-  variant?: "full" | "compact"
-  className?: string
-  showLabel?: boolean
+  venue: VenueLocationFields;
+  variant?: "full" | "compact";
+  className?: string;
+  showLabel?: boolean;
 }
 
 export function VenueLocationSummary({
@@ -32,8 +32,8 @@ export function VenueLocationSummary({
   className,
   showLabel = true,
 }: VenueLocationSummaryProps) {
-  const details = getVenueLocationDetails(venue)
-  const isCompact = variant === "compact"
+  const details = getVenueLocationDetails(venue);
+  const isCompact = variant === "compact";
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -78,5 +78,5 @@ export function VenueLocationSummary({
         </div>
       </div>
     </div>
-  )
+  );
 }

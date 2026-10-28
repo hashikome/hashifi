@@ -1,8 +1,31 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import {
+  Activity,
+  Clock,
+  DollarSign,
+  HardDrive,
+  Loader,
+  Package,
+  Ticket,
+  TrendingUp,
+  Users,
+  Wifi,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -10,147 +33,124 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { useAuth } from "@/lib/auth-context"
-import { formatDate } from "@/lib/utils"
-import { useLiveSessions } from "@/hooks/use-live-sessions"
-import { useRoutersStatus } from "@/hooks/use-routers-status"
-import {
-  Users,
-  Wifi,
-  DollarSign,
-  Activity,
-  TrendingUp,
-  HardDrive,
-  Ticket,
-  Package,
-  Clock,
-  Loader,
-} from "lucide-react"
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts"
+} from "@/components/ui/table";
+import { useLiveSessions } from "@/hooks/use-live-sessions";
+import { useRoutersStatus } from "@/hooks/use-routers-status";
+import { useAuth } from "@/lib/auth-context";
+import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 type ManagerVoucher = {
-  id: string
-  code: string
-  packageName?: string | null
-  venueName?: string | null
-  status: "active" | "used" | "expired" | "unused" | "revoked" | "pending_activation"
-  priceTsh: string | number
-  expiresAt?: string | null
-}
+  id: string;
+  code: string;
+  packageName?: string | null;
+  venueName?: string | null;
+  status: "active" | "used" | "expired" | "unused" | "revoked" | "pending_activation";
+  priceTsh: string | number;
+  expiresAt?: string | null;
+};
 
 type AnalyticsSummary = {
-  activeSessions: number
-  totalSessions: number
-  totalCustomers: number | null
-  monthlyRevenueTsh: number | null
-  weeklyUploadBytes: number
-  weeklyDownloadBytes: number
-}
+  activeSessions: number;
+  totalSessions: number;
+  totalCustomers: number | null;
+  monthlyRevenueTsh: number | null;
+  weeklyUploadBytes: number;
+  weeklyDownloadBytes: number;
+};
 
 type MonthlyPoint = {
-  month: string
-  revenueTsh: number
-  newUsers: number
-}
+  month: string;
+  revenueTsh: number;
+  newUsers: number;
+};
 
 function formatBytes(bytes: number) {
-  if (bytes === 0) return "0 B"
-  const k = 1024
-  const sizes = ["B", "KB", "MB", "GB", "TB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
 function bytesToGb(bytes: number) {
-  return (bytes / (1024 * 1024 * 1024)).toFixed(1)
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1);
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   // Manager state
-  const [managerVouchers, setManagerVouchers] = useState<ManagerVoucher[]>([])
-  const [isLoadingManagerData, setIsLoadingManagerData] = useState(false)
+  const [managerVouchers, setManagerVouchers] = useState<ManagerVoucher[]>([]);
+  const [isLoadingManagerData, setIsLoadingManagerData] = useState(false);
 
   // Summary state — used by both admin and manager
-  const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
-  const [monthly, setMonthly] = useState<MonthlyPoint[]>([])
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
   const {
     clients: liveClients,
     isConnected: wsConnected,
     lastUpdated: wsUpdated,
-  } = useLiveSessions()
-  const { hasOnlineRouter, isPartiallyOnline, onlineCount, totalCount } = useRoutersStatus()
+  } = useLiveSessions();
+  const { hasOnlineRouter, isPartiallyOnline, onlineCount, totalCount } = useRoutersStatus();
 
   // Manager: load vouchers for their venue
   useEffect(() => {
-    if (user?.role !== "manager") return
-    let isMounted = true
-    setIsLoadingManagerData(true)
+    if (user?.role !== "manager") return;
+    let isMounted = true;
+    setIsLoadingManagerData(true);
     fetch(`${API_URL}/api/vouchers`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { vouchers: [] }))
       .then((data) => {
-        if (isMounted) setManagerVouchers(data.vouchers)
+        if (isMounted) setManagerVouchers(data.vouchers);
       })
       .catch(() => {})
       .finally(() => {
-        if (isMounted) setIsLoadingManagerData(false)
-      })
+        if (isMounted) setIsLoadingManagerData(false);
+      });
     return () => {
-      isMounted = false
-    }
-  }, [user?.role])
+      isMounted = false;
+    };
+  }, [user?.role]);
 
   // Admin and manager: load summary. Admin also loads monthly for revenue chart.
   useEffect(() => {
-    if (!user) return
-    let isMounted = true
+    if (!user) return;
+    let isMounted = true;
 
     const fetches: Promise<Response>[] = [
       fetch(`${API_URL}/api/analytics/summary`, { credentials: "include" }),
-    ]
+    ];
     if (user.role === "admin") {
-      fetches.push(fetch(`${API_URL}/api/analytics/monthly`, { credentials: "include" }))
+      fetches.push(fetch(`${API_URL}/api/analytics/monthly`, { credentials: "include" }));
     }
 
     Promise.all(fetches)
       .then(async (responses) => {
-        if (!isMounted) return
-        const [summaryRes, monthlyRes] = responses
+        if (!isMounted) return;
+        const [summaryRes, monthlyRes] = responses;
         if (summaryRes?.ok) {
-          const s = await summaryRes.json()
-          if (isMounted) setSummary(s)
+          const s = await summaryRes.json();
+          if (isMounted) setSummary(s);
         }
         if (monthlyRes?.ok) {
-          const m = await monthlyRes.json()
-          if (isMounted) setMonthly(m.monthly ?? [])
+          const m = await monthlyRes.json();
+          if (isMounted) setMonthly(m.monthly ?? []);
         }
       })
-      .catch(() => {})
+      .catch(() => {});
 
     return () => {
-      isMounted = false
-    }
-  }, [user?.role])
+      isMounted = false;
+    };
+  }, [user]);
 
   // ─── Manager view ────────────────────────────────────────────────
   if (user?.role === "manager") {
-    const totalVouchers = managerVouchers.length
-    const activeVouchers = managerVouchers.filter((v) => v.status === "active").length
-    const unusedVouchers = managerVouchers.filter((v) => v.status === "unused").length
+    const totalVouchers = managerVouchers.length;
+    const activeVouchers = managerVouchers.filter((v) => v.status === "active").length;
+    const unusedVouchers = managerVouchers.filter((v) => v.status === "unused").length;
 
     const statCards = [
       {
@@ -181,7 +181,7 @@ export default function DashboardPage() {
         description: `${activeVouchers} currently active`,
         icon: Clock,
       },
-    ]
+    ];
 
     return (
       <div className="space-y-6">
@@ -276,7 +276,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // ─── Admin view ──────────────────────────────────────────────────
@@ -314,10 +314,10 @@ export default function DashboardPage() {
         : "Last 7 days",
       icon: HardDrive,
     },
-  ]
+  ];
 
-  const monthlyRevenue = monthly.map((m) => ({ month: m.month, revenue: m.revenueTsh }))
-  const userGrowth = monthly.map((m) => ({ month: m.month, users: m.newUsers }))
+  const monthlyRevenue = monthly.map((m) => ({ month: m.month, revenue: m.revenueTsh }));
+  const userGrowth = monthly.map((m) => ({ month: m.month, users: m.newUsers }));
 
   return (
     <div className="space-y-6">
@@ -387,7 +387,7 @@ export default function DashboardPage() {
                     // across a dark chart. Every Tooltip below overrides it for that reason.
                     cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
                     content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
+                      if (active && payload?.length) {
                         return (
                           <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                             <p className="text-sm font-medium">{payload[0].payload.month}</p>
@@ -395,9 +395,9 @@ export default function DashboardPage() {
                               TSH {payload[0].value?.toLocaleString()}
                             </p>
                           </div>
-                        )
+                        );
                       }
-                      return null
+                      return null;
                     }}
                   />
                   <Area
@@ -449,7 +449,7 @@ export default function DashboardPage() {
                   <Tooltip
                     cursor={{ fill: "var(--muted)", opacity: 0.6 }}
                     content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
+                      if (active && payload?.length) {
                         return (
                           <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                             <p className="text-sm font-medium">{payload[0].payload.month}</p>
@@ -457,9 +457,9 @@ export default function DashboardPage() {
                               {payload[0].value} new users
                             </p>
                           </div>
-                        )
+                        );
                       }
-                      return null
+                      return null;
                     }}
                   />
                   <Bar dataKey="users" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
@@ -571,5 +571,5 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -1,43 +1,43 @@
-import "dotenv/config";
+import { randomBytes, randomInt } from "node:crypto";
 import { createServer } from "node:http";
-import { sendOtpEmail } from "./utils/mailer.js";
-import { createHash, randomBytes, randomInt } from "node:crypto";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import cookieParser from "cookie-parser";
-import { WebSocketServer } from "ws";
-import { startLiveMonitor } from "./services/live-monitor.js";
-import { startExpiryDaemon } from "./services/expiry-daemon.js";
-import { startProvisionBroadcast } from "./services/provision-broadcast.js";
-import { startReconcileDaemon } from "./services/reconcile-daemon.js";
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
+import { WebSocketServer } from "ws";
+import { startExpiryDaemon } from "./services/expiry-daemon.js";
+import { startLiveMonitor } from "./services/live-monitor.js";
+import { startProvisionBroadcast } from "./services/provision-broadcast.js";
+import { startReconcileDaemon } from "./services/reconcile-daemon.js";
+import { sendOtpEmail } from "./utils/mailer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { db } from "./db/index.js";
 import { adminOtpCodes, adminSessions, adminUsers } from "./db/schema.js";
-import { requireAuth, hashSecret } from "./middleware/auth.js";
-import { asyncRoute } from "./utils/route.js";
-import { packagesRouter } from "./routes/packages.js";
-import { vouchersRouter } from "./routes/vouchers.js";
-import { venuesRouter } from "./routes/venues.js";
-import { routersRouter } from "./routes/routers.js";
-import { customersRouter } from "./routes/customers.js";
-import { sessionsRouter } from "./routes/sessions.js";
-import { portalRouter } from "./routes/portal.js";
-import { captivePortalRouter } from "./routes/captive-portal.js";
-import { snippeWebhookRouter } from "./routes/snippe-webhook.js";
+import { hashSecret, requireAuth } from "./middleware/auth.js";
 import { analyticsRouter } from "./routes/analytics.js";
-import { paymentsRouter } from "./routes/payments.js";
-import { revenueRouter } from "./routes/revenue.js";
-import { teamRouter } from "./routes/team.js";
 import { auditRouter } from "./routes/audit.js";
+import { captivePortalRouter } from "./routes/captive-portal.js";
+import { customersRouter } from "./routes/customers.js";
+import { packagesRouter } from "./routes/packages.js";
+import { paymentsRouter } from "./routes/payments.js";
+import { portalRouter } from "./routes/portal.js";
+import { revenueRouter } from "./routes/revenue.js";
+import { routersRouter } from "./routes/routers.js";
+import { sessionsRouter } from "./routes/sessions.js";
+import { snippeWebhookRouter } from "./routes/snippe-webhook.js";
+import { teamRouter } from "./routes/team.js";
+import { venuesRouter } from "./routes/venues.js";
+import { vouchersRouter } from "./routes/vouchers.js";
+import { asyncRoute } from "./utils/route.js";
 
 const port = Number(process.env.PORT ?? 8080);
 const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://localhost:4000";
-const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? "wifi_admin_session";
+const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? "hashifi_session";
 const sessionDurationMs = 3 * 24 * 60 * 60 * 1000;
 const otpDurationMs = 10 * 60 * 1000;
 
@@ -93,7 +93,7 @@ function serializeAdminUser(user: AdminUserRecord) {
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "wifi-billing-backend" });
+  res.json({ ok: true, service: "hashifi-api" });
 });
 
 app.post(
@@ -274,7 +274,7 @@ app.use("/api/audit", auditRouter);
 app.use("/portal", captivePortalRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("[WiFi Billing] API error", err);
+  console.error("[HashiFi] API error", err);
   res.status(500).json({ error: "Internal server error" });
 });
 
@@ -288,7 +288,7 @@ startExpiryDaemon();
 startReconcileDaemon();
 
 httpServer.listen(port, () => {
-  console.log(`[WiFi Billing] Backend API running on http://localhost:${port}`);
-  console.log(`[WiFi Billing] WebSocket live feed on ws://localhost:${port}/ws/live`);
-  console.log(`[WiFi Billing] CORS origin: ${frontendOrigin}`);
+  console.log(`[HashiFi] Backend API running on http://localhost:${port}`);
+  console.log(`[HashiFi] WebSocket live feed on ws://localhost:${port}/ws/live`);
+  console.log(`[HashiFi] CORS origin: ${frontendOrigin}`);
 });

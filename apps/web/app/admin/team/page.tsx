@@ -1,30 +1,28 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react"
-import { useAuth } from "@/lib/auth-context"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Card, CardContent } from "@/components/ui/card"
+import { formatDistanceToNow } from "date-fns";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Ban,
+  Building2,
+  CheckCircle2,
+  Clock,
+  Loader,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Ticket,
+  Trash2,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  Users2,
+  UserX,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,67 +32,69 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
-  Loader,
-  Plus,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  ShieldCheck,
-  Ban,
-  CheckCircle2,
-  Users2,
-  UserPlus,
-  UserMinus,
-  UserCheck,
-  UserX,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Ticket,
-  Building2,
-  Clock,
-} from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
-import { formatDate } from "@/lib/utils"
-import { statusPill } from "@/lib/status-pill"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useAuth } from "@/lib/auth-context";
+import { statusPill } from "@/lib/status-pill";
+import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface AssignedVenue {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface TeamMember {
-  id: string
-  name: string
-  email: string
-  phone: string | null
-  role: "admin" | "manager"
-  status: "active" | "inactive" | "suspended"
-  lastLoginAt: string | null
-  createdAt: string
-  assignedVenue: AssignedVenue | null
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: "admin" | "manager";
+  status: "active" | "inactive" | "suspended";
+  lastLoginAt: string | null;
+  createdAt: string;
+  assignedVenue: AssignedVenue | null;
 }
 
 interface VenueSummary {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 const emptyForm = {
@@ -103,7 +103,7 @@ const emptyForm = {
   phone: "",
   role: "manager" as "admin" | "manager",
   venueId: "none",
-}
+};
 
 function getInitials(name: string) {
   return name
@@ -111,7 +111,7 @@ function getInitials(name: string) {
     .map((n) => n[0])
     .join("")
     .toUpperCase()
-    .slice(0, 2)
+    .slice(0, 2);
 }
 
 function RoleBadge({ role }: { role: TeamMember["role"] }) {
@@ -119,92 +119,92 @@ function RoleBadge({ role }: { role: TeamMember["role"] }) {
     <Badge variant={role === "admin" ? "default" : "secondary"}>
       {role === "admin" ? "Admin" : "Manager"}
     </Badge>
-  )
+  );
 }
 
 function StatusBadge({ status }: { status: TeamMember["status"] }) {
-  if (status === "active") return <Badge className={statusPill.success}>Active</Badge>
-  if (status === "suspended") return <Badge className={statusPill.warning}>Suspended</Badge>
-  return <Badge className={statusPill.neutral}>Inactive</Badge>
+  if (status === "active") return <Badge className={statusPill.success}>Active</Badge>;
+  if (status === "suspended") return <Badge className={statusPill.warning}>Suspended</Badge>;
+  return <Badge className={statusPill.neutral}>Inactive</Badge>;
 }
 
 interface AuditLogEntry {
-  id: string
-  adminUserId: string | null
-  action: string
-  entityType: string
-  entityId: string | null
-  ipAddress: string | null
+  id: string;
+  adminUserId: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  ipAddress: string | null;
   metadata: {
-    actorName?: string
-    entityName?: string
-    quantity?: number
-    packageName?: string
-    role?: string
-    email?: string
-    venueName?: string | null
-  } | null
-  createdAt: string
+    actorName?: string;
+    entityName?: string;
+    quantity?: number;
+    packageName?: string;
+    role?: string;
+    email?: string;
+    venueName?: string | null;
+  } | null;
+  createdAt: string;
 }
 
 function actionLabel(log: AuditLogEntry): string {
-  const entity = log.metadata?.entityName ?? "Unknown"
-  const role = log.metadata?.role
+  const entity = log.metadata?.entityName ?? "Unknown";
+  const role = log.metadata?.role;
   switch (log.action) {
     case "member_created":
-      return `Added ${role === "admin" ? "admin" : "manager"} "${entity}"`
+      return `Added ${role === "admin" ? "admin" : "manager"} "${entity}"`;
     case "member_updated":
-      return `Updated profile of "${entity}"`
+      return `Updated profile of "${entity}"`;
     case "member_suspended":
-      return `Suspended account of "${entity}"`
+      return `Suspended account of "${entity}"`;
     case "member_activated":
-      return `Reactivated account of "${entity}"`
+      return `Reactivated account of "${entity}"`;
     case "member_promoted":
-      return `Promoted "${entity}" to Admin`
+      return `Promoted "${entity}" to Admin`;
     case "member_demoted": {
-      const venueName = log.metadata?.venueName
-      return `Demoted "${entity}" to Manager${venueName ? ` — assigned to ${venueName}` : ""}`
+      const venueName = log.metadata?.venueName;
+      return `Demoted "${entity}" to Manager${venueName ? ` — assigned to ${venueName}` : ""}`;
     }
     case "member_deleted":
-      return `Removed account "${entity}"`
+      return `Removed account "${entity}"`;
     case "vouchers_generated": {
-      const qty = log.metadata?.quantity ?? 1
-      const pkg = log.metadata?.packageName ?? entity
-      return `Generated ${qty} voucher${qty !== 1 ? "s" : ""} — ${pkg}`
+      const qty = log.metadata?.quantity ?? 1;
+      const pkg = log.metadata?.packageName ?? entity;
+      return `Generated ${qty} voucher${qty !== 1 ? "s" : ""} — ${pkg}`;
     }
     case "venue_created":
-      return `Created venue "${entity}"`
+      return `Created venue "${entity}"`;
     case "venue_deleted":
-      return `Deleted venue "${entity}"`
+      return `Deleted venue "${entity}"`;
     default:
-      return log.action.replace(/_/g, " ")
+      return log.action.replace(/_/g, " ");
   }
 }
 
 function actionIcon(action: string) {
-  const cls = "size-4"
+  const cls = "size-4";
   switch (action) {
     case "member_created":
-      return <UserPlus className={cls} />
+      return <UserPlus className={cls} />;
     case "member_updated":
-      return <Pencil className={cls} />
+      return <Pencil className={cls} />;
     case "member_suspended":
-      return <UserMinus className={cls} />
+      return <UserMinus className={cls} />;
     case "member_activated":
-      return <UserCheck className={cls} />
+      return <UserCheck className={cls} />;
     case "member_promoted":
-      return <ArrowUpCircle className={cls} />
+      return <ArrowUpCircle className={cls} />;
     case "member_demoted":
-      return <ArrowDownCircle className={cls} />
+      return <ArrowDownCircle className={cls} />;
     case "member_deleted":
-      return <UserX className={cls} />
+      return <UserX className={cls} />;
     case "vouchers_generated":
-      return <Ticket className={cls} />
+      return <Ticket className={cls} />;
     case "venue_created":
     case "venue_deleted":
-      return <Building2 className={cls} />
+      return <Building2 className={cls} />;
     default:
-      return <Clock className={cls} />
+      return <Clock className={cls} />;
   }
 }
 
@@ -213,19 +213,19 @@ function actionColor(action: string): string {
     case "member_created":
     case "member_activated":
     case "venue_created":
-      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
     case "member_suspended":
     case "member_deleted":
     case "venue_deleted":
-      return "bg-red-500/10 text-red-600 dark:text-red-400"
+      return "bg-red-500/10 text-red-600 dark:text-red-400";
     case "member_promoted":
-      return "bg-violet-500/10 text-violet-600 dark:text-violet-400"
+      return "bg-violet-500/10 text-violet-600 dark:text-violet-400";
     case "member_demoted":
-      return "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+      return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
     case "vouchers_generated":
-      return "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+      return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -279,10 +279,10 @@ function ActivityLog({ logs, isLoading }: { logs: AuditLogEntry[]; isLoading: bo
                     title={log.createdAt}
                   >
                     {(() => {
-                      const d = new Date(log.createdAt)
+                      const d = new Date(log.createdAt);
                       return d > new Date()
                         ? "just now"
-                        : formatDistanceToNow(d, { addSuffix: true })
+                        : formatDistanceToNow(d, { addSuffix: true });
                     })()}
                   </time>
                 </div>
@@ -292,226 +292,226 @@ function ActivityLog({ logs, isLoading }: { logs: AuditLogEntry[]; isLoading: bo
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 export default function TeamPage() {
-  const { user } = useAuth()
-  const [members, setMembers] = useState<TeamMember[]>([])
-  const [venuesList, setVenuesList] = useState<VenueSummary[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user } = useAuth();
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [venuesList, setVenuesList] = useState<VenueSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dialog state
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create")
-  const [editTarget, setEditTarget] = useState<TeamMember | null>(null)
-  const [form, setForm] = useState({ ...emptyForm })
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [editTarget, setEditTarget] = useState<TeamMember | null>(null);
+  const [form, setForm] = useState({ ...emptyForm });
 
   // Confirm dialogs
-  const [promoteTarget, setPromoteTarget] = useState<TeamMember | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null)
-  const [demoteTarget, setDemoteTarget] = useState<TeamMember | null>(null)
-  const [demoteVenueId, setDemoteVenueId] = useState("none")
+  const [promoteTarget, setPromoteTarget] = useState<TeamMember | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null);
+  const [demoteTarget, setDemoteTarget] = useState<TeamMember | null>(null);
+  const [demoteVenueId, setDemoteVenueId] = useState("none");
 
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([])
-  const [isLoadingLogs, setIsLoadingLogs] = useState(true)
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
   const loadAuditLogs = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/audit`, { credentials: "include" })
-      if (!res.ok) return
-      const data = await res.json()
-      setAuditLogs(data.logs)
+      const res = await fetch(`${API_URL}/api/audit`, { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setAuditLogs(data.logs);
     } catch {
       // non-critical
     } finally {
-      setIsLoadingLogs(false)
+      setIsLoadingLogs(false);
     }
-  }, [])
+  }, []);
 
   const loadMembers = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/team`, { credentials: "include" })
-      if (!res.ok) throw new Error("Failed to load team")
-      const data = await res.json()
-      setMembers(data.members)
+      const res = await fetch(`${API_URL}/api/team`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load team");
+      const data = await res.json();
+      setMembers(data.members);
     } catch {
-      toast.error("Failed to load team members")
+      toast.error("Failed to load team members");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [])
+  }, []);
 
   // Your own account always on top, then admins, then managers (server order within each group)
   const sortedMembers = useMemo(() => {
     return [...members].sort((a, b) => {
-      if (a.id === user?.id) return -1
-      if (b.id === user?.id) return 1
-      if (a.role === b.role) return 0
-      return a.role === "admin" ? -1 : 1
-    })
-  }, [members, user?.id])
+      if (a.id === user?.id) return -1;
+      if (b.id === user?.id) return 1;
+      if (a.role === b.role) return 0;
+      return a.role === "admin" ? -1 : 1;
+    });
+  }, [members, user?.id]);
 
   const loadVenues = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" })
-      if (!res.ok) return
-      const data = await res.json()
+      const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
       setVenuesList(
         data.venues.map((v: { id: string; name: string }) => ({ id: v.id, name: v.name })),
-      )
+      );
     } catch {
       // venues load failure is non-critical
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    loadMembers()
-    loadVenues()
-    loadAuditLogs()
-  }, [loadMembers, loadVenues, loadAuditLogs])
+    loadMembers();
+    loadVenues();
+    loadAuditLogs();
+  }, [loadMembers, loadVenues, loadAuditLogs]);
 
   function openCreateDialog() {
-    setDialogMode("create")
-    setEditTarget(null)
-    setForm({ ...emptyForm })
-    setDialogOpen(true)
+    setDialogMode("create");
+    setEditTarget(null);
+    setForm({ ...emptyForm });
+    setDialogOpen(true);
   }
 
   function openEditDialog(member: TeamMember) {
-    setDialogMode("edit")
-    setEditTarget(member)
+    setDialogMode("edit");
+    setEditTarget(member);
     setForm({
       name: member.name,
       email: member.email,
       phone: member.phone ?? "",
       role: member.role,
       venueId: member.assignedVenue?.id ?? "none",
-    })
-    setDialogOpen(true)
+    });
+    setDialogOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
     try {
       const payload: Record<string, unknown> = {
         name: form.name,
         email: form.email,
         phone: form.phone || null,
         venueId: form.venueId !== "none" ? form.venueId : null,
-      }
+      };
 
       if (dialogMode === "create") {
-        payload.role = form.role
+        payload.role = form.role;
         const res = await fetch(`${API_URL}/api/team`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(payload),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Failed to create member")
-        toast.success("Team member created and welcome email sent")
-      } else {
-        const res = await fetch(`${API_URL}/api/team/${editTarget!.id}`, {
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to create member");
+        toast.success("Team member created and welcome email sent");
+      } else if (editTarget) {
+        const res = await fetch(`${API_URL}/api/team/${editTarget.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(payload),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Failed to update member")
-        toast.success("Team member updated")
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to update member");
+        toast.success("Team member updated");
       }
 
-      setDialogOpen(false)
-      await Promise.all([loadMembers(), loadAuditLogs()])
+      setDialogOpen(false);
+      await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred")
+      toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   async function handleStatusToggle(member: TeamMember) {
-    const action = member.status === "suspended" ? "activate" : "suspend"
+    const action = member.status === "suspended" ? "activate" : "suspend";
     try {
       const res = await fetch(`${API_URL}/api/team/${member.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ action }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to update status")
-      toast.success(action === "suspend" ? "Account suspended" : "Account reactivated")
-      await Promise.all([loadMembers(), loadAuditLogs()])
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update status");
+      toast.success(action === "suspend" ? "Account suspended" : "Account reactivated");
+      await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred")
+      toast.error(err instanceof Error ? err.message : "An error occurred");
     }
   }
 
   async function handlePromote() {
-    if (!promoteTarget) return
-    setIsSubmitting(true)
+    if (!promoteTarget) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${API_URL}/api/team/${promoteTarget.id}/promote`, {
         method: "PATCH",
         credentials: "include",
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to promote member")
-      toast.success(`${promoteTarget.name} has been promoted to Admin`)
-      setPromoteTarget(null)
-      await Promise.all([loadMembers(), loadAuditLogs()])
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to promote member");
+      toast.success(`${promoteTarget.name} has been promoted to Admin`);
+      setPromoteTarget(null);
+      await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred")
+      toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   async function handleDemote() {
-    if (!demoteTarget) return
-    setIsSubmitting(true)
+    if (!demoteTarget) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${API_URL}/api/team/${demoteTarget.id}/demote`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ venueId: demoteVenueId !== "none" ? demoteVenueId : null }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to demote member")
-      toast.success(`${demoteTarget.name} has been demoted to Manager`)
-      setDemoteTarget(null)
-      await Promise.all([loadMembers(), loadAuditLogs()])
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to demote member");
+      toast.success(`${demoteTarget.name} has been demoted to Manager`);
+      setDemoteTarget(null);
+      await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred")
+      toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   async function handleDelete() {
-    if (!deleteTarget) return
-    setIsSubmitting(true)
+    if (!deleteTarget) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${API_URL}/api/team/${deleteTarget.id}`, {
         method: "DELETE",
         credentials: "include",
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to delete member")
-      toast.success(`${deleteTarget.name}'s account has been removed`)
-      setDeleteTarget(null)
-      await Promise.all([loadMembers(), loadAuditLogs()])
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete member");
+      toast.success(`${deleteTarget.name}'s account has been removed`);
+      setDeleteTarget(null);
+      await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred")
+      toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -650,8 +650,8 @@ export default function TeamPage() {
                           {member.role === "admin" && (
                             <DropdownMenuItem
                               onClick={() => {
-                                setDemoteVenueId("none")
-                                setDemoteTarget(member)
+                                setDemoteVenueId("none");
+                                setDemoteTarget(member);
                               }}
                               disabled={member.id === user?.id}
                             >
@@ -686,7 +686,7 @@ export default function TeamPage() {
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!isSubmitting) setDialogOpen(open)
+          if (!isSubmitting) setDialogOpen(open);
         }}
       >
         <DialogContent className="sm:max-w-md">
@@ -797,7 +797,7 @@ export default function TeamPage() {
       <AlertDialog
         open={!!promoteTarget}
         onOpenChange={(open) => {
-          if (!open && !isSubmitting) setPromoteTarget(null)
+          if (!open && !isSubmitting) setPromoteTarget(null);
         }}
       >
         <AlertDialogContent>
@@ -824,7 +824,7 @@ export default function TeamPage() {
       <Dialog
         open={!!demoteTarget}
         onOpenChange={(open) => {
-          if (!open && !isSubmitting) setDemoteTarget(null)
+          if (!open && !isSubmitting) setDemoteTarget(null);
         }}
       >
         <DialogContent className="sm:max-w-md">
@@ -873,7 +873,7 @@ export default function TeamPage() {
       <AlertDialog
         open={!!deleteTarget}
         onOpenChange={(open) => {
-          if (!open && !isSubmitting) setDeleteTarget(null)
+          if (!open && !isSubmitting) setDeleteTarget(null);
         }}
       >
         <AlertDialogContent>
@@ -900,5 +900,5 @@ export default function TeamPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

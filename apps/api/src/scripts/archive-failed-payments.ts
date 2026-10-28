@@ -83,9 +83,7 @@ async function collectCandidates(): Promise<ArchiveCandidate[]> {
   try {
     restored = await db.select().from(restoredPayments);
   } catch {
-    console.warn(
-      "  (payments_archive_restore not present — skipping deleted-row archive)\n",
-    );
+    console.warn("  (payments_archive_restore not present — skipping deleted-row archive)\n");
   }
 
   for (const row of restored) {

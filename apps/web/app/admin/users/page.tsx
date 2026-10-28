@@ -1,24 +1,47 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Calendar,
+  Cpu,
+  Eye,
+  Globe,
+  Laptop,
+  Loader,
+  Mail,
+  Monitor,
+  Phone,
+  RefreshCw,
+  Search,
+  ShieldX,
+  Smartphone,
+  Tablet,
+  Users,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { ErrorState } from "@/components/error-state";
+import { TableDeleteButton } from "@/components/table-action-buttons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -26,67 +49,45 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { ConfirmModal } from "@/components/confirm-modal"
-import { TableDeleteButton } from "@/components/table-action-buttons"
-import type { WifiUser } from "@/lib/types"
-import { formatDate } from "@/lib/utils"
-import {
-  Users,
-  Search,
-  Smartphone,
-  Laptop,
-  Tablet,
-  Monitor,
-  Eye,
-  Wifi,
-  WifiOff,
-  Calendar,
-  Phone,
-  Mail,
-  Globe,
-  Cpu,
-  RefreshCw,
-  Loader,
-  ShieldX,
-} from "lucide-react"
-import { toast } from "sonner"
-import { ErrorState } from "@/components/error-state"
-import { useAuth } from "@/lib/auth-context"
-import { statusPill } from "@/lib/status-pill"
+} from "@/components/ui/table";
+import { useAuth } from "@/lib/auth-context";
+import { errorMessage } from "@/lib/errors";
+import { statusPill } from "@/lib/status-pill";
+import type { WifiUser } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B"
-  const k = 1024
-  const sizes = ["B", "KB", "MB", "GB", "TB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 }
 
 interface CustomerStats {
-  total: number
-  online: number
-  offline: number
-  blocked: number
+  total: number;
+  online: number;
+  offline: number;
+  blocked: number;
 }
 
 /** How often the list re-checks who is still connected, in ms. */
-const ONLINE_REFRESH_MS = 15_000
+const ONLINE_REFRESH_MS = 15_000;
 
 function getDeviceIcon(deviceType: string | null) {
   switch (deviceType?.toLowerCase()) {
     case "mobile":
     case "phone":
-      return Smartphone
+      return Smartphone;
     case "laptop":
     case "computer":
-      return Laptop
+      return Laptop;
     case "tablet":
-      return Tablet
+      return Tablet;
     default:
-      return Monitor
+      return Monitor;
   }
 }
 
@@ -97,95 +98,98 @@ function getDeviceIcon(deviceType: string | null) {
  */
 function getConnection(customer: WifiUser) {
   if (customer.status === "blocked") {
-    return { label: "blocked", className: statusPill.danger, live: false }
+    return { label: "blocked", className: statusPill.danger, live: false };
   }
   if (customer.isOnline) {
-    return { label: "online", className: statusPill.success, live: true }
+    return { label: "online", className: statusPill.success, live: true };
   }
-  return { label: "offline", className: statusPill.neutral, live: false }
+  return { label: "offline", className: statusPill.neutral, live: false };
 }
 
 export default function UsersPage() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
-  const [customers, setCustomers] = useState<WifiUser[]>([])
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [customers, setCustomers] = useState<WifiUser[]>([]);
   const [stats, setStats] = useState<CustomerStats>({
     total: 0,
     online: 0,
     offline: 0,
     blocked: 0,
-  })
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedUser, setSelectedUser] = useState<WifiUser | null>(null)
-  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedUser, setSelectedUser] = useState<WifiUser | null>(null);
+  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // `silent` is for the background online-refresh: it must not flip the spinner or
   // blank the table out from under the admin every 15 seconds.
-  const fetchCustomers = useCallback(async (silent = false) => {
-    if (!silent) {
-      setIsLoading(true)
-      setLoadError(null)
-    }
-    try {
-      const params = new URLSearchParams()
-      if (searchQuery) params.set("search", searchQuery)
-      if (statusFilter !== "all") params.set("status", statusFilter)
+  const fetchCustomers = useCallback(
+    async (silent = false) => {
+      if (!silent) {
+        setIsLoading(true);
+        setLoadError(null);
+      }
+      try {
+        const params = new URLSearchParams();
+        if (searchQuery) params.set("search", searchQuery);
+        if (statusFilter !== "all") params.set("status", statusFilter);
 
-      const res = await fetch(`${API_URL}/api/customers?${params}`, { credentials: "include" })
-      if (!res.ok) throw new Error("Failed to fetch customers")
-      const data = await res.json()
-      setCustomers(data.customers)
-      setStats(data.stats)
-    } catch {
-      // A failed background poll leaves the last good list on screen rather than
-      // replacing it with an error the admin never asked for.
-      if (silent) return
-      // Recorded, not just toasted — the empty state would otherwise claim there is no
-      // data when the request simply failed.
-      setLoadError("Customers could not be loaded. Check your connection and try again.")
-      toast.error("Failed to load customers")
-    } finally {
-      if (!silent) setIsLoading(false)
-    }
-  }, [searchQuery, statusFilter])
+        const res = await fetch(`${API_URL}/api/customers?${params}`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch customers");
+        const data = await res.json();
+        setCustomers(data.customers);
+        setStats(data.stats);
+      } catch {
+        // A failed background poll leaves the last good list on screen rather than
+        // replacing it with an error the admin never asked for.
+        if (silent) return;
+        // Recorded, not just toasted — the empty state would otherwise claim there is no
+        // data when the request simply failed.
+        setLoadError("Customers could not be loaded. Check your connection and try again.");
+        toast.error("Failed to load customers");
+      } finally {
+        if (!silent) setIsLoading(false);
+      }
+    },
+    [searchQuery, statusFilter],
+  );
 
   useEffect(() => {
-    const timer = setTimeout(fetchCustomers, searchQuery ? 300 : 0)
-    return () => clearTimeout(timer)
-  }, [fetchCustomers, searchQuery])
+    const timer = setTimeout(fetchCustomers, searchQuery ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [fetchCustomers, searchQuery]);
 
   // "Online" is only true as of the last fetch — keep it honest without a manual refresh.
   useEffect(() => {
-    const interval = setInterval(() => fetchCustomers(true), ONLINE_REFRESH_MS)
-    return () => clearInterval(interval)
-  }, [fetchCustomers])
+    const interval = setInterval(() => fetchCustomers(true), ONLINE_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [fetchCustomers]);
 
   const handleDeleteConfirm = async () => {
-    if (!customerToDelete) return
-    setIsDeleting(true)
+    if (!customerToDelete) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`${API_URL}/api/customers/${customerToDelete}`, {
         method: "DELETE",
         credentials: "include",
-      })
+      });
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to delete user")
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete user");
       }
-      setCustomers((prev) => prev.filter((c) => c.id !== customerToDelete))
-      setStats((prev) => ({ ...prev, total: prev.total - 1 }))
-      toast.success("User deleted successfully")
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete user")
+      setCustomers((prev) => prev.filter((c) => c.id !== customerToDelete));
+      setStats((prev) => ({ ...prev, total: prev.total - 1 }));
+      toast.success("User deleted successfully");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to delete user"));
     } finally {
-      setIsDeleting(false)
-      setCustomerToDelete(null)
+      setIsDeleting(false);
+      setCustomerToDelete(null);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -328,8 +332,8 @@ export default function UsersPage() {
                 </TableRow>
               ) : (
                 customers.map((customer) => {
-                  const DeviceIcon = getDeviceIcon(customer.deviceType)
-                  const connection = getConnection(customer)
+                  const DeviceIcon = getDeviceIcon(customer.deviceType);
+                  const connection = getConnection(customer);
                   return (
                     <TableRow key={customer.id}>
                       <TableCell>
@@ -394,7 +398,7 @@ export default function UsersPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })
               )}
             </TableBody>
@@ -411,8 +415,8 @@ export default function UsersPage() {
           </DialogHeader>
           {selectedUser &&
             (() => {
-              const DeviceIcon = getDeviceIcon(selectedUser.deviceType)
-              const connection = getConnection(selectedUser)
+              const DeviceIcon = getDeviceIcon(selectedUser.deviceType);
+              const connection = getConnection(selectedUser);
               return (
                 <div className="space-y-4">
                   {/* Header */}
@@ -526,7 +530,7 @@ export default function UsersPage() {
                     </Button>
                   </div>
                 </div>
-              )
+              );
             })()}
         </DialogContent>
       </Dialog>
@@ -551,5 +555,5 @@ export default function UsersPage() {
         isLoading={isDeleting}
       />
     </div>
-  )
+  );
 }

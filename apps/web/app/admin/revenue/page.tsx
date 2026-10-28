@@ -1,9 +1,23 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useMemo } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Building2,
+  DollarSign,
+  Loader,
+  RefreshCw,
+  Smartphone,
+  Ticket,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { currentMonth, MonthPicker, type MonthValue, monthLabel } from "@/components/month-picker";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -11,74 +25,60 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Smartphone,
-  Ticket,
-  Building2,
-  RefreshCw,
-  Loader,
-  ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react"
-import { formatDate } from "@/lib/utils"
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
-import { MonthPicker, currentMonth, monthLabel, type MonthValue } from "@/components/month-picker"
+} from "@/components/ui/table";
+import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 type Summary = {
-  allTime: number
-  thisMonth: number
-  lastMonth: number
-  today: number
-  monthGrowthPct: number | null
-  selectedYear: number
-  selectedMonth: number
+  allTime: number;
+  thisMonth: number;
+  lastMonth: number;
+  today: number;
+  monthGrowthPct: number | null;
+  selectedYear: number;
+  selectedMonth: number;
   bySource: {
-    online: { allTime: number; thisMonth: number }
-    cash: { allTime: number; thisMonth: number }
-  }
-}
+    online: { allTime: number; thisMonth: number };
+    cash: { allTime: number; thisMonth: number };
+  };
+};
 
-type PackageRow = { name: string; revenue: number; count: number }
-type VenueRow = { name: string; revenue: number }
+type PackageRow = { name: string; revenue: number; count: number };
+type VenueRow = { name: string; revenue: number };
 type Transaction = {
-  id: string
-  type: "online" | "cash"
-  amountTsh: number
-  packageName: string
-  venueName: string | null
-  reference: string | null
-  occurredAt: string
-}
+  id: string;
+  type: "online" | "cash";
+  amountTsh: number;
+  packageName: string;
+  venueName: string | null;
+  reference: string | null;
+  occurredAt: string;
+};
 
-const PIE_COLORS = ["var(--chart-1)", "var(--chart-2)"]
+const PIE_COLORS = ["var(--chart-1)", "var(--chart-2)"];
 
 function tsh(n: number) {
-  return `TSh ${Math.floor(n).toLocaleString()}`
+  return `TSh ${Math.floor(n).toLocaleString()}`;
 }
 
 export default function RevenuePage() {
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [byPkg, setByPkg] = useState<PackageRow[]>([])
-  const [byVenue, setByVenue] = useState<VenueRow[]>([])
-  const [txns, setTxns] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedMonth, setSelectedMonth] = useState<MonthValue>(currentMonth)
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [byPkg, setByPkg] = useState<PackageRow[]>([]);
+  const [byVenue, setByVenue] = useState<VenueRow[]>([]);
+  const [txns, setTxns] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState<MonthValue>(currentMonth);
 
-  const periodLabel = useMemo(() => monthLabel(selectedMonth), [selectedMonth])
+  const periodLabel = useMemo(() => monthLabel(selectedMonth), [selectedMonth]);
   const prevPeriodLabel = useMemo(() => {
-    const prev = new Date(selectedMonth.year, selectedMonth.month - 2, 1)
-    return prev.toLocaleDateString("en-US", { month: "long", year: "numeric" })
-  }, [selectedMonth])
+    const prev = new Date(selectedMonth.year, selectedMonth.month - 2, 1);
+    return prev.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  }, [selectedMonth]);
 
-  const load = async (m: MonthValue) => {
-    setLoading(true)
-    const qs = `year=${m.year}&month=${m.month}`
+  const load = useCallback(async (m: MonthValue) => {
+    setLoading(true);
+    const qs = `year=${m.year}&month=${m.month}`;
     try {
       const [s, p, v, t] = await Promise.all([
         fetch(`${API_URL}/api/revenue/summary?${qs}`, { credentials: "include" }).then((r) =>
@@ -93,30 +93,30 @@ export default function RevenuePage() {
         fetch(`${API_URL}/api/revenue/transactions?${qs}`, { credentials: "include" }).then((r) =>
           r.json(),
         ),
-      ])
-      setSummary(s)
-      setByPkg(p.byPackage ?? [])
-      setByVenue(v.byVenue ?? [])
-      setTxns(t.transactions ?? [])
+      ]);
+      setSummary(s);
+      setByPkg(p.byPackage ?? []);
+      setByVenue(v.byVenue ?? []);
+      setTxns(t.transactions ?? []);
     } catch {
       // keep previous state
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    load(selectedMonth)
-  }, [selectedMonth])
+    load(selectedMonth);
+  }, [selectedMonth, load]);
 
   const pieData = summary
     ? [
         { name: "Online (Mobile Money)", value: summary.bySource.online.thisMonth },
         { name: "Cash (Vouchers)", value: summary.bySource.cash.thisMonth },
       ].filter((d) => d.value > 0)
-    : []
+    : [];
 
-  const totalPkg = byPkg.reduce((s, r) => s + r.revenue, 0)
+  const totalPkg = byPkg.reduce((s, r) => s + r.revenue, 0);
 
   return (
     <div className="space-y-6">
@@ -234,8 +234,8 @@ export default function RevenuePage() {
                       // hairlines on a dark card. Match the surface instead.
                       stroke="var(--card)"
                     >
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      {pieData.map((entry, i) => (
+                        <Cell key={entry.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -246,9 +246,9 @@ export default function RevenuePage() {
                               <p className="font-medium">{payload[0].name}</p>
                               <p className="font-bold">{tsh(payload[0].value as number)}</p>
                             </div>
-                          )
+                          );
                         }
-                        return null
+                        return null;
                       }}
                     />
                   </PieChart>
@@ -433,5 +433,5 @@ export default function RevenuePage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -62,16 +62,12 @@
       "indexes": {
         "admin_otp_codes_admin_user_id_idx": {
           "name": "admin_otp_codes_admin_user_id_idx",
-          "columns": [
-            "admin_user_id"
-          ],
+          "columns": ["admin_user_id"],
           "isUnique": false
         },
         "admin_otp_codes_expires_at_idx": {
           "name": "admin_otp_codes_expires_at_idx",
-          "columns": [
-            "expires_at"
-          ],
+          "columns": ["expires_at"],
           "isUnique": false
         }
       },
@@ -80,12 +76,8 @@
           "name": "admin_otp_codes_admin_user_id_admin_users_id_fk",
           "tableFrom": "admin_otp_codes",
           "tableTo": "admin_users",
-          "columnsFrom": [
-            "admin_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["admin_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -93,9 +85,7 @@
       "compositePrimaryKeys": {
         "admin_otp_codes_id": {
           "name": "admin_otp_codes_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -178,9 +168,7 @@
       "indexes": {
         "admin_preferences_admin_user_id_unique": {
           "name": "admin_preferences_admin_user_id_unique",
-          "columns": [
-            "admin_user_id"
-          ],
+          "columns": ["admin_user_id"],
           "isUnique": true
         }
       },
@@ -189,12 +177,8 @@
           "name": "admin_preferences_admin_user_id_admin_users_id_fk",
           "tableFrom": "admin_preferences",
           "tableTo": "admin_users",
-          "columnsFrom": [
-            "admin_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["admin_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -202,9 +186,7 @@
       "compositePrimaryKeys": {
         "admin_preferences_id": {
           "name": "admin_preferences_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -282,23 +264,17 @@
       "indexes": {
         "admin_sessions_token_hash_unique": {
           "name": "admin_sessions_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ],
+          "columns": ["token_hash"],
           "isUnique": true
         },
         "admin_sessions_admin_user_id_idx": {
           "name": "admin_sessions_admin_user_id_idx",
-          "columns": [
-            "admin_user_id"
-          ],
+          "columns": ["admin_user_id"],
           "isUnique": false
         },
         "admin_sessions_expires_at_idx": {
           "name": "admin_sessions_expires_at_idx",
-          "columns": [
-            "expires_at"
-          ],
+          "columns": ["expires_at"],
           "isUnique": false
         }
       },
@@ -307,12 +283,8 @@
           "name": "admin_sessions_admin_user_id_admin_users_id_fk",
           "tableFrom": "admin_sessions",
           "tableTo": "admin_users",
-          "columnsFrom": [
-            "admin_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["admin_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -320,9 +292,7 @@
       "compositePrimaryKeys": {
         "admin_sessions_id": {
           "name": "admin_sessions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -402,16 +372,12 @@
       "indexes": {
         "admin_users_email_unique": {
           "name": "admin_users_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         },
         "admin_users_role_idx": {
           "name": "admin_users_role_idx",
-          "columns": [
-            "role"
-          ],
+          "columns": ["role"],
           "isUnique": false
         }
       },
@@ -419,9 +385,7 @@
       "compositePrimaryKeys": {
         "admin_users_id": {
           "name": "admin_users_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -498,24 +462,17 @@
       "indexes": {
         "audit_logs_admin_user_id_idx": {
           "name": "audit_logs_admin_user_id_idx",
-          "columns": [
-            "admin_user_id"
-          ],
+          "columns": ["admin_user_id"],
           "isUnique": false
         },
         "audit_logs_entity_idx": {
           "name": "audit_logs_entity_idx",
-          "columns": [
-            "entity_type",
-            "entity_id"
-          ],
+          "columns": ["entity_type", "entity_id"],
           "isUnique": false
         },
         "audit_logs_created_at_idx": {
           "name": "audit_logs_created_at_idx",
-          "columns": [
-            "created_at"
-          ],
+          "columns": ["created_at"],
           "isUnique": false
         }
       },
@@ -524,12 +481,8 @@
           "name": "audit_logs_admin_user_id_admin_users_id_fk",
           "tableFrom": "audit_logs",
           "tableTo": "admin_users",
-          "columnsFrom": [
-            "admin_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["admin_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -537,9 +490,7 @@
       "compositePrimaryKeys": {
         "audit_logs_id": {
           "name": "audit_logs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -628,23 +579,17 @@
       "indexes": {
         "daily_usage_stats_venue_id_idx": {
           "name": "daily_usage_stats_venue_id_idx",
-          "columns": [
-            "venue_id"
-          ],
+          "columns": ["venue_id"],
           "isUnique": false
         },
         "daily_usage_stats_package_id_idx": {
           "name": "daily_usage_stats_package_id_idx",
-          "columns": [
-            "package_id"
-          ],
+          "columns": ["package_id"],
           "isUnique": false
         },
         "daily_usage_stats_date_idx": {
           "name": "daily_usage_stats_date_idx",
-          "columns": [
-            "stat_date"
-          ],
+          "columns": ["stat_date"],
           "isUnique": false
         }
       },
@@ -653,12 +598,8 @@
           "name": "daily_usage_stats_venue_id_venues_id_fk",
           "tableFrom": "daily_usage_stats",
           "tableTo": "venues",
-          "columnsFrom": [
-            "venue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -666,12 +607,8 @@
           "name": "daily_usage_stats_package_id_packages_id_fk",
           "tableFrom": "daily_usage_stats",
           "tableTo": "packages",
-          "columnsFrom": [
-            "package_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["package_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -679,9 +616,7 @@
       "compositePrimaryKeys": {
         "daily_usage_stats_id": {
           "name": "daily_usage_stats_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -723,24 +658,17 @@
       "indexes": {
         "package_policies_pair_unique": {
           "name": "package_policies_pair_unique",
-          "columns": [
-            "package_id",
-            "policy_id"
-          ],
+          "columns": ["package_id", "policy_id"],
           "isUnique": true
         },
         "package_policies_package_id_idx": {
           "name": "package_policies_package_id_idx",
-          "columns": [
-            "package_id"
-          ],
+          "columns": ["package_id"],
           "isUnique": false
         },
         "package_policies_policy_id_idx": {
           "name": "package_policies_policy_id_idx",
-          "columns": [
-            "policy_id"
-          ],
+          "columns": ["policy_id"],
           "isUnique": false
         }
       },
@@ -749,12 +677,8 @@
           "name": "package_policies_package_id_packages_id_fk",
           "tableFrom": "package_policies",
           "tableTo": "packages",
-          "columnsFrom": [
-            "package_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["package_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -762,12 +686,8 @@
           "name": "package_policies_policy_id_policies_id_fk",
           "tableFrom": "package_policies",
           "tableTo": "policies",
-          "columnsFrom": [
-            "policy_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["policy_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -775,9 +695,7 @@
       "compositePrimaryKeys": {
         "package_policies_id": {
           "name": "package_policies_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -893,23 +811,17 @@
       "indexes": {
         "packages_type_idx": {
           "name": "packages_type_idx",
-          "columns": [
-            "package_type"
-          ],
+          "columns": ["package_type"],
           "isUnique": false
         },
         "packages_active_idx": {
           "name": "packages_active_idx",
-          "columns": [
-            "is_active"
-          ],
+          "columns": ["is_active"],
           "isUnique": false
         },
         "packages_price_idx": {
           "name": "packages_price_idx",
-          "columns": [
-            "price_tsh"
-          ],
+          "columns": ["price_tsh"],
           "isUnique": false
         }
       },
@@ -917,9 +829,7 @@
       "compositePrimaryKeys": {
         "packages_id": {
           "name": "packages_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1034,30 +944,22 @@
       "indexes": {
         "payments_customer_id_idx": {
           "name": "payments_customer_id_idx",
-          "columns": [
-            "customer_id"
-          ],
+          "columns": ["customer_id"],
           "isUnique": false
         },
         "payments_voucher_id_idx": {
           "name": "payments_voucher_id_idx",
-          "columns": [
-            "voucher_id"
-          ],
+          "columns": ["voucher_id"],
           "isUnique": false
         },
         "payments_status_idx": {
           "name": "payments_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "payments_provider_reference_idx": {
           "name": "payments_provider_reference_idx",
-          "columns": [
-            "provider_reference"
-          ],
+          "columns": ["provider_reference"],
           "isUnique": false
         }
       },
@@ -1066,12 +968,8 @@
           "name": "payments_customer_id_wifi_customers_id_fk",
           "tableFrom": "payments",
           "tableTo": "wifi_customers",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1079,12 +977,8 @@
           "name": "payments_voucher_id_vouchers_id_fk",
           "tableFrom": "payments",
           "tableTo": "vouchers",
-          "columnsFrom": [
-            "voucher_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["voucher_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1092,12 +986,8 @@
           "name": "payments_package_id_packages_id_fk",
           "tableFrom": "payments",
           "tableTo": "packages",
-          "columnsFrom": [
-            "package_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["package_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1105,12 +995,8 @@
           "name": "payments_venue_id_venues_id_fk",
           "tableFrom": "payments",
           "tableTo": "venues",
-          "columnsFrom": [
-            "venue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1118,9 +1004,7 @@
       "compositePrimaryKeys": {
         "payments_id": {
           "name": "payments_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1221,23 +1105,17 @@
       "indexes": {
         "policies_category_idx": {
           "name": "policies_category_idx",
-          "columns": [
-            "category"
-          ],
+          "columns": ["category"],
           "isUnique": false
         },
         "policies_active_idx": {
           "name": "policies_active_idx",
-          "columns": [
-            "is_active"
-          ],
+          "columns": ["is_active"],
           "isUnique": false
         },
         "policies_priority_idx": {
           "name": "policies_priority_idx",
-          "columns": [
-            "priority"
-          ],
+          "columns": ["priority"],
           "isUnique": false
         }
       },
@@ -1245,9 +1123,7 @@
       "compositePrimaryKeys": {
         "policies_id": {
           "name": "policies_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1454,16 +1330,12 @@
       "indexes": {
         "portal_settings_venue_id_unique": {
           "name": "portal_settings_venue_id_unique",
-          "columns": [
-            "venue_id"
-          ],
+          "columns": ["venue_id"],
           "isUnique": true
         },
         "portal_settings_active_idx": {
           "name": "portal_settings_active_idx",
-          "columns": [
-            "is_active"
-          ],
+          "columns": ["is_active"],
           "isUnique": false
         }
       },
@@ -1472,12 +1344,8 @@
           "name": "portal_settings_venue_id_venues_id_fk",
           "tableFrom": "portal_settings",
           "tableTo": "venues",
-          "columnsFrom": [
-            "venue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1485,9 +1353,7 @@
       "compositePrimaryKeys": {
         "portal_settings_id": {
           "name": "portal_settings_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1668,30 +1534,22 @@
       "indexes": {
         "routers_mac_address_unique": {
           "name": "routers_mac_address_unique",
-          "columns": [
-            "mac_address"
-          ],
+          "columns": ["mac_address"],
           "isUnique": true
         },
         "routers_venue_id_idx": {
           "name": "routers_venue_id_idx",
-          "columns": [
-            "venue_id"
-          ],
+          "columns": ["venue_id"],
           "isUnique": false
         },
         "routers_status_idx": {
           "name": "routers_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "routers_ip_address_idx": {
           "name": "routers_ip_address_idx",
-          "columns": [
-            "ip_address"
-          ],
+          "columns": ["ip_address"],
           "isUnique": false
         }
       },
@@ -1700,12 +1558,8 @@
           "name": "routers_venue_id_venues_id_fk",
           "tableFrom": "routers",
           "tableTo": "venues",
-          "columnsFrom": [
-            "venue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1713,9 +1567,7 @@
       "compositePrimaryKeys": {
         "routers_id": {
           "name": "routers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1787,16 +1639,12 @@
       "indexes": {
         "session_usage_samples_session_id_idx": {
           "name": "session_usage_samples_session_id_idx",
-          "columns": [
-            "session_id"
-          ],
+          "columns": ["session_id"],
           "isUnique": false
         },
         "session_usage_samples_sampled_at_idx": {
           "name": "session_usage_samples_sampled_at_idx",
-          "columns": [
-            "sampled_at"
-          ],
+          "columns": ["sampled_at"],
           "isUnique": false
         }
       },
@@ -1805,12 +1653,8 @@
           "name": "session_usage_samples_session_id_wifi_sessions_id_fk",
           "tableFrom": "session_usage_samples",
           "tableTo": "wifi_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1818,9 +1662,7 @@
       "compositePrimaryKeys": {
         "session_usage_samples_id": {
           "name": "session_usage_samples_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1977,23 +1819,17 @@
       "indexes": {
         "venues_operator_id_idx": {
           "name": "venues_operator_id_idx",
-          "columns": [
-            "operator_id"
-          ],
+          "columns": ["operator_id"],
           "isUnique": false
         },
         "venues_city_idx": {
           "name": "venues_city_idx",
-          "columns": [
-            "city"
-          ],
+          "columns": ["city"],
           "isUnique": false
         },
         "venues_status_idx": {
           "name": "venues_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         }
       },
@@ -2002,12 +1838,8 @@
           "name": "venues_operator_id_admin_users_id_fk",
           "tableFrom": "venues",
           "tableTo": "admin_users",
-          "columnsFrom": [
-            "operator_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["operator_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2015,9 +1847,7 @@
       "compositePrimaryKeys": {
         "venues_id": {
           "name": "venues_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2096,23 +1926,17 @@
       "indexes": {
         "voucher_batches_package_id_idx": {
           "name": "voucher_batches_package_id_idx",
-          "columns": [
-            "package_id"
-          ],
+          "columns": ["package_id"],
           "isUnique": false
         },
         "voucher_batches_venue_id_idx": {
           "name": "voucher_batches_venue_id_idx",
-          "columns": [
-            "venue_id"
-          ],
+          "columns": ["venue_id"],
           "isUnique": false
         },
         "voucher_batches_created_by_id_idx": {
           "name": "voucher_batches_created_by_id_idx",
-          "columns": [
-            "created_by_id"
-          ],
+          "columns": ["created_by_id"],
           "isUnique": false
         }
       },
@@ -2121,12 +1945,8 @@
           "name": "voucher_batches_package_id_packages_id_fk",
           "tableFrom": "voucher_batches",
           "tableTo": "packages",
-          "columnsFrom": [
-            "package_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["package_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2134,12 +1954,8 @@
           "name": "voucher_batches_venue_id_venues_id_fk",
           "tableFrom": "voucher_batches",
           "tableTo": "venues",
-          "columnsFrom": [
-            "venue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2147,12 +1963,8 @@
           "name": "voucher_batches_created_by_id_admin_users_id_fk",
           "tableFrom": "voucher_batches",
           "tableTo": "admin_users",
-          "columnsFrom": [
-            "created_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2160,9 +1972,7 @@
       "compositePrimaryKeys": {
         "voucher_batches_id": {
           "name": "voucher_batches_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2291,37 +2101,27 @@
       "indexes": {
         "vouchers_code_unique": {
           "name": "vouchers_code_unique",
-          "columns": [
-            "code"
-          ],
+          "columns": ["code"],
           "isUnique": true
         },
         "vouchers_status_idx": {
           "name": "vouchers_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "vouchers_package_id_idx": {
           "name": "vouchers_package_id_idx",
-          "columns": [
-            "package_id"
-          ],
+          "columns": ["package_id"],
           "isUnique": false
         },
         "vouchers_venue_id_idx": {
           "name": "vouchers_venue_id_idx",
-          "columns": [
-            "venue_id"
-          ],
+          "columns": ["venue_id"],
           "isUnique": false
         },
         "vouchers_assigned_customer_id_idx": {
           "name": "vouchers_assigned_customer_id_idx",
-          "columns": [
-            "assigned_customer_id"
-          ],
+          "columns": ["assigned_customer_id"],
           "isUnique": false
         }
       },
@@ -2330,12 +2130,8 @@
           "name": "vouchers_batch_id_voucher_batches_id_fk",
           "tableFrom": "vouchers",
           "tableTo": "voucher_batches",
-          "columnsFrom": [
-            "batch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["batch_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2343,12 +2139,8 @@
           "name": "vouchers_package_id_packages_id_fk",
           "tableFrom": "vouchers",
           "tableTo": "packages",
-          "columnsFrom": [
-            "package_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["package_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2356,12 +2148,8 @@
           "name": "vouchers_venue_id_venues_id_fk",
           "tableFrom": "vouchers",
           "tableTo": "venues",
-          "columnsFrom": [
-            "venue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2369,12 +2157,8 @@
           "name": "vouchers_assigned_customer_id_wifi_customers_id_fk",
           "tableFrom": "vouchers",
           "tableTo": "wifi_customers",
-          "columnsFrom": [
-            "assigned_customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["assigned_customer_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2382,9 +2166,7 @@
       "compositePrimaryKeys": {
         "vouchers_id": {
           "name": "vouchers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2492,23 +2274,17 @@
       "indexes": {
         "wifi_customers_mac_address_unique": {
           "name": "wifi_customers_mac_address_unique",
-          "columns": [
-            "mac_address"
-          ],
+          "columns": ["mac_address"],
           "isUnique": true
         },
         "wifi_customers_phone_idx": {
           "name": "wifi_customers_phone_idx",
-          "columns": [
-            "phone"
-          ],
+          "columns": ["phone"],
           "isUnique": false
         },
         "wifi_customers_status_idx": {
           "name": "wifi_customers_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         }
       },
@@ -2516,9 +2292,7 @@
       "compositePrimaryKeys": {
         "wifi_customers_id": {
           "name": "wifi_customers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2692,44 +2466,32 @@
       "indexes": {
         "wifi_sessions_customer_id_idx": {
           "name": "wifi_sessions_customer_id_idx",
-          "columns": [
-            "customer_id"
-          ],
+          "columns": ["customer_id"],
           "isUnique": false
         },
         "wifi_sessions_voucher_id_idx": {
           "name": "wifi_sessions_voucher_id_idx",
-          "columns": [
-            "voucher_id"
-          ],
+          "columns": ["voucher_id"],
           "isUnique": false
         },
         "wifi_sessions_router_id_idx": {
           "name": "wifi_sessions_router_id_idx",
-          "columns": [
-            "router_id"
-          ],
+          "columns": ["router_id"],
           "isUnique": false
         },
         "wifi_sessions_status_idx": {
           "name": "wifi_sessions_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "wifi_sessions_started_at_idx": {
           "name": "wifi_sessions_started_at_idx",
-          "columns": [
-            "started_at"
-          ],
+          "columns": ["started_at"],
           "isUnique": false
         },
         "wifi_sessions_mac_address_idx": {
           "name": "wifi_sessions_mac_address_idx",
-          "columns": [
-            "mac_address"
-          ],
+          "columns": ["mac_address"],
           "isUnique": false
         }
       },
@@ -2738,12 +2500,8 @@
           "name": "wifi_sessions_customer_id_wifi_customers_id_fk",
           "tableFrom": "wifi_sessions",
           "tableTo": "wifi_customers",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2751,12 +2509,8 @@
           "name": "wifi_sessions_voucher_id_vouchers_id_fk",
           "tableFrom": "wifi_sessions",
           "tableTo": "vouchers",
-          "columnsFrom": [
-            "voucher_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["voucher_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2764,12 +2518,8 @@
           "name": "wifi_sessions_package_id_packages_id_fk",
           "tableFrom": "wifi_sessions",
           "tableTo": "packages",
-          "columnsFrom": [
-            "package_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["package_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2777,12 +2527,8 @@
           "name": "wifi_sessions_venue_id_venues_id_fk",
           "tableFrom": "wifi_sessions",
           "tableTo": "venues",
-          "columnsFrom": [
-            "venue_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2790,12 +2536,8 @@
           "name": "wifi_sessions_router_id_routers_id_fk",
           "tableFrom": "wifi_sessions",
           "tableTo": "routers",
-          "columnsFrom": [
-            "router_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["router_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2803,9 +2545,7 @@
       "compositePrimaryKeys": {
         "wifi_sessions_id": {
           "name": "wifi_sessions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},

@@ -12,10 +12,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { routers } from "../../db/schema.js";
-import { RouterError } from "../mikrotik-errors.js";
 import { closeConnection, connectToRouter, type MikroTikConn } from "../mikrotik.js";
+import { RouterError } from "../mikrotik-errors.js";
 import { getRouterCredentials } from "../router-credentials.js";
-import { RouterLogger, type RouterLogEvent } from "../router-log.js";
+import { type RouterLogEvent, RouterLogger } from "../router-log.js";
 import { buildContext, type ProvisionContext } from "./context.js";
 import { dialectFor } from "./dialect.js";
 import { probeRouterMerged, type RouterProfile } from "./probe.js";
@@ -278,5 +278,5 @@ export async function provisionRouter(
   return report;
 }
 
-export { probeRouter } from "./probe.js";
 export type { RouterProfile } from "./probe.js";
+export { probeRouter } from "./probe.js";

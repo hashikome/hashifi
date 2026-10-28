@@ -1,11 +1,28 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import {
+  Building2,
+  Calendar,
+  Eye,
+  Loader,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
+  RefreshCw,
+  Router,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { ErrorState } from "@/components/error-state";
+import { TableDeleteButton, TableEditButton } from "@/components/table-action-buttons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -13,107 +30,91 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ConfirmModal } from "@/components/confirm-modal"
-import type { Venue } from "@/lib/types"
-import { formatDate } from "@/lib/utils"
-import {
-  Building2,
-  Plus,
-  Router,
-  RefreshCw,
-  Loader,
-  Eye,
-  MapPin,
-  Phone,
-  Mail,
-  Calendar,
-} from "lucide-react"
-import { VenueLocationSummary } from "@/components/venue-location-summary"
-import { TableEditButton, TableDeleteButton } from "@/components/table-action-buttons"
-import { toast } from "sonner"
-import { ErrorState } from "@/components/error-state"
-import { useAuth } from "@/lib/auth-context"
-import { statusPill } from "@/lib/status-pill"
+} from "@/components/ui/table";
+import { VenueLocationSummary } from "@/components/venue-location-summary";
+import { useAuth } from "@/lib/auth-context";
+import { errorMessage } from "@/lib/errors";
+import { statusPill } from "@/lib/status-pill";
+import type { Venue } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function getStatusColor(status: Venue["status"]) {
   switch (status) {
     case "active":
-      return statusPill.success
+      return statusPill.success;
     case "maintenance":
-      return statusPill.warning
+      return statusPill.warning;
     default:
-      return statusPill.neutral
+      return statusPill.neutral;
   }
 }
 
 function venueLocationLine(venue: Venue): string {
-  return [venue.city, venue.region, venue.country].filter(Boolean).join(", ")
+  return [venue.city, venue.region, venue.country].filter(Boolean).join(", ");
 }
 
 export default function VenuesPage() {
-  const router = useRouter()
-  const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
-  const [venues, setVenues] = useState<Venue[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [venueToDelete, setVenueToDelete] = useState<string | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
+  const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [venueToDelete, setVenueToDelete] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
 
-  const fetchVenues = async () => {
-    setIsLoading(true)
-    setLoadError(null)
+  const fetchVenues = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
     try {
-      const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" })
-      if (!res.ok) throw new Error("Failed to fetch venues")
-      const data = await res.json()
-      setVenues(data.venues)
+      const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch venues");
+      const data = await res.json();
+      setVenues(data.venues);
     } catch {
       // Recorded, not just toasted — otherwise the empty state below claims there are no
       // venues when the request simply failed.
-      setLoadError("The venue list could not be loaded. Check your connection and try again.")
-      toast.error("Failed to load venues")
+      setLoadError("The venue list could not be loaded. Check your connection and try again.");
+      toast.error("Failed to load venues");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    fetchVenues()
-  }, [])
+    fetchVenues();
+  }, [fetchVenues]);
 
   const handleDeleteConfirm = async () => {
-    if (!venueToDelete) return
-    setIsDeleting(true)
+    if (!venueToDelete) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`${API_URL}/api/venues/${venueToDelete}`, {
         method: "DELETE",
         credentials: "include",
-      })
+      });
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to delete venue")
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete venue");
       }
-      setVenues((prev) => prev.filter((v) => v.id !== venueToDelete))
-      toast.success("Venue deleted successfully")
-      router.push("/admin/venues")
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete venue")
+      setVenues((prev) => prev.filter((v) => v.id !== venueToDelete));
+      toast.success("Venue deleted successfully");
+      router.push("/admin/venues");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to delete venue"));
     } finally {
-      setIsDeleting(false)
-      setVenueToDelete(null)
+      setIsDeleting(false);
+      setVenueToDelete(null);
     }
-  }
+  };
 
-  const totalVenues = venues.length
-  const activeVenues = venues.filter((v) => v.status === "active").length
-  const maintenanceVenues = venues.filter((v) => v.status === "maintenance").length
-  const inactiveVenues = venues.filter((v) => v.status === "inactive").length
+  const totalVenues = venues.length;
+  const activeVenues = venues.filter((v) => v.status === "active").length;
+  const maintenanceVenues = venues.filter((v) => v.status === "maintenance").length;
+  const inactiveVenues = venues.filter((v) => v.status === "inactive").length;
 
   return (
     <div className="space-y-6">
@@ -213,11 +214,7 @@ export default function VenuesPage() {
               {loadError ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    <ErrorState
-                      message={loadError}
-                      onRetry={fetchVenues}
-                      isRetrying={isLoading}
-                    />
+                    <ErrorState message={loadError} onRetry={fetchVenues} isRetrying={isLoading} />
                   </TableCell>
                 </TableRow>
               ) : venues.length === 0 && !isLoading ? (
@@ -302,7 +299,7 @@ export default function VenuesPage() {
       <Dialog
         open={!!selectedVenue}
         onOpenChange={(open) => {
-          if (!open) setSelectedVenue(null)
+          if (!open) setSelectedVenue(null);
         }}
       >
         <DialogContent className="max-w-md">
@@ -379,8 +376,8 @@ export default function VenuesPage() {
                     variant="destructive"
                     size="sm"
                     onClick={() => {
-                      setVenueToDelete(selectedVenue.id)
-                      setSelectedVenue(null)
+                      setVenueToDelete(selectedVenue.id);
+                      setSelectedVenue(null);
                     }}
                   >
                     Delete
@@ -395,7 +392,7 @@ export default function VenuesPage() {
       <ConfirmModal
         isOpen={!!venueToDelete}
         onClose={() => {
-          if (!isDeleting) setVenueToDelete(null)
+          if (!isDeleting) setVenueToDelete(null);
         }}
         onConfirm={handleDeleteConfirm}
         title="Delete Venue?"
@@ -414,5 +411,5 @@ export default function VenuesPage() {
         isLoading={isDeleting}
       />
     </div>
-  )
+  );
 }

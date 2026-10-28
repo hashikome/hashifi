@@ -1,65 +1,62 @@
-"use client"
+"use client";
 
-import { useCallback, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, CheckCircle2, Loader, PlugZap } from "lucide-react"
-import {
-  ReadinessChecklist,
-  type ReadinessReport,
-} from "@/components/readiness-checklist"
+import { AlertTriangle, CheckCircle2, Loader, PlugZap } from "lucide-react";
+import { useCallback, useState } from "react";
+import { ReadinessChecklist, type ReadinessReport } from "@/components/readiness-checklist";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export interface RouterInterfaceInfo {
-  name: string
-  type: string
-  running: boolean
-  disabled: boolean
-  isRadio: boolean
-  addresses: string[]
+  name: string;
+  type: string;
+  running: boolean;
+  disabled: boolean;
+  isRadio: boolean;
+  addresses: string[];
 }
 
 export interface RouterTestValues {
   /** Set on the edit form so a blank password means "use the stored one". */
-  routerId?: string
-  ipAddress: string
-  apiUsername: string
-  apiPassword: string
-  hotspotInterface: string
-  ssid: string
-  networkRange: string
-  hotspotGatewayIp: string
-  hotspotName: string
+  routerId?: string;
+  ipAddress: string;
+  apiUsername: string;
+  apiPassword: string;
+  hotspotInterface: string;
+  ssid: string;
+  networkRange: string;
+  hotspotGatewayIp: string;
+  hotspotName: string;
 }
 
 interface HotspotPlan {
-  interface: string
-  interfaceIsRadio: boolean
-  ssid: string | null
-  network: string
-  gatewayIp: string
-  poolRange: string
-  serverName: string
+  interface: string;
+  interfaceIsRadio: boolean;
+  ssid: string | null;
+  network: string;
+  gatewayIp: string;
+  poolRange: string;
+  serverName: string;
 }
 
 interface TestResult {
-  ok: boolean
-  error?: string
-  hint?: string
+  ok: boolean;
+  error?: string;
+  hint?: string;
   board?: {
-    name: string | null
-    identity: string | null
-    rosVersion: string
-    architecture: string | null
-  }
-  wirelessStack?: string
-  compatibility?: { ok: boolean; reasons: string[]; warnings: string[] }
-  interfaces?: RouterInterfaceInfo[]
-  plan?: HotspotPlan | null
-  readiness?: ReadinessReport | null
-  planError?: string | null
-  backendError?: string | null
+    name: string | null;
+    identity: string | null;
+    rosVersion: string;
+    architecture: string | null;
+  };
+  wirelessStack?: string;
+  compatibility?: { ok: boolean; reasons: string[]; warnings: string[] };
+  interfaces?: RouterInterfaceInfo[];
+  plan?: HotspotPlan | null;
+  readiness?: ReadinessReport | null;
+  planError?: string | null;
+  backendError?: string | null;
 }
 
 /**
@@ -73,56 +70,52 @@ export function RouterConnectionTest({
   values,
   onInterfacesFound,
 }: {
-  values: RouterTestValues
-  onInterfacesFound?: (interfaces: RouterInterfaceInfo[]) => void
+  values: RouterTestValues;
+  onInterfacesFound?: (interfaces: RouterInterfaceInfo[]) => void;
 }) {
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<TestResult | null>(null)
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<TestResult | null>(null);
 
   const canTest =
     values.ipAddress.trim() !== "" &&
     (values.routerId
       ? values.apiUsername.trim() !== "" || values.apiPassword !== ""
-      : values.apiUsername.trim() !== "" && values.apiPassword !== "")
+      : values.apiUsername.trim() !== "" && values.apiPassword !== "");
 
   const runTest = useCallback(async () => {
-    setBusy(true)
-    setResult(null)
+    setBusy(true);
+    setResult(null);
     try {
       const res = await fetch(`${API_URL}/api/routers/test-connection`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(values),
-      })
-      const data = await res.json()
+      });
+      const data = await res.json();
       if (!res.ok) {
-        setResult({ ok: false, error: data.error || "Could not test the connection" })
-        return
+        setResult({ ok: false, error: data.error || "Could not test the connection" });
+        return;
       }
-      setResult(data)
-      if (data.ok && data.interfaces) onInterfacesFound?.(data.interfaces)
+      setResult(data);
+      if (data.ok && data.interfaces) onInterfacesFound?.(data.interfaces);
     } catch {
       setResult({
         ok: false,
         error: "Could not reach the billing backend to run the test.",
-      })
+      });
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }, [values, onInterfacesFound])
+  }, [values, onInterfacesFound]);
 
-  const compat = result?.compatibility
+  const compat = result?.compatibility;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant="outline" onClick={runTest} disabled={busy || !canTest}>
-          {busy ? (
-            <Loader className="size-4 animate-spin" />
-          ) : (
-            <PlugZap className="size-4" />
-          )}
+          {busy ? <Loader className="size-4 animate-spin" /> : <PlugZap className="size-4" />}
           Test connection
         </Button>
         <p className="text-xs text-muted-foreground">
@@ -213,7 +206,7 @@ export function RouterConnectionTest({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -225,11 +218,11 @@ export function HotspotInterfacePicker({
   value,
   onChange,
 }: {
-  interfaces: RouterInterfaceInfo[]
-  value: string
-  onChange: (name: string) => void
+  interfaces: RouterInterfaceInfo[];
+  value: string;
+  onChange: (name: string) => void;
 }) {
-  if (interfaces.length === 0) return null
+  if (interfaces.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-1.5 pt-1">
@@ -265,5 +258,5 @@ export function HotspotInterfacePicker({
         </button>
       ))}
     </div>
-  )
+  );
 }

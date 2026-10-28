@@ -1,8 +1,7 @@
-import "dotenv/config";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import mysql from "mysql2/promise";
 import { readMigrationFiles } from "drizzle-orm/migrator";
+import mysql from "mysql2/promise";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.resolve(__dirname, "../../drizzle");

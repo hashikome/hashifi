@@ -1,11 +1,10 @@
-import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
-import { migrate } from "drizzle-orm/mysql2/migrator";
 import { readMigrationFiles } from "drizzle-orm/migrator";
+import { drizzle } from "drizzle-orm/mysql2";
+import { migrate } from "drizzle-orm/mysql2/migrator";
+import mysql from "mysql2/promise";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.resolve(__dirname, "../../drizzle");
@@ -66,7 +65,7 @@ function syncJournalWithFolder(): string[] {
     });
   }
 
-  fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2) + "\n");
+  fs.writeFileSync(journalPath, `${JSON.stringify(journal, null, 2)}\n`);
   return unjournalled;
 }
 
@@ -104,7 +103,7 @@ async function baselineExistingSchema(connection: mysql.Connection) {
   const initial = migrations[0];
   console.log(
     "Detected existing schema without migration history — baselining",
-    initial.hash.slice(0, 12) + "...",
+    `${initial.hash.slice(0, 12)}...`,
   );
 
   await connection.query("INSERT INTO __drizzle_migrations (`hash`, `created_at`) VALUES (?, ?)", [
