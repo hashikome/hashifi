@@ -95,25 +95,37 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     and per-person limits, suspension, refused library routes, authenticator enrollment and
     the two-step sign-in, trust-device refused); the trust-device test was seen to fail with
     the protection removed.
-  - [ ] Routes, each behind the role and venue guard, starting with venues. Its acceptance:
-    no session 401; an unenrolled admin 403 `TWO_FACTOR_ENROLLMENT_REQUIRED`; a manager
-    reading another venue 404; a controller without decorators is protected (default deny).
-    Decided for this step:
-    - HTTP wide events are Express middleware ahead of the auth middleware, not a Nest
-      interceptor: guards run before interceptors, so 401s, 403s and every `/api/auth`
-      answer (429s included) would otherwise have no event.
+  - [x] (2026-10-29) The HTTP foundation and the first scoped module, venues. One error shape,
+    `ApiError` (`{ code, message, details }`), from `ErrorEnvelopeFilter`; bodies parsed by
+    `parseInput` with field-by-field `VALIDATION_FAILED`; non-UUID ids are not found. One wide
+    event per request from Express middleware ahead of everything (route pattern, status,
+    `staff.id`, never path values or query strings), so the guard's and sign-in's refusals
+    are recorded. Cookie-carrying writes from any origin but the web's get 403
+    `ORIGIN_NOT_ALLOWED`. `trust proxy` follows `TRUSTED_PROXIES` for audit addresses.
+    `venueScope` limits managers to the venues they operate; outside it is 404. Venues:
+    list with router counts, read, and admin-only create, update and delete, each audited; the
+    API enforces what the form pre-checks (region, city and country required), refuses control
+    characters, lower-cases the contact email, and requires the operator to be an active
+    manager. A venue with routers cannot be deleted (409 `VENUE_HAS_ROUTERS`); the purchased
+    code cascaded, deleting running routers' records and tunnel keys.
+    Acceptance: `venues.integration.test.ts` (401 without a session; 403
+    `TWO_FACTOR_ENROLLMENT_REQUIRED` for an unenrolled admin; a manager sees only their
+    venues, gets 404 for another's and 403 on writes; validation; the delete rule; a
+    foreign-origin form post and an origin-less write refused) and
+    `http-events.integration.test.ts` (events for a 401, a sign-in route and a scoped 404,
+    with no id or query value in them).
+  - [ ] The remaining routes, each through `venueScope` and the guard: routers, packages,
+    vouchers, customers (devices), sessions, analytics, revenue, portal settings, team, audit.
+    Still to apply as they land:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
       their own checks; the router sim's guest test runs once they are ported.
-    - Cookie-authenticated writes (POST, PUT, PATCH, DELETE) require an `Origin` in the
-      trusted origins: Better Auth checks only its own routes, and a urlencoded form post
-      from a sibling subdomain needs no preflight. Tested with a foreign-origin form post.
     - The live-view gateway authenticates the upgrade request itself (session cookie, active
       staff); guards do not run on connect, and the global guard must branch on
       `context.getType()` if it runs on gateway messages.
     - The web reads sign-in state from `/api/me`, not `get-session` (which still answers for
       someone suspended after signing in). The Team page deletes a suspended person's
       sessions, and resets a lost authenticator with a server-side admin action.
-    Then the error envelope, uploads and the remaining modules.
+    - Uploads, and the web's client module on `@hashifi/types`.
 - [ ] M5 Captive portal in the web, and the security pass.
 - [ ] M6 Mobile-money payments (Snippe) and customers.
 - [ ] M7 Release pipeline and deployment.
@@ -231,6 +243,11 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   code creation, with the library's own answer.
   Evidence: `sign-in.integration.test.ts` ("requests beyond the budget do not void the last
   code sent"), failing before the fix.
+- Observation: concurrent tunnel allocations all chose the same lowest free address and
+  retried on the unique index; twenty at once exhausted the five retries (the eight-router
+  test failed now and then). Allocation now takes a PostgreSQL transaction lock.
+  Evidence: `tunnel-allocator.integration.test.ts` with 20 routers fails on the previous
+  allocator, passes on the new one.
 - Observation: Prisma queries are lazy thenables, which `expect(...).rejects` does not accept;
   the integration tests await them through a helper.
 - Observation: from the Pigfarm session (2026-10-29), for when HashiFi adds BullMQ: BullMQ

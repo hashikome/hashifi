@@ -138,3 +138,50 @@ export interface SignedInStaff {
    */
   twoFactorEnrollmentRequired: boolean;
 }
+
+/** Every error the API answers with (Better Auth's `/api/auth` routes keep their own shape). */
+export interface ApiError {
+  /** Stable and machine-readable, such as `VALIDATION_FAILED` or `NOT_FOUND`. */
+  code: string;
+  message: string;
+  /** Field problems for `VALIDATION_FAILED`, keyed by field path; otherwise null. */
+  details: Record<string, string> | null;
+}
+
+export type VenueStatus = "active" | "inactive" | "maintenance";
+
+export interface VenueRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  address: string | null;
+  road: string | null;
+  street: string | null;
+  ward: string | null;
+  district: string | null;
+  city: string;
+  region: string | null;
+  country: string;
+  postalCode: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  /** Decimal degrees, as strings. */
+  latitude: DecimalString | null;
+  longitude: DecimalString | null;
+  /** The manager who runs it. */
+  operatorId: string | null;
+  status: VenueStatus;
+  routerCount: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+/** `GET /api/venues`. */
+export interface VenueList {
+  venues: VenueRecord[];
+}
+
+/** `GET`, `POST` and `PATCH /api/venues/:id`. */
+export interface VenueResponse {
+  venue: VenueRecord;
+}

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Venues through the NestJS API: managers see only the venues they operate (another's is not
+  found), admins manage them, every change is audited, and a venue with routers cannot be
+  deleted. Every error has one shape (`code`, `message`, `details`); every request is a wide
+  event, refusals included; signed-in writes from other sites are refused.
+- Fixed: many routers onboarding at once could fail to get a tunnel address.
+
 - Staff sign in with an email code through Better Auth; admins must also use an authenticator
   app, asked for at every sign-in. No sign-up (`bun run staff:add` adds people); one answer
   whether or not an email is staff; rate limits per client address and per person; codes

@@ -31,7 +31,10 @@ surface:
 ## Boundary validation
 
 Every request body, query and external callback is validated at the API boundary before it
-reaches domain logic. Webhooks are verified by signature.
+reaches domain logic. Webhooks are verified by signature. A write carrying a session cookie
+is refused unless it comes from the web's own origin, since a cross-site form post needs no
+CORS preflight. Errors say what went wrong for the caller, never why internally: an
+unexpected failure is a plain 500, reported to Sentry.
 
 ## Personal data
 

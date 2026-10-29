@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { addStaff } from "../../src/staff/add-staff.js";
-import { Client, totp, useApi } from "./api.js";
+import {
+  Client,
+  enrollAuthenticatorFor,
+  requestSignInCode,
+  signInWithCode,
+  totp,
+  useApi,
+} from "./api.js";
 import { useTestDatabase } from "./harness.js";
 
 const t = useTestDatabase();
@@ -13,30 +20,9 @@ function client(): Client {
   return new Client(() => api.url, `203.0.113.${nextIp % 250}`);
 }
 
-async function requestCode(c: Client, email: string) {
-  return c.request("POST", "/api/auth/email-otp/send-verification-otp", { email, type: "sign-in" });
-}
-
-async function signIn(c: Client, email: string) {
-  const before = api.email.sent.length;
-  expect((await requestCode(c, email)).status).toBe(200);
-  const otp = await api.email.codeFor(email, before);
-  return c.request("POST", "/api/auth/sign-in/email-otp", { email, otp });
-}
-
-/** Signs an admin in and sets up their authenticator app; returns its otpauth URI. */
-async function enrollAuthenticator(c: Client, email: string): Promise<string> {
-  expect((await signIn(c, email)).status).toBe(200);
-  const enabled = await c.request("POST", "/api/auth/two-factor/enable", {});
-  expect(enabled.status).toBe(200);
-  const { totpURI, backupCodes } = enabled.body as { totpURI: string; backupCodes: string[] };
-  expect(backupCodes.length).toBeGreaterThan(0);
-  const verified = await c.request("POST", "/api/auth/two-factor/verify-totp", {
-    code: totp(totpURI),
-  });
-  expect(verified.status).toBe(200);
-  return totpURI;
-}
+const requestCode = (c: Client, email: string) => requestSignInCode(c, email);
+const signIn = (c: Client, email: string) => signInWithCode(api, c, email);
+const enrollAuthenticator = (c: Client, email: string) => enrollAuthenticatorFor(api, c, email);
 
 describe("sign-in", () => {
   test("an email code signs active staff in", async () => {

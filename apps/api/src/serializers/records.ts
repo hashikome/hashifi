@@ -1,5 +1,10 @@
-import type { PackageRecord, PortalSettingsRecord, VoucherRecord } from "@hashifi/types";
-import type { Package, PortalSetting, Voucher } from "../generated/prisma/client.js";
+import type {
+  PackageRecord,
+  PortalSettingsRecord,
+  VenueRecord,
+  VoucherRecord,
+} from "@hashifi/types";
+import type { Package, PortalSetting, Venue, Voucher } from "../generated/prisma/client.js";
 
 /**
  * The only place database rows become API records (`@hashifi/types`): decimals as strings,
@@ -82,6 +87,32 @@ export function portalSettingsRecord(row: PortalSetting): PortalSettingsRecord {
     ticketFooter: row.ticketFooter,
     requireTerms: row.requireTerms,
     isActive: row.isActive,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+export function venueRecord(row: Venue, routerCount: number): VenueRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    address: row.address,
+    road: row.road,
+    street: row.street,
+    ward: row.ward,
+    district: row.district,
+    city: row.city,
+    region: row.region,
+    country: row.country,
+    postalCode: row.postalCode,
+    contactPhone: row.contactPhone,
+    contactEmail: row.contactEmail,
+    latitude: row.latitude?.toString() ?? null,
+    longitude: row.longitude?.toString() ?? null,
+    operatorId: row.operatorId,
+    status: row.status,
+    routerCount,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };

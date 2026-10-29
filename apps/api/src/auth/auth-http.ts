@@ -1,5 +1,6 @@
 import { toNodeHandler } from "better-auth/node";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
+import { apiError } from "../http/error-envelope.js";
 import { AUTH_BASE_PATH, type Auth } from "./create-auth.js";
 
 /**
@@ -28,7 +29,7 @@ export function authHttpMiddleware(auth: Auth): RequestHandler {
     }
     const route = `${request.method} ${path.slice(AUTH_BASE_PATH.length)}`;
     if (!ALLOWED.has(route)) {
-      response.status(404).json({ code: "NOT_FOUND", message: "Not found." });
+      response.status(404).json(apiError("NOT_FOUND", "Not found."));
       return;
     }
     void handler(request, response);

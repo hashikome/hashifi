@@ -6,6 +6,7 @@ import { DatabaseModule } from "./database/database.module.js";
 import type { EmailSender } from "./email/email-sender.js";
 import { HealthController } from "./health/health.controller.js";
 import { RoutersModule } from "./routers/routers.module.js";
+import { VenuesModule } from "./venues/venues.module.js";
 
 @Module({})
 export class AppModule {}
@@ -13,7 +14,7 @@ export class AppModule {}
 export function appModule(config: AppConfig, email: EmailSender | null): DynamicModule {
   return {
     module: AppModule,
-    imports: [configModule(config, email), DatabaseModule, AuthModule, RoutersModule],
+    imports: [configModule(config, email), DatabaseModule, AuthModule, RoutersModule, VenuesModule],
     controllers: [HealthController],
   };
 }

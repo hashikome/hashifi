@@ -98,6 +98,14 @@ export function currentWideEvent(): WideEvent | null {
   return storage.getStore() ?? null;
 }
 
+/**
+ * Runs `work` with `event` as the current wide event, for work that ends later than `work`
+ * returns (an HTTP request ends when its response finishes). The caller ends the event.
+ */
+export function runInWideEvent(event: WideEvent, work: () => void): void {
+  storage.run(event, work);
+}
+
 /** Adds fields to the current wide event, if there is one. */
 export function enrichWideEvent(fields: WideEventFields): void {
   storage.getStore()?.set(fields);

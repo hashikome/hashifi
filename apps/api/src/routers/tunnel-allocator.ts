@@ -17,12 +17,13 @@ export interface RouterTunnel {
   routerPrivateKey: string;
 }
 
-const MAX_ATTEMPTS = 5;
+/** The PostgreSQL advisory lock that serialises tunnel allocations (any fixed number). */
+const ALLOCATION_LOCK = 880_001;
 
 /**
  * Gives each router a tunnel address and key pair, once. The private key is stored sealed so
  * the bootstrap script can be regenerated without orphaning the key already pasted on the
- * router; the address is unique per router, and the unique index settles concurrent allocations.
+ * router; the address is unique per router.
  */
 export class TunnelAllocator {
   private readonly base: number;
@@ -50,10 +51,15 @@ export class TunnelAllocator {
     return intToIpv4(this.base + 1);
   }
 
-  /** The router's tunnel, allocating it on first use. */
+  /**
+   * The router's tunnel, allocating it on first use. Allocations take a transaction lock, so
+   * concurrent ones queue instead of all choosing the same lowest free address; the unique
+   * index on the address remains the guarantee.
+   */
   async allocate(routerId: string): Promise<RouterTunnel> {
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const router = await this.db.router.findUniqueOrThrow({ where: { id: routerId } });
+    return this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(${ALLOCATION_LOCK})`;
+      const router = await tx.router.findUniqueOrThrow({ where: { id: routerId } });
       if (router.tunnelAddress && router.tunnelPublicKey && router.tunnelPrivateKeyEncrypted) {
         return {
           routerAddress: router.tunnelAddress,
@@ -62,36 +68,24 @@ export class TunnelAllocator {
           routerPrivateKey: this.box.open(router.tunnelPrivateKeyEncrypted),
         };
       }
-      const address = await this.nextFreeAddress();
+      const address = await this.nextFreeAddress(tx);
       const keys = generateWireguardKeyPair();
-      try {
-        // Only claims a router that still has no tunnel, so two concurrent calls cannot both
-        // assign it one.
-        const claimed = await this.db.router.updateMany({
-          where: { id: routerId, tunnelAddress: null },
-          data: {
-            tunnelAddress: address,
-            tunnelPublicKey: keys.publicKey,
-            tunnelPrivateKeyEncrypted: this.box.seal(keys.privateKey),
-          },
-        });
-        if (claimed.count === 1) {
-          return { routerAddress: address, prefix: this.prefix, ...routerKeys(keys) };
-        }
-      } catch (error) {
-        // Another router took this address first: pick again.
-        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
-          throw error;
-        }
-      }
-    }
-    throw new Error("Could not allocate a tunnel address after several attempts");
+      await tx.router.update({
+        where: { id: routerId },
+        data: {
+          tunnelAddress: address,
+          tunnelPublicKey: keys.publicKey,
+          tunnelPrivateKeyEncrypted: this.box.seal(keys.privateKey),
+        },
+      });
+      return { routerAddress: address, prefix: this.prefix, ...routerKeys(keys) };
+    });
   }
 
-  private async nextFreeAddress(): Promise<string> {
+  private async nextFreeAddress(tx: Prisma.TransactionClient): Promise<string> {
     const taken = new Set(
       (
-        await this.db.router.findMany({
+        await tx.router.findMany({
           where: { tunnelAddress: { not: null } },
           select: { tunnelAddress: true },
         })

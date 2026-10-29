@@ -45,9 +45,9 @@ describe("tunnel allocation", () => {
 
   test("concurrent allocations never share an address", async () => {
     const allocator = new TunnelAllocator(t.db, box, { network: "10.88.0.0/16" });
-    const ids = await routers(8);
+    const ids = await routers(20);
     const tunnels = await Promise.all(ids.map((id) => allocator.allocate(id)));
-    expect(new Set(tunnels.map((x) => x.routerAddress)).size).toBe(8);
+    expect(new Set(tunnels.map((x) => x.routerAddress)).size).toBe(20);
   });
 
   test("a full network says so", async () => {

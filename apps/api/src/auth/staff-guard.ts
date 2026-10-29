@@ -13,6 +13,7 @@ import { Reflector } from "@nestjs/core";
 import { fromNodeHeaders } from "better-auth/node";
 import type { Request } from "express";
 import { PrismaService } from "../database/prisma.service.js";
+import { apiError } from "../http/error-envelope.js";
 import { enrichWideEvent } from "../observability/wide-event.js";
 import { type Auth, BETTER_AUTH } from "./create-auth.js";
 
@@ -38,10 +39,12 @@ export const AllowBeforeTwoFactor = () => SetMetadata(BEFORE_TWO_FACTOR, true);
 
 type StaffRequest = Request & { staff?: StaffPrincipal };
 
+const SIGN_IN_REQUIRED = apiError("SIGN_IN_REQUIRED", "Sign in to continue.");
+
 export const CurrentStaff = createParamDecorator(
   (_: unknown, context: ExecutionContext): StaffPrincipal => {
     const staff = context.switchToHttp().getRequest<StaffRequest>().staff;
-    if (!staff) throw new UnauthorizedException({ code: "SIGN_IN_REQUIRED" });
+    if (!staff) throw new UnauthorizedException(SIGN_IN_REQUIRED);
     return staff;
   },
 );
@@ -65,10 +68,10 @@ export class StaffGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<StaffRequest>();
     const session = await this.auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
-    if (!session) throw new UnauthorizedException({ code: "SIGN_IN_REQUIRED" });
+    if (!session) throw new UnauthorizedException(SIGN_IN_REQUIRED);
     const staff = await this.db.staff.findUnique({ where: { id: session.user.id } });
     if (staff?.status !== "active") {
-      throw new UnauthorizedException({ code: "SIGN_IN_REQUIRED" });
+      throw new UnauthorizedException(SIGN_IN_REQUIRED);
     }
     const principal: StaffPrincipal = {
       id: staff.id,
@@ -84,11 +87,13 @@ export class StaffGuard implements CanActivate {
       requiresEnrollment(principal) &&
       this.reflector.getAllAndOverride<boolean>(BEFORE_TWO_FACTOR, targets) !== true
     ) {
-      throw new ForbiddenException({ code: "TWO_FACTOR_ENROLLMENT_REQUIRED" });
+      throw new ForbiddenException(
+        apiError("TWO_FACTOR_ENROLLMENT_REQUIRED", "Set up an authenticator app to continue."),
+      );
     }
     const roles = this.reflector.getAllAndOverride<StaffRole[] | null>(ROLES, targets) ?? null;
     if (roles !== null && !roles.includes(principal.role)) {
-      throw new ForbiddenException({ code: "FORBIDDEN" });
+      throw new ForbiddenException(apiError("FORBIDDEN", "You do not have access to this."));
     }
     return true;
   }
