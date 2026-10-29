@@ -149,6 +149,10 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   with its reason recorded.
   Rationale: [ADR-0002](../../engineering-decisions/0002-toolchain.md), as the other products.
   Date/Author: 2026-10-28 / Paul
+- Decision: wide-event logging with LogTape and Sentry, as in Pigfarm and ntumie., built in M4.
+  Rationale: [ADR-0002](../../engineering-decisions/0002-toolchain.md); the router provisioning
+  code's own `RouterLogger` transcript becomes the provisioning job's wide event.
+  Date/Author: 2026-10-29 / Paul
 - Decision: no `any` or `undefined` in types; absence is `null`.
   Rationale: [ADR-0004](../../engineering-decisions/0004-types-without-any-or-undefined.md).
   Date/Author: 2026-10-28 / Paul
@@ -245,7 +249,10 @@ stale hand-written copy) is deleted; raw `fetch` moves into one client module. `
 (`Record<string, string | undefined>`) becomes a `null`-returning accessor at the RouterOS
 boundary (ADR-0004). Email moves to Resend. Sign-in is not ported: it comes from the shared
 identity service (ADR-0005); the vendor's OTP login, sessions and mailer templates for account
-events are removed with the Express app. The lint override in `biome.json` is removed. Snippe
+events are removed with the Express app. The lint override in `biome.json` is removed. Observability (ADR-0002): LogTape and Sentry
+initialised from an entrypoint before the app, one wide event per HTTP request and per job
+(provisioning, router sync, expiry, reconciliation), redacting voucher codes, credentials,
+phone numbers and MACs; the vendor's `console.log` calls go. Snippe
 routes and the webhook are left out (backlog). The vendor's onboarding knowledge files move
 to `docs/runbooks/`.
 

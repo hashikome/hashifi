@@ -54,6 +54,8 @@ M4 NestJS): read the plan before changing anything under `apps/`.
   `apps/web/node_modules/next/dist/docs/`; framework APIs change between releases.
 - Biome formats and lints code and configuration (`bun run check`); it does not reformat
   Markdown.
+- Observability: LogTape and Sentry, one wide event per request and per job, PII-minimized
+  (ADR-0002); no `console.log` in application code once M4 lands.
 - Email through Resend. Queues, where needed, are BullMQ on Redis with PostgreSQL
   authoritative.
 - Sign-in comes from the shared Hashikome identity service

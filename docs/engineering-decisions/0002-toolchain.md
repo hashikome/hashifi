@@ -1,6 +1,6 @@
 # ADR-0002: Bun workspaces, NestJS, Prisma and PostgreSQL
 
-Status: accepted, 28 October 2026; widened the same day with email delivery and the queue.
+Status: accepted, 28 October 2026; widened the same day with email delivery and the queue, and on 29 October with observability.
 
 ## Context
 
@@ -23,6 +23,13 @@ Prisma and PostgreSQL, and the shared platform provides PostgreSQL 18.
 - **Prisma** with the shared platform's **PostgreSQL 18**.
 - **Biome** formats and lints (code and configuration; Markdown is not reformatted).
 - **Resend** delivers email, replacing the purchased code's SMTP mailer.
+- **Observability as in Pigfarm and ntumie.: LogTape for structured logging and Sentry for
+  errors, traces and correlated logs**, with one wide event per request and per background
+  job (provisioning runs, router sync, expiry and reconciliation passes), carrying an
+  allowlisted, PII-minimized context. Telemetry initialises before the application, from its
+  own entrypoint (ntumie.'s `instrumentation.ts`/`entrypoint.ts`). Pigfarm's
+  `docs/designs/observability.md` is the reference for the event contract. Voucher codes,
+  router credentials, phone numbers and MAC addresses never reach telemetry unredacted.
 - **BullMQ on Redis** when work needs a queue, as in Pigfarm: PostgreSQL stays authoritative and
   the queue dispatches. A better tool for a specific job may be chosen with its reason recorded.
 - Versions start on the newest stable releases that work together and are pinned exactly.
