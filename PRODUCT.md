@@ -33,7 +33,10 @@ Paul's home is the first venue.
 - **Nobody has to ask.** Self-service purchase on the portal is the default way in; it works at
   any hour without the owner or a venue's staff acting for the guest.
 - **Cash still works.** Printed vouchers sold for cash are a first-class way in for guests who
-  will not use a mobile wallet. Both ways end in the same voucher on the router.
+  will not use a mobile wallet.
+- **Every way in is one mechanism and is recorded.** Self-service, an assisted sale and a
+  pre-printed card all end in a voucher the router confirms, and every one is counted as a sale
+  at its venue. Which one fits is a venue's choice, not the product's.
 - **Access follows the router, not the database.** HashiFi reports access granted only
   after the router confirms it.
 - **The voucher is the guest's identity.** MAC addresses are a soft device signal:
@@ -67,7 +70,8 @@ the API and the router.
 ### 4.4 Captive portal
 
 A guest on a venue's WiFi sees that venue's branded portal and either buys a package with
-mobile money (4.7) or enters or scans a printed voucher, and is online once the router confirms. A returning device with an active voucher reconnects
+mobile money (4.7), is logged straight in, or enters or scans a voucher they were given or sent,
+and is online once the router confirms. A returning device with an active voucher reconnects
 without re-entering the code, without the code ever being exposed.
 
 Acceptance: a phone on a HashiFi hotspot reaches the portal, redeems a voucher and browses;
@@ -82,15 +86,34 @@ calculated by the API.
 
 Admin and manager roles; managers see only their venues. Sensitive actions are audited.
 
-### 4.7 Buying access with mobile money
+### 4.7 Selling access: three paths, one mechanism
 
-The default way in. On the portal, a guest picks a package and pays with their mobile number;
-when the payment is confirmed, HashiFi issues a voucher, the router confirms it, and the guest
-is online, with no one acting for them, at any hour. A payment that succeeds while the router
-is unreachable is retried until the guest has access, and is shown as access owed until then. Built with Snippe (adoption plan M6).
+All three end in a voucher confirmed by the router before access starts, and all three record
+a sale for the venue's figures. They suit different places, and a venue can use all of them.
 
-Acceptance: on the router sim with Snippe's test environment, a purchase gets the guest online
-and expiry cuts them off; then once with a real payment on a physical router (M8).
+- **Self-service on the portal (the default).** The guest picks a package and pays with their
+  mobile number. When the payment is confirmed, HashiFi issues a voucher and logs **the device
+  that paid** straight in: no code to type. The code is returned to that device once, over the
+  portal session that made the payment, and is also sent to the phone number, as the receipt
+  and the way to add a second device (within the package's limit) or reconnect. Works at any
+  hour with nobody acting for the guest. A payment that succeeds while the router is
+  unreachable is retried until the guest has access, and is shown as access owed until then.
+- **Assisted sale.** A manager or admin records a payment (cash or mobile money) against the
+  guest's phone number; HashiFi issues the voucher and sends it to that phone, or the manager
+  prints it. The fullest record: who paid, how, at which venue, for which voucher. Suits
+  regulars.
+- **Pre-printed cards.** Vouchers printed in batches are stock at a known price per venue,
+  handed over for cash with no phone number or typing: the fastest, for a busy venue. A card
+  counts as a cash sale at its venue when it is redeemed; unsold cards remain stock.
+
+Codes reach phones by WhatsApp or SMS through BRIQ, the messaging provider shared with other
+Hashikome products, falling back to the other channel, then to email when the guest gave one,
+then to "contact the venue" on the portal. A delivery outage never costs the paying device its
+access. Payments use Snippe (adoption plan M6).
+
+Acceptance: on the router sim with Snippe's test environment, each path gets a guest online and
+expiry cuts them off, and each appears in the venue's figures; then on a physical router with a
+real payment and a real message (M8).
 
 ## 5. Data
 

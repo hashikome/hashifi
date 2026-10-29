@@ -415,9 +415,25 @@ access is granted. Printed vouchers sold for cash stay a supported path alongsid
   authorisation window; the webhook is verified by signature and idempotent per event.
 - The API decides payment state; the portal presents it (ADR-0003). Copy never names a
   provider ("mobile money", "mobile number").
-- Acceptance: on the router sim, a payment through Snippe's sandbox issues a voucher the router
-  confirms and the guest test passes with it; a replayed or unsigned webhook changes nothing;
-  a paid-but-unprovisioned payment is retried and recovers.
+- Three sales paths on one mechanism ([PRODUCT.md §4.7](../../../PRODUCT.md#47-selling-access-three-paths-one-mechanism)):
+  self-service, with the paying device logged in by its own portal session (the code returned
+  to that session once, never to a request keyed by MAC); assisted sales recorded by staff
+  against a phone number, the voucher sent or printed; and pre-printed cards recorded as cash
+  sales when redeemed, unsold cards as stock.
+- Voucher delivery to phones through BRIQ (SMS and WhatsApp), the provider chosen as
+  cross-product work ([workspace brief](https://github.com/hashikome/workspace/blob/main/backlog/messaging-delivery.md); Pigfarm will use it too). HashiFi depends on a small
+  sending interface, not the provider's API, and confirms delivery through BRIQ's signed,
+  retried webhooks. Fallback per message: WhatsApp or SMS, then the other, then email through
+  Resend when the guest gave one, then the portal and receipt say to contact the venue; a step
+  starts only when the provider reports a failure or the confirmation is overdue. The code stays
+  retrievable on the paying device's portal session meanwhile, so a delivery outage never
+  costs a guest access they paid for.
+- Acceptance: on the router sim, each path gets the guest online and into the venue's figures:
+  a payment through Snippe's sandbox logs the paying device in and sends the code; an assisted
+  sale sends or prints it; a pre-printed card is counted when redeemed. A replayed or unsigned
+  webhook changes nothing; a paid-but-unprovisioned payment is retried and recovers; with the
+  messaging provider failing, delivery falls back to the next channel and finally to "contact
+  the venue", and the paying device still gets online.
 
 ### M7 Release pipeline and deployment
 
