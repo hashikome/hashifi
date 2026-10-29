@@ -339,10 +339,11 @@ The seed uses invented data.
 
 Sign-in first ([ADR-0007](../../engineering-decisions/0007-sign-in-with-better-auth.md)):
 Better Auth (newest stable, pinned) with email one-time codes through Resend, sign-up
-disabled, its tables beside `admin_users`, which shares the user's id and holds role, status
-and venue scope. Team management creates both. Rate limits on requesting and verifying codes,
-one answer whether or not an email is staff. Confirm with the owner whether admins must enroll
-TOTP. Then the routes, each behind the role and venue guard.
+disabled, its tables (`users`, `sessions`, `accounts`, `verifications`) beside `staff`, which
+shares the user's id and holds role, status and venue scope. Team management creates both.
+Admins must enroll TOTP with recovery codes; managers may. Rate limits on requesting and
+verifying codes, one answer whether or not an email is staff. Then the routes, each behind the
+role and venue guard.
 
 Each purchased Express route, read from the import commit (`git show
 45ebd53:apps/api/src/routes/<name>.ts`), is ported straight to a NestJS module: venues,

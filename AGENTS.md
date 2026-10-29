@@ -62,9 +62,9 @@ route from the import commit (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
 - Email through Resend. Queues, where needed, are BullMQ on Redis with PostgreSQL
   authoritative.
 - Sign-in is Better Auth inside HashiFi, with email codes
-  ([ADR-0007](docs/engineering-decisions/0007-sign-in-with-better-auth.md)). Its tables hold
-  identity and sessions; `admin_users` holds role, status and venue scope. Read authorization
-  only from `admin_users`.
+  ([ADR-0007](docs/engineering-decisions/0007-sign-in-with-better-auth.md)); admins must use an
+  authenticator app. Its tables hold identity and sessions; `staff` holds role, status and venue
+  scope. Read authorization only from `staff`.
 - Conventional Commits: `feat(api): ...`, `fix(web): ...`, `docs: ...`, `chore: ...`.
 
 ## Pre-deployment compatibility

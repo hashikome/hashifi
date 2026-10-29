@@ -27,10 +27,14 @@ already sign people in with Better Auth's email codes.
 - **Better Auth runs in `apps/api`** with email one-time codes, never links, delivered through
   Resend. No self-registration: an admin adds a person from the Team page, and only they can
   sign in. No passwords.
-- **Authentication and authorization stay separate tables.** Better Auth's tables hold the
-  identity, sessions and verification codes; `admin_users` holds what HashiFi decides: role,
-  status and venue scoping, keyed by the same id. HashiFi code reads authorization from
-  `admin_users`, never from Better Auth's tables.
+- **Admins must enroll an authenticator app (TOTP)**, with recovery codes, before reaching
+  anything: an admin sees every venue and can reconfigure every router. Managers may enroll
+  one; once enrolled it is required. Decided by the owner, 29 October 2026.
+- **Authentication and authorization stay separate tables.** Better Auth's `users`, `sessions`,
+  `accounts` and `verifications` hold the identity, sessions and codes; `staff` (renamed from
+  the purchased `admin_users`) holds what HashiFi decides: role (admin or manager), status and
+  venue scope, keyed by the same id. HashiFi code reads authorization from `staff`, never from
+  Better Auth's tables. There are no organizations: staff belong to HashiFi itself.
 - The purchased gaps are closed with Better Auth's own controls: rate limits on requesting and
   verifying codes, the same answer whether or not an email is staff, revocable sessions.
 - Versions: the newest stable Better Auth, pinned (1.7.14 at this decision).
@@ -39,9 +43,4 @@ already sign people in with Better Auth's email codes.
 
 The separation is what keeps a shared identity service possible: if a concrete cross-product
 need appears (one person using several products, or a company console), Better Auth's part
-moves to the service and `admin_users` stays. Revisit this record then, not before.
-
-## Open for M4
-
-Whether admins must enroll a second factor (TOTP), as Pigfarm requires of its platform
-accounts: an admin sees every venue and can reconfigure every router. Owner's decision.
+moves to the service and `staff` stays. Revisit this record then, not before.
