@@ -40,4 +40,5 @@
 - Named HashiFi throughout (interface, emails, router pages, cookie and storage keys); demo
   accounts use `example.com`. The API refuses to start without `ENCRYPTION_KEY`.
 - Decided: email through Resend, BullMQ on Redis for queues, and sign-in from the shared
-  Hashikome identity service ([ADR-0005](docs/engineering-decisions/0005-shared-identity.md)).
+  Hashikome identity service; on 29 October replaced by sign-in with Better Auth inside HashiFi
+  ([ADR-0007](docs/engineering-decisions/0007-sign-in-with-better-auth.md)).

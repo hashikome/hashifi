@@ -61,9 +61,10 @@ route from the import commit (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
   (ADR-0002); no `console.log` in application code once M4 lands.
 - Email through Resend. Queues, where needed, are BullMQ on Redis with PostgreSQL
   authoritative.
-- Sign-in comes from the shared Hashikome identity service
-  ([ADR-0005](docs/engineering-decisions/0005-shared-identity.md)); HashiFi owns roles, venue
-  scoping and audit.
+- Sign-in is Better Auth inside HashiFi, with email codes
+  ([ADR-0007](docs/engineering-decisions/0007-sign-in-with-better-auth.md)). Its tables hold
+  identity and sessions; `admin_users` holds role, status and venue scope. Read authorization
+  only from `admin_users`.
 - Conventional Commits: `feat(api): ...`, `fix(web): ...`, `docs: ...`, `chore: ...`.
 
 ## Pre-deployment compatibility

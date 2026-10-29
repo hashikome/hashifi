@@ -122,8 +122,8 @@ enum ThemePreference {
   @@map("theme_preference")
 }
 
-/// An admin or venue manager. Sign-in comes from the shared Hashikome identity service
-/// (ADR-0005); this record is HashiFi's authorization: role, status and venue scoping.
+/// An admin or venue manager: HashiFi's authorization (role, status, venue scoping). Sign-in
+/// is Better Auth's (ADR-0007), whose user shares this id; authorization is read only here.
 model AdminUser {
   id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
   /// Lower-case (CHECK).

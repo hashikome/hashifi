@@ -237,12 +237,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Decision: no `any` or `undefined` in types; absence is `null`.
   Rationale: [ADR-0004](../../engineering-decisions/0004-types-without-any-or-undefined.md).
   Date/Author: 2026-10-28 / Paul
-- Decision: no HashiFi sign-in implementation; admins sign in through the shared Hashikome
-  identity service, planned as cross-product workspace work. The plan is drafted before M4,
-  which depends on it; M2 and M3 do not.
-  Rationale: [ADR-0005](../../engineering-decisions/0005-shared-identity.md); a third copy of
-  ntumie. and Pigfarm's sign-in is the duplication the service removes.
-  Date/Author: 2026-10-28 / Paul
+- Decision: staff sign in with Better Auth inside HashiFi, as in ntumie. and Pigfarm; the shared
+  identity service (the earlier decision, 2026-10-28) is deferred until a concrete
+  cross-product need. M4 no longer waits on a workspace plan.
+  Rationale: [ADR-0007](../../engineering-decisions/0007-sign-in-with-better-auth.md): only a
+  handful of staff sign in, who use no other product; Better Auth is already the shared part,
+  and keeping its tables apart from `admin_users` keeps the service possible later.
+  Date/Author: 2026-10-29 / Paul
 - Decision: lint findings in code M3 and M4 replace (Express routes, middleware, `server.ts`,
   the Drizzle layer) are warnings until those milestones remove the code, rather than typed
   now and deleted after. The router portal pages (`apps/api/mikrotik-files/`) are uploaded to
@@ -336,7 +337,12 @@ The seed uses invented data.
 
 ### M4 NestJS API
 
-Prerequisite: the shared identity service plan, drafted in the Hashikome workspace (ADR-0005).
+Sign-in first ([ADR-0007](../../engineering-decisions/0007-sign-in-with-better-auth.md)):
+Better Auth (newest stable, pinned) with email one-time codes through Resend, sign-up
+disabled, its tables beside `admin_users`, which shares the user's id and holds role, status
+and venue scope. Team management creates both. Rate limits on requesting and verifying codes,
+one answer whether or not an email is staff. Confirm with the owner whether admins must enroll
+TOTP. Then the routes, each behind the role and venue guard.
 
 Each purchased Express route, read from the import commit (`git show
 45ebd53:apps/api/src/routes/<name>.ts`), is ported straight to a NestJS module: venues,
@@ -357,9 +363,9 @@ enforces every rule the web pre-checks (the package price and throttle rules). T
 implement `@hashifi/types`, which grows to the whole contract, and `apps/web/lib/types.ts` (the
 stale hand-written copy) is deleted; raw `fetch` moves into one client module. `RosRow`
 (`Record<string, string | undefined>`) becomes a `null`-returning accessor at the RouterOS
-boundary (ADR-0004). Email moves to Resend. Sign-in is not ported: it comes from the shared
-identity service (ADR-0005); the vendor's OTP login, sessions and mailer templates for account
-events are removed with the Express app. HTTP requests get the same wide events the jobs
+boundary (ADR-0004). Email moves to Resend. The vendor's OTP login, sessions and mailer are not
+ported: Better Auth replaces them (ADR-0007), and only the account-event emails the Team page
+needs (welcome, suspended, role changed) are rewritten for Resend. HTTP requests get the same wide events the jobs
 have (a NestJS interceptor around `withWideEvent`). Snippe
 routes and the webhook are left out (backlog). The vendor's onboarding knowledge files move
 to `docs/runbooks/`.
