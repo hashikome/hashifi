@@ -172,6 +172,23 @@ describe("hardware-agnostic", () => {
     expect(build().script).toContain("/interface bridge port remove");
   });
 
+  test("a DHCP lease is not mistaken for the LAN address or default route", () => {
+    // Measured on CHR 7.25 (router lab): after a no-defaults reset the board re-creates a DHCP
+    // client on ether1. Its lease matched the old guards, so the static address and route were
+    // never added and the router ran on a lease that dies once ether1 is bridged.
+    const { script } = build();
+    expect(lineWith(script, "/ip address add")).toContain("dynamic=no");
+    expect(lineWith(script, "/ip route add")).toContain('dst-address="0.0.0.0/0"');
+    expect(lineWith(script, "/ip route add")).toContain("dynamic=no");
+  });
+
+  test("removes a DHCP client from any interface it bridged", () => {
+    // A DHCP client on a bridge port is invalid in RouterOS and leaves a stale copy of the address.
+    expect(lineWith(build().script, "/ip dhcp-client remove")).toContain(
+      "/interface bridge port find",
+    );
+  });
+
   test("ends by proving the router can reach the internet", () => {
     expect(build().script.trimEnd().endsWith("/ping 8.8.8.8 count=3")).toBe(true);
   });

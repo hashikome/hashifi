@@ -1,13 +1,17 @@
 import { RouterOSAPI } from "routeros";
 import { minutesToRosUptime } from "../utils/duration.js";
 
-const API_PORT = Number(process.env.MIKROTIK_API_PORT ?? 8728);
 const CONNECT_TIMEOUT = Number(process.env.MIKROTIK_CONNECT_TIMEOUT ?? 10);
 
 export type MikroTikConn = RouterOSAPI;
 
+/**
+ * How this API reaches a router's RouterOS API: the management target, which is not
+ * necessarily the router's address on its venue LAN (`routers.ipAddress`).
+ */
 export interface RouterCredentials {
   host: string;
+  port: number;
   username: string;
   password: string;
 }
@@ -164,7 +168,7 @@ export async function connectToRouter(creds: RouterCredentials): Promise<MikroTi
     host: creds.host,
     user: creds.username,
     password: creds.password,
-    port: API_PORT,
+    port: creds.port,
     timeout: CONNECT_TIMEOUT,
     keepalive: false,
   });
@@ -177,7 +181,7 @@ export async function connectToRouter(creds: RouterCredentials): Promise<MikroTi
         () =>
           reject(
             new Error(
-              `Connection to ${creds.host}:${API_PORT} timed out after ${CONNECT_TIMEOUT}s`,
+              `Connection to ${creds.host}:${creds.port} timed out after ${CONNECT_TIMEOUT}s`,
             ),
           ),
         timeoutMs,

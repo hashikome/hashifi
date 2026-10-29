@@ -8,7 +8,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/rbac.js";
 import { RouterError } from "../services/mikrotik-errors.js";
 import { getProvisioningBacklog } from "../services/reconcile-daemon.js";
-import { getRouterCredentials } from "../services/router-credentials.js";
+import { DEFAULT_API_PORT, getRouterCredentials } from "../services/router-credentials.js";
 import { RouterLogger } from "../services/router-log.js";
 import { buildBootstrapScript } from "../services/router-provision/bootstrap.js";
 import {
@@ -16,6 +16,7 @@ import {
   isRadioInterfaceType,
   resolveBackendUrl,
 } from "../services/router-provision/context.js";
+import { dbRouterStore } from "../services/router-provision/db-store.js";
 import { dialectFor } from "../services/router-provision/dialect.js";
 import { provisionRouter } from "../services/router-provision/index.js";
 import { probeRouterMerged, type RouterProfile } from "../services/router-provision/probe.js";
@@ -365,7 +366,11 @@ router.post(
     // mergeCapabilities takes the probe as-is in that case.
     let profile: RouterProfile;
     try {
-      profile = await probeRouterMerged({ host, username, password }, logger, stored?.capabilities);
+      profile = await probeRouterMerged(
+        { host, port: DEFAULT_API_PORT, username, password },
+        logger,
+        stored?.capabilities,
+      );
     } catch (err) {
       if (err instanceof RouterError) {
         // A failed test is a successful request — the form renders this inline.
@@ -407,13 +412,17 @@ router.post(
     // Advisory: a readiness failure must not turn a successful connection test into an error.
     let readiness: Awaited<ReturnType<typeof probeReadiness>> | null = null;
     try {
-      readiness = await probeReadiness({ host, username, password }, logger, {
-        profile,
-        plan,
-        planError,
-        backendIp: backend?.ip ?? null,
-        backendError,
-      });
+      readiness = await probeReadiness(
+        { host, port: DEFAULT_API_PORT, username, password },
+        logger,
+        {
+          profile,
+          plan,
+          planError,
+          backendIp: backend?.ip ?? null,
+          backendError,
+        },
+      );
     } catch (err) {
       logger.warn(`Readiness checks could not run: ${err instanceof Error ? err.message : err}`);
     }
@@ -668,7 +677,7 @@ router.post(
     }
 
     // A run that stops at a blocking reason is a useful result, not a 5xx.
-    const report = await setupRouter(req.params.id as string, { force });
+    const report = await setupRouter(req.params.id as string, dbRouterStore, { force });
     res.json(report);
   }),
 );
@@ -692,7 +701,7 @@ router.post(
       return;
     }
 
-    const report = await provisionRouter(req.params.id as string, { dryRun });
+    const report = await provisionRouter(req.params.id as string, dbRouterStore, { dryRun });
     // A run that aborts on an incompatible board is a valid, useful result — not a 5xx.
     res.json(report);
   }),

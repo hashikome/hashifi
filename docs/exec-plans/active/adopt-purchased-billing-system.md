@@ -33,6 +33,16 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   the build; no `any` or `!` in kept code; HashiFi naming throughout; `ENCRYPTION_KEY` required.
   `bun run verify` passes: 170/170 tests, both typechecks, lint, format, web build.
 - [ ] M2 Router lab on CHR.
+  - [x] (2026-10-29) Lab: `bun run lab` boots RouterOS 7.25 CHR in QEMU and runs onboarding
+    through the real code (serial-console bootstrap, `setupRouter`, `probeVerify`). A
+    factory-fresh router onboards in one pass (14 changes applied and verified); a second run
+    applies 0; verify passes with the two expected warnings. Two provisioning defects fixed.
+    Provisioning reaches persistence only through `RouterStore`, and credentials carry their
+    own port (the management target). Runbook: `docs/runbooks/router-lab.md`.
+  - [ ] Management tunnel (router-initiated WireGuard) proved and recorded as an ADR.
+  - [ ] Walled garden by host name rather than a changing IP.
+  - [ ] A guest client on the hotspot segment: DHCP, portal redirect, voucher login.
+  - [ ] `routeros` and `sharp` under Bun (`routeros` proved by the lab).
 - [ ] M3 Prisma schema on PostgreSQL.
 - [ ] M4 NestJS API.
 - [ ] M5 Captive portal in the web, and the security pass.
@@ -87,6 +97,21 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   one venue, no portal settings) rendered printing, voucher creation, the venue map, packages,
   routers and the dashboard without script errors, and each page fetched once (routers also
   polls every 10 s, as designed). Not yet exercised against the real API.
+- Observation: on CHR 7.25 a no-defaults reset keeps a DHCP client on ether1. The bootstrap's
+  guards matched its lease as "the LAN address and default route already exist", so the static
+  ones were never added, and the lease dies once ether1 is bridged. The bootstrap now removes a
+  DHCP client from bridged interfaces and counts only static entries.
+  Evidence: router lab, 2026-10-29; `bootstrap.test.ts`.
+- Observation: on CHR 7.25 a running hotspot keeps its dynamic firewall rules first whatever
+  static rules do, re-inserting them above its disabled "place hotspot rules here" rule each time
+  it starts; on a fresh board they also appear a moment after the server is created. Placing our
+  accepts first therefore failed the read-back, and moving them above the dynamic rules is
+  ignored. The firewall steps now wait for the hotspot's rules and place ours above the
+  placeholder. The hAP lite (the seller's measurement) let a static rule sit above the dynamic
+  ones; both cases are accepted.
+  Evidence: router lab, 2026-10-29; `steps.test.ts`.
+- Observation: CHR 7.25 rejects `rate-limit` on a hotspot user; the self-test measures it and
+  vouchers fall back to per-package profiles, as designed.
 - Observation: Bun 1.4 workspaces install in isolated mode (`node_modules/.bun/`, symlinked per
   app); the purchased `turbopack.root` pin stopped Next.js resolving itself and was removed.
   Next.js finds the root `bun.lock`.

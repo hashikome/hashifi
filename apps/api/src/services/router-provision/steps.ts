@@ -103,50 +103,86 @@ export async function addRuleFirst(
    * `forward jump` rules it adds a moment later land ABOVE our static accept, leaving it dead last
    * where the hotspot's own reject can pre-empt it. Measured: our rule ended at index 15 of 16.
    *
-   * `ruleBeforeDynamic` below is what puts it right: the step's `check` fails while the rule is not
+   * `ruleAheadOfHotspotRules` below is what puts it right: the step's `check` fails while the rule is not
    * first, so the next apply moves it, and phase 5's re-check proves it stuck.
    */
   await ros.add(menu, tagged);
 }
 
 /**
- * Does our tagged rule sit ABOVE RouterOS's dynamic rules?
+ * Will our tagged rule be evaluated ahead of the hotspot's dynamic rules?
  *
- * Position is part of "already correct" for these rules, not just existence — an accept below the
+ * Position is part of "already correct" for these rules, not just existence: an accept below the
  * hotspot's own reject never runs, and nothing else in the system would notice.
  *
- * The criterion is deliberately "before the first dynamic rule", **not** "first in the list". Both
- * firewall steps need to be above the dynamics, and only one rule can ever be first: making each
- * demand position 0 would have them shove each other out of the way on every run, so `check` would
- * never be satisfied and phase 5 could never come back clean.
+ * Boards differ in how that is achieved:
  *
- * A static rule can be ordered above the dynamic ones — verified on an hAP lite by moving one from
- * index 15 to index 0, where it stayed. With no dynamic rules present there is nothing to be above,
- * so any position is fine.
+ * - On an hAP lite a static rule moved above the dynamic ones stayed there (index 15 to 0).
+ * - On RouterOS 7.25 (CHR, router lab, 2026-10-29) a running hotspot keeps its dynamic rules first
+ *   whatever static rules do. It inserts them directly above its disabled placeholder rule,
+ *   "place hotspot rules here", each time it starts: a rule above the placeholder is evaluated
+ *   first from the hotspot's next start, and a move above the dynamic rules is ignored.
+ *
+ * So the rule is ahead when it is above the first dynamic rule, or above the placeholder. Until the
+ * hotspot next starts the walled garden still lets clients reach the backend, because its return
+ * precedes the reject. Both firewall steps need this, which is why the criterion is a position
+ * relative to the hotspot's rules and never "first in the list": two rules demanding index 0 would
+ * shove each other on every run and the re-check could never come back clean.
  */
+const HOTSPOT_PLACEHOLDER = "place hotspot rules here";
+
 function dynamicIndex(rows: RosRow[]): number {
   const i = rows.findIndex((r) => yes(r.dynamic));
   return i === -1 ? rows.length : i;
 }
 
-export async function ruleBeforeDynamic(
+export async function ruleAheadOfHotspotRules(
   ros: RosClient,
   menu: string,
   stepId: string,
 ): Promise<boolean> {
   const rows = await ros.print(menu);
   const mine = rows.findIndex((r) => r.comment === tagFor(stepId));
-  return mine !== -1 && mine < dynamicIndex(rows);
+  if (mine === -1) return false;
+  const placeholder = rows.findIndex((r) => r.comment === HOTSPOT_PLACEHOLDER);
+  return mine < dynamicIndex(rows) || (placeholder !== -1 && mine < placeholder);
 }
 
-/** Move our tagged rule above the dynamic rules, if it is not already. */
-async function moveRuleBeforeDynamic(ros: RosClient, menu: string, stepId: string): Promise<void> {
-  const rows = await ros.print(menu);
-  const mineIdx = rows.findIndex((r) => r.comment === tagFor(stepId));
-  const mine = rows[mineIdx];
-  const target = rows[dynamicIndex(rows)];
-  if (!mine || !target?.[".id"] || mineIdx < dynamicIndex(rows)) return;
-  await ros.exec(`${menu}/move`, [`=numbers=${rowId(mine)}`, `=destination=${target[".id"]}`]);
+/**
+ * A freshly started hotspot adds its dynamic rules and placeholder a moment after the server is
+ * created, and above any rule placed before them (CHR 7.25, router lab). Placing our rule first
+ * left it below the placeholder and failed the read-back. Returns the menu once the hotspot's
+ * rules exist, or as it stands when they never appear within `waitMs`.
+ */
+const HOTSPOT_RULES_WAIT_MS = 10_000;
+
+async function hotspotRulesPresent(
+  ros: RosClient,
+  menu: string,
+  waitMs: number,
+): Promise<RosRow[]> {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    const rows = await ros.print(menu);
+    const present = rows.some((r) => yes(r.dynamic) || r.comment === HOTSPOT_PLACEHOLDER);
+    if (present || Date.now() >= deadline) return rows;
+    await new Promise((done) => setTimeout(done, 250));
+  }
+}
+
+/** Move our tagged rule above the hotspot's placeholder, or above the dynamic rules without one. */
+export async function moveRuleAheadOfHotspotRules(
+  ros: RosClient,
+  menu: string,
+  stepId: string,
+  waitMs = HOTSPOT_RULES_WAIT_MS,
+): Promise<void> {
+  const rows = await hotspotRulesPresent(ros, menu, waitMs);
+  if (await ruleAheadOfHotspotRules(ros, menu, stepId)) return;
+  const mine = rows.find((r) => r.comment === tagFor(stepId));
+  const target = rows.find((r) => r.comment === HOTSPOT_PLACEHOLDER) ?? rows[dynamicIndex(rows)];
+  if (!mine || !target?.[".id"]) return;
+  await ros.exec(`${menu}/move`, [`=numbers=${rowId(mine)}`, `=destination=${rowId(target)}`]);
 }
 
 /** Compare a row's fields against what we want; missing/differing → needs apply. */
@@ -532,7 +568,8 @@ const firewallForward: ProvisionStep = {
     });
     // Position counts: an accept below the hotspot's reject never runs.
     return (
-      correct && (await ruleBeforeDynamic(ros, "/ip/firewall/filter", "firewall-forward-backend"))
+      correct &&
+      (await ruleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-forward-backend"))
     );
   },
   async apply({ ros, ctx }) {
@@ -547,11 +584,11 @@ const firewallForward: ProvisionStep = {
     // and the portal cannot load at all.
     if (existing?.[".id"]) {
       await ros.set("/ip/firewall/filter", rowId(existing), params);
-      await moveRuleBeforeDynamic(ros, "/ip/firewall/filter", "firewall-forward-backend");
+      await moveRuleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-forward-backend");
       return;
     }
     await addRuleFirst(ros, "/ip/firewall/filter", "firewall-forward-backend", params);
-    await moveRuleBeforeDynamic(ros, "/ip/firewall/filter", "firewall-forward-backend");
+    await moveRuleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-forward-backend");
   },
 };
 
@@ -568,7 +605,8 @@ const firewallInput: ProvisionStep = {
       action: "accept",
     });
     return (
-      correct && (await ruleBeforeDynamic(ros, "/ip/firewall/filter", "firewall-input-backend"))
+      correct &&
+      (await ruleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-input-backend"))
     );
   },
   async apply({ ros, ctx }) {
@@ -576,11 +614,11 @@ const firewallInput: ProvisionStep = {
     const params = ["=chain=input", `=src-address=${ctx.backendIp}`, "=action=accept"];
     if (existing?.[".id"]) {
       await ros.set("/ip/firewall/filter", rowId(existing), params);
-      await moveRuleBeforeDynamic(ros, "/ip/firewall/filter", "firewall-input-backend");
+      await moveRuleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-input-backend");
       return;
     }
     await addRuleFirst(ros, "/ip/firewall/filter", "firewall-input-backend", params);
-    await moveRuleBeforeDynamic(ros, "/ip/firewall/filter", "firewall-input-backend");
+    await moveRuleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-input-backend");
   },
 };
 

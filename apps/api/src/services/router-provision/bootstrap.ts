@@ -232,27 +232,32 @@ export function buildBootstrapScript(input: BootstrapInput): BootstrapScript {
     `#    portal never intercepts. Undo it if a previous config left one bridged.`,
     `:foreach p in=[/interface bridge port find] do={:local n [/interface bridge port get $p interface]; :if ($n ~ "^(wlan|wifi)") do={/interface bridge port remove $p; :put ("Removed " . $n . " from the bridge - the hotspot needs it unbridged.")}}`,
     ``,
-    `# 5. LAN address and default route`,
-    `:if ([:len [/ip address find where address="${lanCidr}"]] = 0) do={/ip address add address=${lanCidr} interface=${BRIDGE_NAME}}`,
+    `# 5. A DHCP client cannot run on a bridge port. Some boards (CHR, and default configs)`,
+    `#    keep one on ether1 even after a reset; remove it so its lease is not mistaken for`,
+    `#    the LAN address below.`,
+    `:foreach c in=[/ip dhcp-client find] do={:local i [/ip dhcp-client get $c interface]; :if ([:len [/interface bridge port find where interface=$i]] > 0) do={/ip dhcp-client remove $c; :put ("Removed the DHCP client on " . $i . " - it is now a bridge port.")}}`,
+    ``,
+    `# 6. LAN address and default route. Only static entries count: a DHCP lease is not ours.`,
+    `:if ([:len [/ip address find where address="${lanCidr}" dynamic=no]] = 0) do={/ip address add address=${lanCidr} interface=${BRIDGE_NAME}}`,
   );
 
   if (gatewayIp) {
     lines.push(
-      `:if ([:len [/ip route find where gateway="${gatewayIp}"]] = 0) do={/ip route add gateway=${gatewayIp}}`,
+      `:if ([:len [/ip route find where dst-address="0.0.0.0/0" gateway="${gatewayIp}" dynamic=no]] = 0) do={/ip route add dst-address=0.0.0.0/0 gateway=${gatewayIp}}`,
     );
   }
 
   lines.push(
     ``,
-    `# 6. RouterOS API, and the account the billing system authenticates with`,
+    `# 7. RouterOS API, and the account the billing system authenticates with`,
     `/ip service set api disabled=no port=${apiPort}`,
     `:if ([:len [/user find where name="${rosQuote(apiUsername)}"]] = 0) do={/user add name="${rosQuote(apiUsername)}" password="${rosQuote(apiPassword)}" group=full} else={/user set [/user find where name="${rosQuote(apiUsername)}"] password="${rosQuote(apiPassword)}" group=full}`,
     ``,
-    `# 7. Radio. Legacy boards report interface type "wlan", wifiwave2 boards "wifi", so the`,
+    `# 8. Radio. Legacy boards report interface type "wlan", wifiwave2 boards "wifi", so the`,
     `#    board decides this - you do not have to know which stack you have.`,
     ...radioLines(ssid),
     ``,
-    `# 8. Prove the router can reach the internet. No replies here means nothing downstream`,
+    `# 9. Prove the router can reach the internet. No replies here means nothing downstream`,
     `#    will work - usually the bridge MAC is not on the ISP router's whitelist.`,
     `:put "Bootstrap complete. Testing internet..."`,
     `/ping 8.8.8.8 count=3`,

@@ -23,18 +23,14 @@
  *    nothing.
  */
 
-import { eq } from "drizzle-orm";
-import { db } from "../../db/index.js";
-import { routers } from "../../db/schema.js";
 import { RouterError } from "../mikrotik-errors.js";
-import { getRouterCredentials } from "../router-credentials.js";
 import { type RouterLogEvent, RouterLogger } from "../router-log.js";
-import { syncNewRouter } from "../router-sync.js";
 import { buildHotspotPlan, type HotspotPlan, resolveBackendUrl } from "./context.js";
 import { dialectFor } from "./dialect.js";
 import { type ProvisionReport, provisionRouter } from "./index.js";
 import { probeRouterMerged, type RouterProfile } from "./probe.js";
 import { probeReadiness, type ReadinessReport } from "./readiness.js";
+import type { RouterStore } from "./store.js";
 import { probeVerify, type VerifyReport } from "./verify.js";
 
 export type SetupPhaseId = "probe" | "readiness" | "dry-run" | "provision" | "verify" | "self-test";
@@ -96,7 +92,11 @@ const PHASE_TITLES: Record<SetupPhaseId, string> = {
   "self-test": "Confirm the hotspot is actually serving",
 };
 
-export async function setupRouter(routerId: string, opts: SetupOptions = {}): Promise<SetupReport> {
+export async function setupRouter(
+  routerId: string,
+  store: RouterStore,
+  opts: SetupOptions = {},
+): Promise<SetupReport> {
   const force = opts.force ?? false;
   const logger = opts.logger ?? new RouterLogger("provision");
   const startedAt = new Date().toISOString();
@@ -113,7 +113,7 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
   let verify: ProvisionReport | null = null;
   let selfTest: VerifyReport | null = null;
 
-  const [router] = await db.select().from(routers).where(eq(routers.id, routerId)).limit(1);
+  const router = await store.load(routerId);
   if (!router) throw new Error(`Router ${routerId} not found`);
 
   const finish = (): SetupReport => ({
@@ -179,7 +179,7 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
     }
   };
 
-  const creds = getRouterCredentials(router, "Setup");
+  const creds = store.credentials(router);
   if (!creds) {
     blockers.push({
       reason: "This router has no API credentials stored.",
@@ -307,7 +307,7 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
   {
     const t = Date.now();
     logger.info("▶ 3/6 · Previewing changes");
-    dryRun = await provisionRouter(routerId, { dryRun: true, logger });
+    dryRun = await provisionRouter(routerId, store, { dryRun: true, logger });
 
     if (dryRun.aborted || dryRun.summary.failed > 0) {
       for (const reason of dryRun.blockingReasons) blockers.push({ reason });
@@ -338,7 +338,7 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
   {
     const t = Date.now();
     logger.info("▶ 4/6 · Applying the configuration");
-    provision = await provisionRouter(routerId, { dryRun: false, logger });
+    provision = await provisionRouter(routerId, store, { dryRun: false, logger });
 
     if (!provision.ok) {
       for (const reason of provision.blockingReasons) blockers.push({ reason });
@@ -372,7 +372,7 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
   {
     const t = Date.now();
     logger.info("▶ 5/6 · Confirming the configuration reads back correctly");
-    verify = await provisionRouter(routerId, { dryRun: true, logger });
+    verify = await provisionRouter(routerId, store, { dryRun: true, logger });
 
     const outstanding = verify.summary.wouldApply;
     if (outstanding > 0 || verify.summary.failed > 0) {
@@ -426,10 +426,10 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
       // The self-test can prove the probe's version-based capability guess wrong. Persist it, or
       // every voucher sold on this router pays for a rejected attempt first.
       if (selfTest?.discovered) {
-        await db
-          .update(routers)
-          .set({ capabilities: { ...profile.capabilities, ...selfTest.discovered } })
-          .where(eq(routers.id, routerId));
+        await store.recordCapabilities(routerId, {
+          ...profile.capabilities,
+          ...selfTest.discovered,
+        });
         logger.warn(
           `Corrected cached capabilities from the self-test: ${JSON.stringify(selfTest.discovered)}`,
         );
@@ -453,7 +453,7 @@ export async function setupRouter(routerId: string, opts: SetupOptions = {}): Pr
          * that is the only case where what was pushed earlier could be wrong.
          */
         try {
-          await syncNewRouter(routerId);
+          await store.resyncVouchers(routerId);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           logger.warn(

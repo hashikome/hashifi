@@ -9,18 +9,15 @@
  * If it still reports "not satisfied", the step failed regardless of what RouterOS said.
  */
 
-import { eq } from "drizzle-orm";
-import { db } from "../../db/index.js";
-import { routers } from "../../db/schema.js";
 import { closeConnection, connectToRouter, type MikroTikConn } from "../mikrotik.js";
 import { RouterError } from "../mikrotik-errors.js";
-import { getRouterCredentials } from "../router-credentials.js";
 import { type RouterLogEvent, RouterLogger } from "../router-log.js";
 import { buildContext, type ProvisionContext } from "./context.js";
 import { dialectFor } from "./dialect.js";
 import { probeRouterMerged, type RouterProfile } from "./probe.js";
 import { RosClient } from "./ros-client.js";
 import { PROVISION_STEPS, type ProvisionStep } from "./steps.js";
+import type { RouterStore } from "./store.js";
 
 export type StepState = "satisfied" | "applied" | "would-apply" | "skipped" | "failed";
 
@@ -132,6 +129,7 @@ async function runStep(
 
 export async function provisionRouter(
   routerId: string,
+  store: RouterStore,
   opts: ProvisionOptions = {},
 ): Promise<ProvisionReport> {
   const dryRun = opts.dryRun ?? false;
@@ -154,10 +152,10 @@ export async function provisionRouter(
     ...partial,
   });
 
-  const [router] = await db.select().from(routers).where(eq(routers.id, routerId)).limit(1);
+  const router = await store.load(routerId);
   if (!router) throw new Error(`Router ${routerId} not found`);
 
-  const creds = getRouterCredentials(router, "Provision");
+  const creds = store.credentials(router);
   if (!creds) {
     logger.error("Router has no usable API credentials — nothing to do");
     return finish({ ok: false, steps: [], host: router.ipAddress });
@@ -207,9 +205,7 @@ export async function provisionRouter(
       `${ctx.hotspot.interface} · gateway ${ctx.hotspot.gatewayIp}`,
   );
 
-  if (!dryRun) {
-    await db.update(routers).set({ status: "provisioning" }).where(eq(routers.id, routerId));
-  }
+  if (!dryRun) await store.markProvisioning(routerId);
 
   const steps: StepResult[] = [];
   let conn: MikroTikConn | null = null;
@@ -250,21 +246,10 @@ export async function provisionRouter(
   const report = finish({ ok, aborted, steps, host: creds.host, profile });
 
   if (!dryRun) {
-    await db
-      .update(routers)
-      .set({
-        status: ok ? "online" : "error",
-        ...(ok ? { provisionedAt: new Date() } : {}),
-        model: profile.boardName ?? router.model,
-        identity: profile.identity ?? router.identity,
-        rosVersion: profile.rosVersion.raw,
-        architecture: profile.architecture,
-        capabilities: profile.capabilities,
-        // Store the outcome without the command transcript — the log can run to
-        // hundreds of events and belongs in the response, not the row.
-        lastProvisionReport: { ...report, log: undefined },
-      })
-      .where(eq(routers.id, routerId));
+    // Store the outcome without the command transcript — the log can run to hundreds of
+    // events and belongs in the response, not the row.
+    const { log: _log, ...withoutLog } = report;
+    await store.recordProvisionOutcome(router, { ok, profile, report: withoutLog });
   }
 
   logger.summary(

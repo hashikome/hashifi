@@ -14,6 +14,7 @@ import {
   throttledProfileNameForPackage,
   userProfileNameForPackage,
 } from "./mikrotik.js";
+import { managementTarget } from "./router-credentials.js";
 
 const POLL_INTERVAL_MS = 5_000;
 const HEALTH_CHECK_INTERVAL_MS = 60_000;
@@ -68,7 +69,7 @@ export function startLiveMonitor(wss: WebSocketServer): void {
         let conn: MikroTikConn | null = null;
         try {
           conn = await connectToRouter({
-            host: router.ipAddress,
+            ...managementTarget(router),
             username: router.apiUsername,
             password: decrypt(router.apiPasswordEncrypted),
           });
@@ -187,7 +188,7 @@ export function startLiveMonitor(wss: WebSocketServer): void {
         let conn: MikroTikConn | null = null;
         try {
           conn = await connectToRouter({
-            host: router.ipAddress,
+            ...managementTarget(router),
             username: router.apiUsername,
             password: decrypt(router.apiPasswordEncrypted),
           });

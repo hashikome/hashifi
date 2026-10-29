@@ -18,12 +18,15 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "tsc --noEmit -p tooling/tsconfig.json && bun run --filter '*' typecheck",
     "test": "bun run --filter '*' test",
     "build": "bun run --filter '*' build",
-    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build"
+    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
+    "lab": "bun tooling/router-lab.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.3"
+    "@biomejs/biome": "2.6.3",
+    "@types/bun": "1.4.4",
+    "typescript": "7.0.2"
   }
 }
