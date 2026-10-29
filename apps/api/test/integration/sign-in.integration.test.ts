@@ -125,6 +125,21 @@ describe("sign-in", () => {
     expect(api.email.sent.filter((m) => m.to === "flood@example.com").length).toBe(5);
   });
 
+  test("requests beyond the budget do not void the last code sent", async () => {
+    await addStaff(t.db, { email: "target@example.com", name: "Target", role: "manager" });
+    for (let i = 0; i < 5; i++) await requestCode(client(), "target@example.com");
+    const fifth = await api.email.codeFor("target@example.com");
+    await Bun.sleep(100);
+    const flood = await requestCode(client(), "target@example.com");
+    expect(flood).toEqual(await requestCode(client(), "nobody-else@example.com"));
+    await requestCode(client(), "target@example.com");
+    const signedIn = await client().request("POST", "/api/auth/sign-in/email-otp", {
+      email: "target@example.com",
+      otp: fifth,
+    });
+    expect(signedIn.status).toBe(200);
+  });
+
   test("suspending a person ends their session and stops their codes", async () => {
     const { id } = await addStaff(t.db, {
       email: "leaver@example.com",
@@ -196,6 +211,10 @@ describe("authenticator app", () => {
     });
     expect(verified.status).toBe(200);
     expect((await c.request("GET", "/api/me")).status).toBe(200);
+    const trusted = await t.db.verification.count({
+      where: { identifier: { startsWith: "trust-device-" } },
+    });
+    expect(trusted).toBe(0);
 
     // Asked to trust this browser, HashiFi still asks for the authenticator next time.
     await c.request("POST", "/api/auth/sign-out", {});

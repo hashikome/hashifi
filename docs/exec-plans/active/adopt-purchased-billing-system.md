@@ -95,9 +95,25 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     and per-person limits, suspension, refused library routes, authenticator enrollment and
     the two-step sign-in, trust-device refused); the trust-device test was seen to fail with
     the protection removed.
-  - [ ] Routes, each behind the role and venue guard, starting with venues (the first scoped
-    route proves a manager cannot read another venue and an unenrolled admin is held);
-    HTTP wide events; the error envelope; the live-view gateway; uploads.
+  - [ ] Routes, each behind the role and venue guard, starting with venues. Its acceptance:
+    no session 401; an unenrolled admin 403 `TWO_FACTOR_ENROLLMENT_REQUIRED`; a manager
+    reading another venue 404; a controller without decorators is protected (default deny).
+    Decided for this step:
+    - HTTP wide events are Express middleware ahead of the auth middleware, not a Nest
+      interceptor: guards run before interceptors, so 401s, 403s and every `/api/auth`
+      answer (429s included) would otherwise have no event.
+    - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
+      their own checks; the router sim's guest test runs once they are ported.
+    - Cookie-authenticated writes (POST, PUT, PATCH, DELETE) require an `Origin` in the
+      trusted origins: Better Auth checks only its own routes, and a urlencoded form post
+      from a sibling subdomain needs no preflight. Tested with a foreign-origin form post.
+    - The live-view gateway authenticates the upgrade request itself (session cookie, active
+      staff); guards do not run on connect, and the global guard must branch on
+      `context.getType()` if it runs on gateway messages.
+    - The web reads sign-in state from `/api/me`, not `get-session` (which still answers for
+      someone suspended after signing in). The Team page deletes a suspended person's
+      sessions, and resets a lost authenticator with a server-side admin action.
+    Then the error envelope, uploads and the remaining modules.
 - [ ] M5 Captive portal in the web, and the security pass.
 - [ ] M6 Mobile-money payments (Snippe) and customers.
 - [ ] M7 Release pipeline and deployment.
@@ -209,6 +225,12 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   1.6 wrapper (overriding `getSignedCookie`) failed with a 500. HashiFi widens the gate's
   matcher and hands it the request headers without the trust-device cookie.
   Evidence: `apps/api/src/auth/create-auth.ts` (`withEmailCodeGate`).
+- Observation: the per-person code budget, first checked in the send callback, let anyone
+  lock a staff member out: by then the library had already replaced their code, so each
+  refused request voided the code last sent. It is now decided in the before-hook, ahead of
+  code creation, with the library's own answer.
+  Evidence: `sign-in.integration.test.ts` ("requests beyond the budget do not void the last
+  code sent"), failing before the fix.
 - Observation: Prisma queries are lazy thenables, which `expect(...).rejects` does not accept;
   the integration tests await them through a helper.
 - Observation: from the Pigfarm session (2026-10-29), for when HashiFi adds BullMQ: BullMQ

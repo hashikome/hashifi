@@ -85,8 +85,15 @@ export function createAuth({ config, db, email }: AuthDependencies) {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
-        if (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type !== "sign-in") {
-          throw new APIError("BAD_REQUEST", { message: "Only sign-in codes are sent." });
+        if (ctx.path === "/email-otp/send-verification-otp") {
+          if (ctx.body?.type !== "sign-in") {
+            throw new APIError("BAD_REQUEST", { message: "Only sign-in codes are sent." });
+          }
+          // Decided before the library creates a code: once it has, it replaces the previous
+          // one, so refusing later would void the code the person last received. Refusals
+          // give the library's own answer.
+          const address = String(ctx.body?.email ?? "").toLowerCase();
+          if (!(await maySendSignInCode(db, address))) return ctx.json({ success: true });
         }
         if (ctx.path.startsWith("/two-factor/verify-") && ctx.body?.trustDevice === true) {
           // HashiFi trusts no device to skip the authenticator (withEmailCodeGate).
@@ -113,10 +120,10 @@ export function createAuth({ config, db, email }: AuthDependencies) {
         storeOTP: {
           hash: async (otp) => createHmac("sha256", otpKey).update(otp).digest("base64url"),
         },
-        // Called only for an email that has a user (sign-up is disabled). Not awaited, so a
-        // staff email and a stranger's take the same time to answer.
+        // Reached only for active staff within their budget (`maySendSignInCode`). Not
+        // awaited, so the answer does not wait on Resend.
         sendVerificationOTP: async ({ email: address, otp }) => {
-          void deliverSignInCode(db, email, address, otp).catch(captureFailure);
+          void email.send(signInCodeEmail(address, otp)).catch(captureFailure);
         },
       }),
       withEmailCodeGate(twoFactor({ issuer: "HashiFi", allowPasswordless: true })),
@@ -124,16 +131,14 @@ export function createAuth({ config, db, email }: AuthDependencies) {
   });
 }
 
-async function deliverSignInCode(
-  db: PrismaClient,
-  email: EmailSender,
-  address: string,
-  code: string,
-): Promise<void> {
+/**
+ * Whether a sign-in code may be created for this address: it belongs to active staff, and
+ * takes one from their budget. Every address costs the same lookup.
+ */
+async function maySendSignInCode(db: PrismaClient, address: string): Promise<boolean> {
   const user = await db.user.findUnique({ where: { email: address }, include: { staff: true } });
-  if (user?.staff?.status !== "active") return;
-  if (!(await consumeSignInCode(db, user.id))) return;
-  await email.send(signInCodeEmail(address, code));
+  if (user?.staff?.status !== "active") return false;
+  return consumeSignInCode(db, user.id);
 }
 
 const TRUST_DEVICE_COOKIE = "trust_device";
