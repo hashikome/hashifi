@@ -424,15 +424,17 @@ access is granted. Printed vouchers sold for cash stay a supported path alongsid
   cross-product work ([workspace brief](https://github.com/hashikome/workspace/blob/main/backlog/messaging-delivery.md); Pigfarm will use it too). HashiFi depends on a small
   sending interface, not the provider's API, and confirms delivery through BRIQ's signed,
   retried webhooks. **SMS only:** a guest asking for WiFi usually has no data, so WhatsApp and
-  email cannot reach them; SMS reaches any phone with signal. When SMS fails (the provider
-  reports a failure or the confirmation is overdue), the portal and the sale screen say to
-  contact the venue. On the paying device the code is also shown on screen, and that device is
-  already online, so a delivery outage never costs a guest access they paid for.
+  email cannot reach them; SMS reaches any phone with signal. The code is always also shown on
+  screen where it was bought, with a Copy button: on the paying device's portal session (only
+  that session, until the voucher expires) and on the staff sale screen. A failed SMS (the
+  provider reports a failure or the confirmation is overdue) is therefore harmless; the screen
+  says it was not delivered and to keep the code shown, and contact the venue if both are lost.
 - Acceptance: on the router sim, each path gets the guest online and into the venue's figures:
   a payment through Snippe's sandbox logs the paying device in and sends the code; an assisted
   sale sends or prints it; a pre-printed card is counted when redeemed. A replayed or unsigned
   webhook changes nothing; a paid-but-unprovisioned payment is retried and recovers; with SMS
-  failing, the guest is told to contact the venue, and the paying device still gets online.
+  failing, the paying device still gets online, its screen still shows the code to copy, and
+  another session cannot see it.
 
 ### M7 Release pipeline and deployment
 
