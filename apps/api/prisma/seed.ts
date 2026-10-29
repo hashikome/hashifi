@@ -9,16 +9,17 @@ if (process.env.NODE_ENV === "production") {
 
 const db = createPrismaClient(loadConfig().databaseUrl);
 
-const admin = await db.adminUser.upsert({
-  where: { email: "admin@example.com" },
-  update: {},
-  create: { email: "admin@example.com", name: "Sim Admin", role: "admin" },
-});
-const manager = await db.adminUser.upsert({
-  where: { email: "manager@example.com" },
-  update: {},
-  create: { email: "manager@example.com", name: "Sim Manager", role: "manager" },
-});
+/** A user who can sign in, and their staff record (role and scope), sharing one id. */
+async function staffMember(email: string, name: string, role: "admin" | "manager") {
+  const user =
+    (await db.user.findUnique({ where: { email } })) ??
+    (await db.user.create({ data: { id: Bun.randomUUIDv7(), email, name, emailVerified: true } }));
+  await db.staff.upsert({ where: { id: user.id }, update: {}, create: { id: user.id, role } });
+  return { id: user.id, email };
+}
+
+const admin = await staffMember("admin@example.com", "Sim Admin", "admin");
+const manager = await staffMember("manager@example.com", "Sim Manager", "manager");
 
 const venue =
   (await db.venue.findFirst({ where: { name: "Home" } })) ??

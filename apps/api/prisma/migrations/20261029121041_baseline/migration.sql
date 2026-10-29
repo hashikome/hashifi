@@ -17,7 +17,7 @@ CREATE TYPE "package_type" AS ENUM ('hotspot', 'home', 'business', 'premium');
 CREATE TYPE "voucher_status" AS ENUM ('unused', 'pending_activation', 'active', 'expired', 'used', 'revoked');
 
 -- CreateEnum
-CREATE TYPE "customer_status" AS ENUM ('active', 'inactive', 'blocked');
+CREATE TYPE "device_status" AS ENUM ('active', 'blocked');
 
 -- CreateEnum
 CREATE TYPE "session_status" AS ENUM ('connected', 'disconnected', 'expired', 'terminated');
@@ -35,10 +35,90 @@ CREATE TYPE "portal_background_style" AS ENUM ('solid', 'soft', 'split');
 CREATE TYPE "theme_preference" AS ENUM ('light', 'dark', 'system');
 
 -- CreateTable
-CREATE TABLE "admin_users" (
-    "id" UUID NOT NULL DEFAULT uuidv7(),
-    "email" TEXT NOT NULL,
+CREATE TABLE "users" (
+    "id" UUID NOT NULL,
     "name" VARCHAR(160) NOT NULL,
+    "email" VARCHAR(255) NOT NULL,
+    "email_verified" BOOLEAN NOT NULL DEFAULT false,
+    "image" TEXT,
+    "two_factor_enabled" BOOLEAN DEFAULT false,
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
+
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "sessions" (
+    "id" UUID NOT NULL,
+    "expires_at" TIMESTAMPTZ(3) NOT NULL,
+    "token" TEXT NOT NULL,
+    "ip_address" VARCHAR(45),
+    "user_agent" TEXT,
+    "user_id" UUID NOT NULL,
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
+
+    CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "accounts" (
+    "id" UUID NOT NULL,
+    "account_id" TEXT NOT NULL,
+    "provider_id" TEXT NOT NULL,
+    "user_id" UUID NOT NULL,
+    "access_token" TEXT,
+    "refresh_token" TEXT,
+    "id_token" TEXT,
+    "access_token_expires_at" TIMESTAMPTZ(3),
+    "refresh_token_expires_at" TIMESTAMPTZ(3),
+    "scope" TEXT,
+    "password" TEXT,
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
+
+    CONSTRAINT "accounts_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "verifications" (
+    "id" UUID NOT NULL,
+    "identifier" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "expires_at" TIMESTAMPTZ(3) NOT NULL,
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
+
+    CONSTRAINT "verifications_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "two_factors" (
+    "id" UUID NOT NULL,
+    "secret" TEXT NOT NULL,
+    "backup_codes" TEXT NOT NULL,
+    "user_id" UUID NOT NULL,
+    "verified" BOOLEAN DEFAULT true,
+    "failed_verification_count" INTEGER DEFAULT 0,
+    "locked_until" TIMESTAMPTZ(3),
+
+    CONSTRAINT "two_factors_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "rate_limits" (
+    "id" UUID NOT NULL,
+    "key" TEXT NOT NULL,
+    "count" INTEGER NOT NULL,
+    "last_request" BIGINT NOT NULL,
+
+    CONSTRAINT "rate_limits_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "staff" (
+    "id" UUID NOT NULL,
     "role" "admin_role" NOT NULL DEFAULT 'manager',
     "status" "account_status" NOT NULL DEFAULT 'active',
     "phone" VARCHAR(32),
@@ -46,12 +126,12 @@ CREATE TABLE "admin_users" (
     "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(3) NOT NULL,
 
-    CONSTRAINT "admin_users_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "staff_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "admin_preferences" (
-    "admin_user_id" UUID NOT NULL,
+CREATE TABLE "staff_preferences" (
+    "staff_id" UUID NOT NULL,
     "theme" "theme_preference" NOT NULL DEFAULT 'system',
     "email_notifications" BOOLEAN NOT NULL DEFAULT true,
     "push_notifications" BOOLEAN NOT NULL DEFAULT true,
@@ -60,7 +140,7 @@ CREATE TABLE "admin_preferences" (
     "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(3) NOT NULL,
 
-    CONSTRAINT "admin_preferences_pkey" PRIMARY KEY ("admin_user_id")
+    CONSTRAINT "staff_preferences_pkey" PRIMARY KEY ("staff_id")
 );
 
 -- CreateTable
@@ -160,22 +240,19 @@ CREATE TABLE "venue_packages" (
 );
 
 -- CreateTable
-CREATE TABLE "wifi_customers" (
+CREATE TABLE "devices" (
     "id" UUID NOT NULL DEFAULT uuidv7(),
-    "username" VARCHAR(120),
-    "email" VARCHAR(255),
-    "phone" VARCHAR(32),
-    "mac_address" VARCHAR(32),
+    "mac_address" VARCHAR(32) NOT NULL,
     "last_ip_address" VARCHAR(45),
     "device_name" VARCHAR(160),
     "device_type" VARCHAR(40),
-    "status" "customer_status" NOT NULL DEFAULT 'active',
-    "joined_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "status" "device_status" NOT NULL DEFAULT 'active',
+    "first_seen_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "last_active_at" TIMESTAMPTZ(3),
     "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(3) NOT NULL,
 
-    CONSTRAINT "wifi_customers_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "devices_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -199,7 +276,7 @@ CREATE TABLE "vouchers" (
     "batch_id" UUID,
     "package_id" UUID,
     "venue_id" UUID,
-    "assigned_customer_id" UUID,
+    "redeemed_by_device_id" UUID,
     "code" VARCHAR(80) NOT NULL,
     "status" "voucher_status" NOT NULL DEFAULT 'unused',
     "data_limit_gb" INTEGER,
@@ -218,7 +295,7 @@ CREATE TABLE "vouchers" (
 -- CreateTable
 CREATE TABLE "payments" (
     "id" UUID NOT NULL DEFAULT uuidv7(),
-    "customer_id" UUID,
+    "device_id" UUID,
     "voucher_id" UUID,
     "package_id" UUID,
     "venue_id" UUID,
@@ -240,7 +317,7 @@ CREATE TABLE "payments" (
 -- CreateTable
 CREATE TABLE "wifi_sessions" (
     "id" UUID NOT NULL DEFAULT uuidv7(),
-    "customer_id" UUID,
+    "device_id" UUID,
     "voucher_id" UUID,
     "package_id" UUID,
     "venue_id" UUID,
@@ -326,7 +403,7 @@ CREATE TABLE "daily_usage_stats" (
 -- CreateTable
 CREATE TABLE "audit_logs" (
     "id" UUID NOT NULL DEFAULT uuidv7(),
-    "admin_user_id" UUID,
+    "staff_id" UUID,
     "action" VARCHAR(120) NOT NULL,
     "entity_type" VARCHAR(80) NOT NULL,
     "entity_id" VARCHAR(80),
@@ -339,10 +416,34 @@ CREATE TABLE "audit_logs" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "admin_users_email_key" ON "admin_users"("email");
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE INDEX "admin_users_role_idx" ON "admin_users"("role");
+CREATE UNIQUE INDEX "sessions_token_key" ON "sessions"("token");
+
+-- CreateIndex
+CREATE INDEX "sessions_user_id_idx" ON "sessions"("user_id");
+
+-- CreateIndex
+CREATE INDEX "accounts_user_id_idx" ON "accounts"("user_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "accounts_provider_id_account_id_key" ON "accounts"("provider_id", "account_id");
+
+-- CreateIndex
+CREATE INDEX "verifications_identifier_idx" ON "verifications"("identifier");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "two_factors_user_id_key" ON "two_factors"("user_id");
+
+-- CreateIndex
+CREATE INDEX "two_factors_secret_idx" ON "two_factors"("secret");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "rate_limits_key_key" ON "rate_limits"("key");
+
+-- CreateIndex
+CREATE INDEX "staff_role_idx" ON "staff"("role");
 
 -- CreateIndex
 CREATE INDEX "venues_operator_id_idx" ON "venues"("operator_id");
@@ -384,13 +485,10 @@ CREATE INDEX "packages_price_tsh_idx" ON "packages"("price_tsh");
 CREATE INDEX "venue_packages_package_id_idx" ON "venue_packages"("package_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "wifi_customers_mac_address_key" ON "wifi_customers"("mac_address");
+CREATE UNIQUE INDEX "devices_mac_address_key" ON "devices"("mac_address");
 
 -- CreateIndex
-CREATE INDEX "wifi_customers_phone_idx" ON "wifi_customers"("phone");
-
--- CreateIndex
-CREATE INDEX "wifi_customers_status_idx" ON "wifi_customers"("status");
+CREATE INDEX "devices_status_idx" ON "devices"("status");
 
 -- CreateIndex
 CREATE INDEX "voucher_batches_package_id_idx" ON "voucher_batches"("package_id");
@@ -414,10 +512,10 @@ CREATE INDEX "vouchers_package_id_idx" ON "vouchers"("package_id");
 CREATE INDEX "vouchers_venue_id_idx" ON "vouchers"("venue_id");
 
 -- CreateIndex
-CREATE INDEX "vouchers_assigned_customer_id_idx" ON "vouchers"("assigned_customer_id");
+CREATE INDEX "vouchers_redeemed_by_device_id_idx" ON "vouchers"("redeemed_by_device_id");
 
 -- CreateIndex
-CREATE INDEX "payments_customer_id_idx" ON "payments"("customer_id");
+CREATE INDEX "payments_device_id_idx" ON "payments"("device_id");
 
 -- CreateIndex
 CREATE INDEX "payments_voucher_id_idx" ON "payments"("voucher_id");
@@ -429,7 +527,7 @@ CREATE INDEX "payments_status_idx" ON "payments"("status");
 CREATE INDEX "payments_provider_reference_idx" ON "payments"("provider_reference");
 
 -- CreateIndex
-CREATE INDEX "wifi_sessions_customer_id_idx" ON "wifi_sessions"("customer_id");
+CREATE INDEX "wifi_sessions_device_id_idx" ON "wifi_sessions"("device_id");
 
 -- CreateIndex
 CREATE INDEX "wifi_sessions_voucher_id_idx" ON "wifi_sessions"("voucher_id");
@@ -465,7 +563,7 @@ CREATE INDEX "daily_usage_stats_package_id_idx" ON "daily_usage_stats"("package_
 CREATE INDEX "daily_usage_stats_stat_date_idx" ON "daily_usage_stats"("stat_date");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_admin_user_id_idx" ON "audit_logs"("admin_user_id");
+CREATE INDEX "audit_logs_staff_id_idx" ON "audit_logs"("staff_id");
 
 -- CreateIndex
 CREATE INDEX "audit_logs_entity_type_entity_id_idx" ON "audit_logs"("entity_type", "entity_id");
@@ -474,10 +572,22 @@ CREATE INDEX "audit_logs_entity_type_entity_id_idx" ON "audit_logs"("entity_type
 CREATE INDEX "audit_logs_created_at_idx" ON "audit_logs"("created_at");
 
 -- AddForeignKey
-ALTER TABLE "admin_preferences" ADD CONSTRAINT "admin_preferences_admin_user_id_fkey" FOREIGN KEY ("admin_user_id") REFERENCES "admin_users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "venues" ADD CONSTRAINT "venues_operator_id_fkey" FOREIGN KEY ("operator_id") REFERENCES "admin_users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "two_factors" ADD CONSTRAINT "two_factors_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "staff" ADD CONSTRAINT "staff_id_fkey" FOREIGN KEY ("id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "staff_preferences" ADD CONSTRAINT "staff_preferences_staff_id_fkey" FOREIGN KEY ("staff_id") REFERENCES "staff"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "venues" ADD CONSTRAINT "venues_operator_id_fkey" FOREIGN KEY ("operator_id") REFERENCES "staff"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "routers" ADD CONSTRAINT "routers_venue_id_fkey" FOREIGN KEY ("venue_id") REFERENCES "venues"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -495,7 +605,7 @@ ALTER TABLE "voucher_batches" ADD CONSTRAINT "voucher_batches_package_id_fkey" F
 ALTER TABLE "voucher_batches" ADD CONSTRAINT "voucher_batches_venue_id_fkey" FOREIGN KEY ("venue_id") REFERENCES "venues"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "voucher_batches" ADD CONSTRAINT "voucher_batches_created_by_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "admin_users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "voucher_batches" ADD CONSTRAINT "voucher_batches_created_by_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "staff"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "vouchers" ADD CONSTRAINT "vouchers_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "voucher_batches"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -507,10 +617,10 @@ ALTER TABLE "vouchers" ADD CONSTRAINT "vouchers_package_id_fkey" FOREIGN KEY ("p
 ALTER TABLE "vouchers" ADD CONSTRAINT "vouchers_venue_id_fkey" FOREIGN KEY ("venue_id") REFERENCES "venues"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "vouchers" ADD CONSTRAINT "vouchers_assigned_customer_id_fkey" FOREIGN KEY ("assigned_customer_id") REFERENCES "wifi_customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "vouchers" ADD CONSTRAINT "vouchers_redeemed_by_device_id_fkey" FOREIGN KEY ("redeemed_by_device_id") REFERENCES "devices"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "wifi_customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "payments" ADD CONSTRAINT "payments_device_id_fkey" FOREIGN KEY ("device_id") REFERENCES "devices"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "payments" ADD CONSTRAINT "payments_voucher_id_fkey" FOREIGN KEY ("voucher_id") REFERENCES "vouchers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -522,7 +632,7 @@ ALTER TABLE "payments" ADD CONSTRAINT "payments_package_id_fkey" FOREIGN KEY ("p
 ALTER TABLE "payments" ADD CONSTRAINT "payments_venue_id_fkey" FOREIGN KEY ("venue_id") REFERENCES "venues"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "wifi_sessions" ADD CONSTRAINT "wifi_sessions_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "wifi_customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "wifi_sessions" ADD CONSTRAINT "wifi_sessions_device_id_fkey" FOREIGN KEY ("device_id") REFERENCES "devices"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "wifi_sessions" ADD CONSTRAINT "wifi_sessions_voucher_id_fkey" FOREIGN KEY ("voucher_id") REFERENCES "vouchers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -546,7 +656,7 @@ ALTER TABLE "daily_usage_stats" ADD CONSTRAINT "daily_usage_stats_venue_id_fkey"
 ALTER TABLE "daily_usage_stats" ADD CONSTRAINT "daily_usage_stats_package_id_fkey" FOREIGN KEY ("package_id") REFERENCES "packages"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_admin_user_id_fkey" FOREIGN KEY ("admin_user_id") REFERENCES "admin_users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_staff_id_fkey" FOREIGN KEY ("staff_id") REFERENCES "staff"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- Constraints Prisma cannot express. RouterOS compares hotspot usernames case-sensitively
 -- (measured in the router sim), so voucher codes and the prefixes they are built from are
@@ -555,7 +665,7 @@ ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_admin_user_id_fkey" FOREIGN 
 ALTER TABLE "vouchers" ADD CONSTRAINT "vouchers_code_upper" CHECK ("code" = upper("code"));
 ALTER TABLE "voucher_batches" ADD CONSTRAINT "voucher_batches_prefix_upper" CHECK ("prefix" = upper("prefix"));
 ALTER TABLE "portal_settings" ADD CONSTRAINT "portal_settings_voucher_prefix_upper" CHECK ("voucher_prefix" = upper("voucher_prefix"));
-ALTER TABLE "admin_users" ADD CONSTRAINT "admin_users_email_lower" CHECK ("email" = lower("email"));
+ALTER TABLE "users" ADD CONSTRAINT "users_email_lower" CHECK ("email" = lower("email"));
 
 -- Ranges the application assumes.
 ALTER TABLE "packages" ADD CONSTRAINT "packages_peak_hours_range" CHECK (("peak_start_hour" IS NULL OR "peak_start_hour" BETWEEN 0 AND 23) AND ("peak_end_hour" IS NULL OR "peak_end_hour" BETWEEN 0 AND 23));

@@ -36,6 +36,9 @@ before each test (`apps/api/test/integration/harness.ts`). Create the database o
 
 ## Rules the schema enforces
 
+- Sign-in identity is Better Auth's (`users`, `sessions`, `accounts`, `verifications`,
+  `two_factors`, `rate_limits`); what a person may do is `staff`, sharing the user's id
+  (ADR-0007). Guest devices are `devices`, one per MAC address, not people.
 - Voucher codes and prefixes are upper-case and emails lower-case (`CHECK` constraints):
   RouterOS compares hotspot usernames case-sensitively, so input is normalised before lookup.
 - Instants are `timestamptz` in UTC; business days are computed in `Africa/Dar_es_Salaam`

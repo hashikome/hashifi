@@ -4,7 +4,8 @@ import type { PrismaClient } from "../generated/prisma/client.js";
 export type AuditDetails = Record<string, string | number | boolean | null>;
 
 interface AuditEntry {
-  adminUserId: string | null;
+  /** The staff member who acted; null for the system. */
+  staffId: string | null;
   actorName: string;
   action: string;
   entityType: string;
@@ -24,7 +25,7 @@ export class AuditLog {
   async record(entry: AuditEntry): Promise<void> {
     await this.db.auditLog.create({
       data: {
-        adminUserId: entry.adminUserId,
+        staffId: entry.staffId,
         action: entry.action,
         entityType: entry.entityType,
         entityId: entry.entityId,
@@ -47,7 +48,7 @@ export class AuditLog {
   ): Promise<void> {
     try {
       await this.record({
-        adminUserId: null,
+        staffId: null,
         actorName: "system",
         action,
         entityType: entity.type,

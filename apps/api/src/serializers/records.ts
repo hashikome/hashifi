@@ -46,7 +46,7 @@ export function voucherRecord(row: Voucher): VoucherRecord {
     batchId: row.batchId,
     packageId: row.packageId,
     venueId: row.venueId,
-    assignedCustomerId: row.assignedCustomerId,
+    redeemedByDeviceId: row.redeemedByDeviceId,
     code: row.code,
     status: row.status,
     dataLimitGb: row.dataLimitGb,

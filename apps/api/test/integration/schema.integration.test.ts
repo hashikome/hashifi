@@ -45,12 +45,24 @@ describe("the schema on PostgreSQL 18", () => {
     expect(await failure(t.db.voucher.create({ data }))).toMatch(/Unique constraint/i);
   });
 
-  test("admin emails must be lower-case", async () => {
-    await t.db.adminUser.create({ data: { email: "admin@example.com", name: "Admin" } });
+  test("sign-in emails must be lower-case", async () => {
+    await t.db.user.create({
+      data: { id: Bun.randomUUIDv7(), email: "admin@example.com", name: "Admin" },
+    });
     const mixed = await failure(
-      t.db.adminUser.create({ data: { email: "Manager@Example.com", name: "Manager" } }),
+      t.db.user.create({
+        data: { id: Bun.randomUUIDv7(), email: "Manager@Example.com", name: "Manager" },
+      }),
     );
-    expect(mixed).toMatch(/admin_users_email_lower/);
+    expect(mixed).toMatch(/users_email_lower/);
+  });
+
+  test("staff shares the user's id and goes with the user", async () => {
+    const id = Bun.randomUUIDv7();
+    await t.db.user.create({ data: { id, email: "staff@example.com", name: "Staff" } });
+    await t.db.staff.create({ data: { id, role: "admin" } });
+    await t.db.user.delete({ where: { id } });
+    expect(await t.db.staff.findUnique({ where: { id } })).toBeNull();
   });
 
   test("money keeps its exact decimal value", async () => {

@@ -48,7 +48,8 @@ export interface VoucherRecord {
   batchId: string | null;
   packageId: string | null;
   venueId: string | null;
-  assignedCustomerId: string | null;
+  /** The device that redeemed it. */
+  redeemedByDeviceId: string | null;
   code: string;
   status: VoucherStatus;
   dataLimitGb: number | null;
