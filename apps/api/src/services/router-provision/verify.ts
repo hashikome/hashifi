@@ -25,7 +25,7 @@ import {
 } from "../mikrotik.js";
 import { RouterUnsupportedError } from "../mikrotik-errors.js";
 import type { RouterLogger } from "../router-log.js";
-import type { HotspotPlan } from "./context.js";
+import type { BackendEndpoints, HotspotPlan } from "./context.js";
 import type { Dialect } from "./dialect.js";
 import { hotspotUserParams } from "./dialect.js";
 import { PORTAL_FILES, renderPortalFile, routerPathFor } from "./portal-files.js";
@@ -51,9 +51,7 @@ export interface VerifyReport {
 export interface VerifyInput {
   dialect: Dialect;
   plan: HotspotPlan;
-  /** Used to compute the expected portal-file sizes. */
-  backendUrl: string;
-  backendIp: string;
+  endpoints: BackendEndpoints;
   /** Create-and-remove a throwaway hotspot user. On by default. */
   includeWriteTest?: boolean;
 }
@@ -274,7 +272,7 @@ async function loginModeCheck(ros: RosClient, plan: HotspotPlan): Promise<Readin
   return { ...base, status: "pass", detail: `login-by is "${loginBy}".` };
 }
 
-async function portalFilesCheck(ros: RosClient, backendUrl: string): Promise<ReadinessCheck> {
+async function portalFilesCheck(ros: RosClient, portalOrigin: string): Promise<ReadinessCheck> {
   const base = { id: "portal-files", title: "Portal pages are on the router, complete" };
   const wrong: string[] = [];
 
@@ -285,7 +283,7 @@ async function portalFilesCheck(ros: RosClient, backendUrl: string): Promise<Rea
       wrong.push(`${name} is missing`);
       continue;
     }
-    const expected = Buffer.byteLength(await renderPortalFile(name, backendUrl), "utf8");
+    const expected = Buffer.byteLength(await renderPortalFile(name, portalOrigin), "utf8");
     const actual = Number(row.size ?? 0);
     if (actual !== expected) wrong.push(`${name} is ${actual} bytes, expected ${expected}`);
   }
@@ -309,22 +307,29 @@ async function portalFilesCheck(ros: RosClient, backendUrl: string): Promise<Rea
   };
 }
 
-async function walledGardenCheck(ros: RosClient, backendIp: string): Promise<ReadinessCheck> {
-  const base = { id: "walled-garden", title: "Backend reachable before login" };
-  const rows = await ros.print("/ip/hotspot/walled-garden/ip", [`?dst-address=${backendIp}`]);
-  const accepting = rows.filter((r) => r.action === "accept" && !yes(r.disabled));
+async function walledGardenCheck(
+  ros: RosClient,
+  portal: BackendEndpoints["portal"],
+): Promise<ReadinessCheck> {
+  const base = { id: "walled-garden", title: "Portal reachable before login" };
+  const field = portal.hostIsIp ? "dst-address" : "dst-host";
+  const rows = await ros.print("/ip/hotspot/walled-garden/ip", [`?${field}=${portal.host}`]);
+  // RouterOS marks a host-name entry invalid when the name does not resolve.
+  const accepting = rows.filter(
+    (r) => r.action === "accept" && !yes(r.disabled) && !yes(r.invalid),
+  );
 
   if (accepting.length === 0) {
     return {
       ...base,
       status: "fail",
-      detail: `Nothing lets an unauthenticated client reach ${backendIp}.`,
+      detail: `Nothing lets an unauthenticated client reach ${portal.host}.`,
       fix:
         "The portal page itself is served from the backend, so without this the captive " +
         "portal never loads (§4). Run Set up again.",
     };
   }
-  return { ...base, status: "pass", detail: `${backendIp} is allowed before login.` };
+  return { ...base, status: "pass", detail: `${portal.host} is allowed before login.` };
 }
 
 /** Informational: nobody has connected yet on a fresh install, and that is not a fault. */
@@ -604,7 +609,7 @@ async function voucherRoundTripCheck(
 // ── Runner ──────────────────────────────────────────────────────────────────
 
 export async function verifyRouter(ros: RosClient, input: VerifyInput): Promise<VerifyReport> {
-  const { dialect, plan, backendUrl, backendIp, includeWriteTest = true } = input;
+  const { dialect, plan, endpoints, includeWriteTest = true } = input;
 
   const checks: ReadinessCheck[] = [];
 
@@ -613,8 +618,8 @@ export async function verifyRouter(ros: RosClient, input: VerifyInput): Promise<
   checks.push(await dhcpServerCheck(ros, dialect, plan));
   checks.push(await radioBroadcastingCheck(ros, dialect, plan));
   checks.push(await loginModeCheck(ros, plan));
-  checks.push(await portalFilesCheck(ros, backendUrl));
-  checks.push(await walledGardenCheck(ros, backendIp));
+  checks.push(await portalFilesCheck(ros, endpoints.portal.origin));
+  checks.push(await walledGardenCheck(ros, endpoints.portal));
   checks.push(await activityCheck(ros));
 
   let discovered: Partial<RouterCapabilities> | null = null;

@@ -536,6 +536,15 @@ const hotspotServer: ProvisionStep = {
   },
 };
 
+/**
+ * A portal host name goes in `dst-host`: RouterOS resolves it and keeps a pass-through rule per
+ * address, which is what a Cloudflare-fronted origin needs (measured on CHR 7.25: both of a
+ * proxied name's addresses appeared as dynamic rules). An IPv4 origin goes in `dst-address`.
+ */
+function walledGardenField(ctx: ProvisionContext): "dst-host" | "dst-address" {
+  return ctx.endpoints.portal.hostIsIp ? "dst-address" : "dst-host";
+}
+
 const walledGarden: ProvisionStep = {
   id: "walled-garden-backend",
   title: "Walled garden — allow backend before login (§4)",
@@ -543,11 +552,11 @@ const walledGarden: ProvisionStep = {
   appliesTo: (ctx) => ctx.profile.capabilities.hotspot,
   async check({ ros, ctx }) {
     const row = await ros.findByTag("/ip/hotspot/walled-garden/ip", "walled-garden-backend");
-    return matches(row, { "dst-address": ctx.backendIp, action: "accept" });
+    return matches(row, { [walledGardenField(ctx)]: ctx.endpoints.portal.host, action: "accept" });
   },
   async apply({ ros, ctx }) {
     await ensureTaggedRule(ros, "/ip/hotspot/walled-garden/ip", "walled-garden-backend", [
-      `=dst-address=${ctx.backendIp}`,
+      `=${walledGardenField(ctx)}=${ctx.endpoints.portal.host}`,
       "=action=accept",
     ]);
   },
@@ -557,13 +566,14 @@ const firewallForward: ProvisionStep = {
   id: "firewall-forward-backend",
   title: "Firewall — hotspot clients → backend (§5)",
   critical: true,
-  appliesTo: (ctx) => ctx.profile.capabilities.hotspot,
+  // A host-name portal is let through by the walled garden alone; this rule needs an address.
+  appliesTo: (ctx) => ctx.profile.capabilities.hotspot && ctx.endpoints.portal.hostIsIp,
   async check({ ros, ctx }) {
     const row = await ros.findByTag("/ip/firewall/filter", "firewall-forward-backend");
     const correct = matches(row, {
       chain: "forward",
       "src-address": ctx.hotspot.network,
-      "dst-address": ctx.backendIp,
+      "dst-address": ctx.endpoints.portal.host,
       action: "accept",
     });
     // Position counts: an accept below the hotspot's reject never runs.
@@ -577,7 +587,7 @@ const firewallForward: ProvisionStep = {
     const params = [
       "=chain=forward",
       `=src-address=${ctx.hotspot.network}`,
-      `=dst-address=${ctx.backendIp}`,
+      `=dst-address=${ctx.endpoints.portal.host}`,
       "=action=accept",
     ];
     // Must precede the hotspot's own reject rules, or hotspot clients never reach the backend
@@ -601,7 +611,7 @@ const firewallInput: ProvisionStep = {
     const row = await ros.findByTag("/ip/firewall/filter", "firewall-input-backend");
     const correct = matches(row, {
       chain: "input",
-      "src-address": ctx.backendIp,
+      "src-address": ctx.endpoints.management.ip,
       action: "accept",
     });
     return (
@@ -611,7 +621,11 @@ const firewallInput: ProvisionStep = {
   },
   async apply({ ros, ctx }) {
     const existing = await ros.findByTag("/ip/firewall/filter", "firewall-input-backend");
-    const params = ["=chain=input", `=src-address=${ctx.backendIp}`, "=action=accept"];
+    const params = [
+      "=chain=input",
+      `=src-address=${ctx.endpoints.management.ip}`,
+      "=action=accept",
+    ];
     if (existing?.[".id"]) {
       await ros.set("/ip/firewall/filter", rowId(existing), params);
       await moveRuleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-input-backend");
@@ -650,11 +664,11 @@ const ipBinding: ProvisionStep = {
   appliesTo: (ctx) => ctx.profile.capabilities.hotspot,
   async check({ ros, ctx }) {
     const row = await ros.findByTag("/ip/hotspot/ip-binding", "ip-binding-backend");
-    return matches(row, { address: ctx.backendIp, type: "bypassed" });
+    return matches(row, { address: ctx.endpoints.management.ip, type: "bypassed" });
   },
   async apply({ ros, ctx }) {
     await ensureTaggedRule(ros, "/ip/hotspot/ip-binding", "ip-binding-backend", [
-      `=address=${ctx.backendIp}`,
+      `=address=${ctx.endpoints.management.ip}`,
       "=type=bypassed",
     ]);
   },
@@ -670,7 +684,7 @@ const portalFiles: ProvisionStep = {
       const path = routerPathFor(name);
       const [row] = await ros.print("/file", [`?name=${path}`]);
       if (!row) return false;
-      const rendered = await renderPortalFile(name, ctx.backendUrl);
+      const rendered = await renderPortalFile(name, ctx.endpoints.portal.origin);
       if (Number(row.size ?? 0) !== Buffer.byteLength(rendered, "utf8")) return false;
     }
     return true;
@@ -678,7 +692,7 @@ const portalFiles: ProvisionStep = {
   async apply({ ros, ctx }) {
     for (const name of PORTAL_FILES) {
       const path = routerPathFor(name);
-      const contents = await renderPortalFile(name, ctx.backendUrl);
+      const contents = await renderPortalFile(name, ctx.endpoints.portal.origin);
       const [existing] = await ros.print("/file", [`?name=${path}`]);
 
       if (ctx.dialect.fileWrite === "file-contents") {
@@ -699,7 +713,7 @@ const portalFiles: ProvisionStep = {
       // The router pulls the file from the backend — byte-exact, and the backend IP is
       // templated in server-side at fetch time.
       await ros.exec("/tool/fetch", [
-        `=url=${ctx.backendUrl}/portal/hotspot-files/${name}`,
+        `=url=${ctx.endpoints.management.url}/portal/hotspot-files/${name}`,
         `=dst-path=${path}`,
         "=mode=http",
       ]);

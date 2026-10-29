@@ -201,7 +201,7 @@ export async function provisionRouter(
   }
 
   logger.info(
-    `Backend ${ctx.backendUrl} · hotspot ${ctx.hotspot.network} on ` +
+    `Management ${ctx.endpoints.management.url} · portal ${ctx.endpoints.portal.origin} · hotspot ${ctx.hotspot.network} on ` +
       `${ctx.hotspot.interface} · gateway ${ctx.hotspot.gatewayIp}`,
   );
 

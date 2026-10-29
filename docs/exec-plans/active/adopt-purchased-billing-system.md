@@ -40,7 +40,12 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     Provisioning reaches persistence only through `RouterStore`, and credentials carry their
     own port (the management target). Runbook: `docs/runbooks/router-lab.md`.
   - [ ] Management tunnel (router-initiated WireGuard) proved and recorded as an ADR.
-  - [ ] Walled garden by host name rather than a changing IP.
+  - [x] (2026-10-29) Management and portal endpoints split (`resolveBackendEndpoints`):
+    `ROUTER_MANAGEMENT_URL` (replacing `BACKEND_LAN_URL`) is where routers reach the API;
+    `PORTAL_ORIGIN` is where guests' browsers load the portal. A host-name portal goes in the
+    walled garden as `dst-host`, and the address-only forward rule then does not apply. Both
+    modes onboard a fresh CHR and verify clean; with `https://handbook.hashikome.com` RouterOS
+    resolved both Cloudflare addresses into pass-through rules.
   - [ ] A guest client on the hotspot segment: DHCP, portal redirect, voucher login.
   - [ ] `routeros` and `sharp` under Bun (`routeros` proved by the lab).
 - [ ] M3 Prisma schema on PostgreSQL.
@@ -110,6 +115,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   placeholder. The hAP lite (the seller's measurement) let a static rule sit above the dynamic
   ones; both cases are accepted.
   Evidence: router lab, 2026-10-29; `steps.test.ts`.
+- Observation: the purchased code used one backend address for two roles: management (API
+  connections, the router's input accept rule, readiness ping, portal-file download) and the
+  guest-facing portal (login redirect, walled garden, forward accept). The IP binding
+  (`ip-binding-backend`) bypasses the hotspot for the management address, which only matters if
+  the API sits on the guest network; it is kept for now and reviewed with the tunnel.
+- Observation: a walled-garden `dst-host` entry is accepted but flagged invalid while its name
+  does not resolve; resolved, RouterOS keeps one pass-through rule pair per address.
 - Observation: CHR 7.25 rejects `rate-limit` on a hotspot user; the self-test measures it and
   vouchers fall back to per-package profiles, as designed.
 - Observation: Bun 1.4 workspaces install in isolated mode (`node_modules/.bun/`, symlinked per

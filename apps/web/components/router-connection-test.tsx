@@ -56,7 +56,7 @@ interface TestResult {
   plan?: HotspotPlan | null;
   readiness?: ReadinessReport | null;
   planError?: string | null;
-  backendError?: string | null;
+  managementError?: string | null;
 }
 
 /**
@@ -198,8 +198,8 @@ export function RouterConnectionTest({
             )
           )}
 
-          {result.backendError && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">{result.backendError}</p>
+          {result.managementError && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">{result.managementError}</p>
           )}
 
           {result.readiness && <ReadinessChecklist report={result.readiness} />}

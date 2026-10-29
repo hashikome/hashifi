@@ -52,10 +52,7 @@ export interface ProvisionContext {
   router: RouterRow;
   profile: RouterProfile;
   dialect: Dialect;
-  /** e.g. "http://192.168.0.15:8080" */
-  backendUrl: string;
-  /** e.g. "192.168.0.15" */
-  backendIp: string;
+  endpoints: BackendEndpoints;
   hotspot: HotspotPlan;
   dryRun: boolean;
 }
@@ -108,16 +105,53 @@ function sameSubnet(a: string, b: string, prefix = 24): boolean {
 }
 
 /**
- * Find the address hotspot clients and the router will use to reach this backend.
+ * The two ways a router relates to this API, which the purchased code treated as one address.
  *
- * `BACKEND_LAN_URL` wins if set. Otherwise we pick the local IPv4 that shares a subnet
- * with the router — which is by definition the interface the router can route back to.
+ * - **Management**: where the router reaches the API, to fetch its portal pages and be pinged,
+ *   and the source address the router accepts API connections from. In the cloud design this is
+ *   the API's address inside the router-initiated tunnel; on a shared LAN it is the API's LAN
+ *   address. Always an IPv4 address, because RouterOS firewall rules need one.
+ * - **Portal**: the origin guests' browsers load the captive portal from, and so what the walled
+ *   garden must let through before login. In production a public HTTPS host name, whose
+ *   addresses change behind Cloudflare; on a shared LAN the management URL.
  */
-export function resolveBackendUrl(routerHost: string): { url: string; ip: string } {
-  const explicit = process.env.BACKEND_LAN_URL;
+export interface BackendEndpoints {
+  management: { url: string; ip: string };
+  portal: { origin: string; host: string; hostIsIp: boolean };
+}
+
+const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+/**
+ * Resolve both endpoints for a router at `routerHost`.
+ *
+ * `ROUTER_MANAGEMENT_URL` sets the management URL; without it, the local IPv4 that shares a
+ * subnet with the router is used (the purchased LAN design). `PORTAL_ORIGIN` sets the portal
+ * origin; without it, guests are sent to the management URL.
+ */
+export function resolveBackendEndpoints(routerHost: string): BackendEndpoints {
+  const management = resolveManagementUrl(routerHost);
+  const origin = portalOriginFor(management.url);
+  const host = new URL(origin).hostname;
+  return { management, portal: { origin, host, hostIsIp: IPV4.test(host) } };
+}
+
+/** The portal origin for a management URL: `PORTAL_ORIGIN`, or the management URL itself. */
+export function portalOriginFor(managementUrl: string): string {
+  return (process.env.PORTAL_ORIGIN ?? managementUrl).replace(/\/+$/, "");
+}
+
+function resolveManagementUrl(routerHost: string): { url: string; ip: string } {
+  const explicit = process.env.ROUTER_MANAGEMENT_URL;
   if (explicit) {
-    const ip = explicit.replace(/^https?:\/\//, "").split(":")[0] ?? routerHost;
-    return { url: explicit.replace(/\/+$/, ""), ip };
+    const url = explicit.replace(/\/+$/, "");
+    const ip = new URL(url).hostname;
+    if (!IPV4.test(ip)) {
+      throw new Error(
+        `ROUTER_MANAGEMENT_URL must use an IPv4 address (routers filter API access by it): ${url}`,
+      );
+    }
+    return { url, ip };
   }
 
   const port = process.env.PORT ?? "8080";
@@ -135,7 +169,7 @@ export function resolveBackendUrl(routerHost: string): { url: string; ip: string
     throw new Error(
       `Cannot determine this server's address on the router's network (${routerHost}). ` +
         `No local interface shares that subnet — check the backend machine's IP (§1), ` +
-        `or set BACKEND_LAN_URL explicitly.`,
+        `or set ROUTER_MANAGEMENT_URL explicitly.`,
     );
   }
 
@@ -299,13 +333,11 @@ export function buildContext(
   dialect: Dialect,
   dryRun: boolean,
 ): ProvisionContext {
-  const { url, ip } = resolveBackendUrl(router.ipAddress);
   return {
     router,
     profile,
     dialect,
-    backendUrl: url,
-    backendIp: ip,
+    endpoints: resolveBackendEndpoints(router.ipAddress),
     hotspot: buildHotspotPlan(router, profile),
     dryRun,
   };

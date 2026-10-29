@@ -12,6 +12,7 @@ import {
   wifiCustomers,
   wifiSessions,
 } from "../db/schema.js";
+import { portalOriginFor } from "../services/router-provision/context.js";
 import {
   PORTAL_FILES,
   type PortalFileName,
@@ -46,10 +47,11 @@ captivePortalRouter.get(
       return;
     }
 
-    const backendUrl =
-      process.env.BACKEND_LAN_URL ?? `http://${req.hostname}:${process.env.PORT ?? "8080"}`;
+    // The router fetched this over its management URL, so that is the host it used.
+    const managementUrl =
+      process.env.ROUTER_MANAGEMENT_URL ?? `http://${req.hostname}:${process.env.PORT ?? "8080"}`;
 
-    const html = await renderPortalFile(name as PortalFileName, backendUrl);
+    const html = await renderPortalFile(name as PortalFileName, portalOriginFor(managementUrl));
     res.type("html").send(html);
   }),
 );

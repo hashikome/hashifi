@@ -14,7 +14,7 @@ import { buildBootstrapScript } from "../services/router-provision/bootstrap.js"
 import {
   buildHotspotPlan,
   isRadioInterfaceType,
-  resolveBackendUrl,
+  resolveBackendEndpoints,
 } from "../services/router-provision/context.js";
 import { dbRouterStore } from "../services/router-provision/db-store.js";
 import { dialectFor } from "../services/router-provision/dialect.js";
@@ -401,12 +401,12 @@ router.post(
 
     // Provisioning aborts if it cannot find its own address on the router's subnet, so
     // report that here too rather than letting it surface three clicks later.
-    let backend: { url: string; ip: string } | null = null;
-    let backendError: string | null = null;
+    let managementIp: string | null = null;
+    let managementError: string | null = null;
     try {
-      backend = resolveBackendUrl(host);
+      managementIp = resolveBackendEndpoints(host).management.ip;
     } catch (err) {
-      backendError = err instanceof Error ? err.message : String(err);
+      managementError = err instanceof Error ? err.message : String(err);
     }
 
     // Advisory: a readiness failure must not turn a successful connection test into an error.
@@ -419,8 +419,8 @@ router.post(
           profile,
           plan,
           planError,
-          backendIp: backend?.ip ?? null,
-          backendError,
+          managementIp,
+          managementError,
         },
       );
     } catch (err) {
@@ -452,8 +452,7 @@ router.post(
       })),
       plan,
       planError,
-      backend,
-      backendError,
+      managementError,
     });
   }),
 );
@@ -530,12 +529,12 @@ router.post(
         planError = planErr instanceof Error ? planErr.message : String(planErr);
       }
 
-      let backendIp: string | null = null;
-      let backendError: string | null = null;
+      let managementIp: string | null = null;
+      let managementError: string | null = null;
       try {
-        backendIp = resolveBackendUrl(existing.ipAddress).ip;
+        managementIp = resolveBackendEndpoints(existing.ipAddress).management.ip;
       } catch (backendErr) {
-        backendError = backendErr instanceof Error ? backendErr.message : String(backendErr);
+        managementError = backendErr instanceof Error ? backendErr.message : String(backendErr);
       }
 
       let readiness: Awaited<ReturnType<typeof probeReadiness>> | null = null;
@@ -544,8 +543,8 @@ router.post(
           profile,
           plan,
           planError,
-          backendIp,
-          backendError,
+          managementIp,
+          managementError,
         });
       } catch (readinessErr) {
         logger.warn(
@@ -614,13 +613,10 @@ router.post(
     try {
       const profile = await probeRouterMerged(creds, logger, existing.capabilities);
       const plan = buildHotspotPlan(existing, profile);
-      const backend = resolveBackendUrl(existing.ipAddress);
-
       const report = await probeVerify(creds, logger, {
         dialect: dialectFor(profile),
         plan,
-        backendUrl: backend.url,
-        backendIp: backend.ip,
+        endpoints: resolveBackendEndpoints(existing.ipAddress),
         includeWriteTest: !skipWriteTest,
       });
 

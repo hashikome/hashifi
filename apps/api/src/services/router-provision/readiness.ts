@@ -56,9 +56,9 @@ export interface ReadinessInput {
   /** The resolved plan, or null when `buildHotspotPlan` refused. */
   plan: HotspotPlan | null;
   planError: string | null;
-  /** Backend's address on the router's network, or null when it could not be resolved. */
-  backendIp: string | null;
-  backendError?: string | null;
+  /** The API's management address as the router sees it, or null when it could not be resolved. */
+  managementIp: string | null;
+  managementError: string | null;
 }
 
 /** A ping that hangs would hang the whole readiness run. */
@@ -157,7 +157,7 @@ async function internetCheck(ros: RosClient): Promise<ReadinessCheck> {
 async function backendReachableCheck(
   ros: RosClient,
   backendIp: string | null,
-  backendError: string | null | undefined,
+  backendError: string | null,
 ): Promise<ReadinessCheck> {
   const base = { id: "backend-reachable", title: "Router can reach this backend" };
 
@@ -168,7 +168,7 @@ async function backendReachableCheck(
       detail: backendError ?? "The backend's address on the router's network is unknown.",
       fix:
         "Provisioning cannot template the portal pages without this. Put the backend on the " +
-        "router's subnet, or set BACKEND_LAN_URL explicitly.",
+        "router's subnet, or set ROUTER_MANAGEMENT_URL explicitly.",
     };
   }
 
@@ -335,14 +335,14 @@ export async function checkReadiness(
   ros: RosClient,
   input: ReadinessInput,
 ): Promise<ReadinessReport> {
-  const { profile, plan, planError, backendIp, backendError } = input;
+  const { profile, plan, planError, managementIp, managementError } = input;
 
   const checks: ReadinessCheck[] = [hotspotPackageCheck(profile)];
 
   // Sequential on purpose: these share one API connection, and a MikroTik with 32 MB of RAM
   // is not somewhere to fire concurrent commands for the sake of a second's latency.
   checks.push(await internetCheck(ros));
-  checks.push(await backendReachableCheck(ros, backendIp, backendError));
+  checks.push(await backendReachableCheck(ros, managementIp, managementError));
 
   if (profile.capabilities.hotspot) {
     checks.push(await hotspotInterfaceCheck(ros, profile, plan, planError));

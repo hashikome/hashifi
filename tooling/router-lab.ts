@@ -11,7 +11,8 @@ import { RouterLogger } from "../apps/api/src/services/router-log.js";
 import { buildBootstrapScript } from "../apps/api/src/services/router-provision/bootstrap.js";
 import {
   buildHotspotPlan,
-  resolveBackendUrl,
+  portalOriginFor,
+  resolveBackendEndpoints,
 } from "../apps/api/src/services/router-provision/context.js";
 import { dialectFor } from "../apps/api/src/services/router-provision/dialect.js";
 import {
@@ -381,7 +382,7 @@ function serveBackend(): ReturnType<typeof Bun.serve> {
       if (!(PORTAL_FILES as readonly string[]).includes(name)) {
         return new Response("not found", { status: 404 });
       }
-      const body = await renderPortalFile(name as PortalFileName, BACKEND_URL);
+      const body = await renderPortalFile(name as PortalFileName, portalOriginFor(BACKEND_URL));
       return new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     },
   });
@@ -395,7 +396,7 @@ function printEvents(logger: RouterLogger): void {
 }
 
 async function setup(): Promise<void> {
-  process.env.BACKEND_LAN_URL = BACKEND_URL;
+  process.env.ROUTER_MANAGEMENT_URL = BACKEND_URL;
   const backend = serveBackend();
   try {
     const logger = new RouterLogger("provision");
@@ -413,18 +414,16 @@ async function setup(): Promise<void> {
 }
 
 async function verify(): Promise<void> {
-  process.env.BACKEND_LAN_URL = BACKEND_URL;
+  process.env.ROUTER_MANAGEMENT_URL = BACKEND_URL;
   const state = readState();
   const creds = labCredentials(state);
   const logger = new RouterLogger("probe");
   const router = labRouter(state);
   const profile = await probeRouterMerged(creds, logger, router.capabilities);
-  const backend = resolveBackendUrl(router.ipAddress);
   const report = await probeVerify(creds, logger, {
     dialect: dialectFor(profile),
     plan: buildHotspotPlan(router, profile),
-    backendUrl: backend.url,
-    backendIp: backend.ip,
+    endpoints: resolveBackendEndpoints(router.ipAddress),
   });
   for (const check of report.checks) {
     console.log(

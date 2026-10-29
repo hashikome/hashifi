@@ -52,6 +52,10 @@ bun run lab reset       # discard the overlay and boot a factory-fresh router
 bun run lab down
 ```
 
+Set `PORTAL_ORIGIN` (for example `PORTAL_ORIGIN=https://handbook.hashikome.com`) to provision
+with a host-name portal behind Cloudflare, as production will; without it guests are sent to
+the management URL, the purchased LAN design.
+
 `reset`, then `bootstrap` and `setup`, is the full onboarding of a new router. It takes about
 a minute and must end with `Setup succeeded.`; a second `setup` must report 0 changes.
 `verify` then passes with two expected warnings: no client activity, and the voucher speed

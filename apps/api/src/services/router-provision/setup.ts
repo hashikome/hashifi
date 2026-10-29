@@ -25,7 +25,7 @@
 
 import { RouterError } from "../mikrotik-errors.js";
 import { type RouterLogEvent, RouterLogger } from "../router-log.js";
-import { buildHotspotPlan, type HotspotPlan, resolveBackendUrl } from "./context.js";
+import { buildHotspotPlan, type HotspotPlan, resolveBackendEndpoints } from "./context.js";
 import { dialectFor } from "./dialect.js";
 import { type ProvisionReport, provisionRouter } from "./index.js";
 import { probeRouterMerged, type RouterProfile } from "./probe.js";
@@ -244,12 +244,12 @@ export async function setupRouter(
       planError = err instanceof Error ? err.message : String(err);
     }
 
-    let backendIp: string | null = null;
-    let backendError: string | null = null;
+    let managementIp: string | null = null;
+    let managementError: string | null = null;
     try {
-      backendIp = resolveBackendUrl(router.ipAddress).ip;
+      managementIp = resolveBackendEndpoints(router.ipAddress).management.ip;
     } catch (err) {
-      backendError = err instanceof Error ? err.message : String(err);
+      managementError = err instanceof Error ? err.message : String(err);
     }
 
     try {
@@ -257,8 +257,8 @@ export async function setupRouter(
         profile,
         plan,
         planError,
-        backendIp,
-        backendError,
+        managementIp,
+        managementError,
       });
     } catch (err) {
       // Readiness is diagnostic; losing it must not stop a run that would otherwise work.
@@ -410,12 +410,10 @@ export async function setupRouter(
       record("self-test", "skipped", "No hotspot plan to test against.", t);
     } else {
       try {
-        const backend = resolveBackendUrl(router.ipAddress);
         selfTest = await probeVerify(creds, logger, {
           dialect: dialectFor(profile),
           plan,
-          backendUrl: backend.url,
-          backendIp: backend.ip,
+          endpoints: resolveBackendEndpoints(router.ipAddress),
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
