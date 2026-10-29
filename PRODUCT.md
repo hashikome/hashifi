@@ -94,22 +94,24 @@ a sale for the venue's figures. They suit different places, and a venue can use 
 - **Self-service on the portal (the default).** The guest picks a package and pays with their
   mobile number. When the payment is confirmed, HashiFi issues a voucher and logs **the device
   that paid** straight in: no code to type. The code is returned to that device once, over the
-  portal session that made the payment, and is also sent to the phone number, as the receipt
+  portal session that made the payment, shown on screen, and sent to the phone number by SMS,
+  as the receipt
   and the way to add a second device (within the package's limit) or reconnect. Works at any
   hour with nobody acting for the guest. A payment that succeeds while the router is
   unreachable is retried until the guest has access, and is shown as access owed until then.
 - **Assisted sale.** A manager or admin records a payment (cash or mobile money) against the
-  guest's phone number; HashiFi issues the voucher and sends it to that phone, or the manager
-  prints it. The fullest record: who paid, how, at which venue, for which voucher. Suits
+  guest's phone number; HashiFi issues the voucher and sends it to that phone by SMS, or the
+  manager prints it. The fullest record: who paid, how, at which venue, for which voucher. Suits
   regulars.
 - **Pre-printed cards.** Vouchers printed in batches are stock at a known price per venue,
   handed over for cash with no phone number or typing: the fastest, for a busy venue. A card
   counts as a cash sale at its venue when it is redeemed; unsold cards remain stock.
 
-Codes reach phones by WhatsApp or SMS through BRIQ, the messaging provider shared with other
-Hashikome products, falling back to the other channel, then to email when the guest gave one,
-then to "contact the venue" on the portal. A delivery outage never costs the paying device its
-access. Payments use Snippe (adoption plan M6).
+Codes reach phones by **SMS**, through BRIQ, the messaging provider shared with other Hashikome
+products. Not WhatsApp or email: a guest asking for WiFi usually has no data, and SMS reaches
+any phone with signal. When SMS fails, the portal and the sale screen say to contact the venue;
+on the paying device the code is also shown, and that device is already online, so a delivery
+outage never costs it access. Payments use Snippe (adoption plan M6).
 
 Acceptance: on the router sim with Snippe's test environment, each path gets a guest online and
 expiry cuts them off, and each appears in the venue's figures; then on a physical router with a

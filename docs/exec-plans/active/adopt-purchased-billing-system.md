@@ -420,20 +420,19 @@ access is granted. Printed vouchers sold for cash stay a supported path alongsid
   to that session once, never to a request keyed by MAC); assisted sales recorded by staff
   against a phone number, the voucher sent or printed; and pre-printed cards recorded as cash
   sales when redeemed, unsold cards as stock.
-- Voucher delivery to phones through BRIQ (SMS and WhatsApp), the provider chosen as
+- Voucher delivery to phones by SMS through BRIQ, the messaging provider chosen as
   cross-product work ([workspace brief](https://github.com/hashikome/workspace/blob/main/backlog/messaging-delivery.md); Pigfarm will use it too). HashiFi depends on a small
   sending interface, not the provider's API, and confirms delivery through BRIQ's signed,
-  retried webhooks. Fallback per message: WhatsApp or SMS, then the other, then email through
-  Resend when the guest gave one, then the portal and receipt say to contact the venue; a step
-  starts only when the provider reports a failure or the confirmation is overdue. The code stays
-  retrievable on the paying device's portal session meanwhile, so a delivery outage never
-  costs a guest access they paid for.
+  retried webhooks. **SMS only:** a guest asking for WiFi usually has no data, so WhatsApp and
+  email cannot reach them; SMS reaches any phone with signal. When SMS fails (the provider
+  reports a failure or the confirmation is overdue), the portal and the sale screen say to
+  contact the venue. On the paying device the code is also shown on screen, and that device is
+  already online, so a delivery outage never costs a guest access they paid for.
 - Acceptance: on the router sim, each path gets the guest online and into the venue's figures:
   a payment through Snippe's sandbox logs the paying device in and sends the code; an assisted
   sale sends or prints it; a pre-printed card is counted when redeemed. A replayed or unsigned
-  webhook changes nothing; a paid-but-unprovisioned payment is retried and recovers; with the
-  messaging provider failing, delivery falls back to the next channel and finally to "contact
-  the venue", and the paying device still gets online.
+  webhook changes nothing; a paid-but-unprovisioned payment is retried and recovers; with SMS
+  failing, the guest is told to contact the venue, and the paying device still gets online.
 
 ### M7 Release pipeline and deployment
 
