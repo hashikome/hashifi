@@ -2,11 +2,19 @@
 // so onboarding, provisioning and verification run against real RouterOS without hardware.
 // Procedure and topology: docs/runbooks/router-sim.md.
 //
-// bun run router-sim <up|down|reset|status|console|hub|bootstrap|setup|verify>
+// bun run router-sim <up|down|reset|status|console|hub|bootstrap|setup|verify|voucher|guest|guest-test>
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { RouterCredentials } from "../apps/api/src/services/mikrotik.js";
+import {
+  closeConnection,
+  connectToRouter,
+  createHotspotUser,
+  ensureHotspotUserProfile,
+  type HotspotUserCapabilities,
+  hotspotUserExists,
+} from "../apps/api/src/services/mikrotik.js";
 import { RouterLogger } from "../apps/api/src/services/router-log.js";
 import { buildBootstrapScript } from "../apps/api/src/services/router-provision/bootstrap.js";
 import {
@@ -41,6 +49,8 @@ const STATE_FILE = join(SIM, "state.json");
 
 /** The sim venue LAN is QEMU's user network: the host is the "ISP router" at 10.0.2.2. */
 const LAN = { routerIp: "10.0.2.15", prefix: 24, gatewayIp: "10.0.2.2" } as const;
+/** UDP ports on 127.0.0.1 carrying the guest link (router ether2 <-> guest eth0). */
+const GUEST_LINK = { router: 18100, guest: 18101 } as const;
 /** Host ports forwarded to the router's RouterOS API, SSH and WinBox. */
 const FORWARD = { api: 18728, ssh: 18022, winbox: 18291 } as const;
 /** The host side of 10.0.2.2:8080, where the router fetches its portal pages. */
@@ -138,9 +148,10 @@ async function up(): Promise<void> {
     `user,id=lan,net=10.0.2.0/${LAN.prefix},host=${LAN.gatewayIp},${forwards}`,
     "-device",
     "virtio-net-pci,netdev=lan,mac=52:54:00:4a:00:01",
-    // ether2: the guest network, a multicast segment a client VM can join.
+    // ether2: the guest network, a point-to-point UDP link to the guest VM. Not multicast: the
+    // host may route multicast into a VPN (Cloudflare WARP did), where it never loops back.
     "-netdev",
-    "socket,id=guests,mcast=230.0.0.1:18100",
+    `socket,id=guests,udp=127.0.0.1:${GUEST_LINK.guest},localaddr=127.0.0.1:${GUEST_LINK.router}`,
     "-device",
     "virtio-net-pci,netdev=guests,mac=52:54:00:4a:00:02",
     "-display",
@@ -194,10 +205,10 @@ class SerialConsole {
   private buffer = "";
   private socket: Bun.Socket<undefined> | null = null;
 
-  static async open(): Promise<SerialConsole> {
+  static async open(path: string = SERIAL): Promise<SerialConsole> {
     const serial = new SerialConsole();
     serial.socket = await Bun.connect({
-      unix: SERIAL,
+      unix: path,
       socket: {
         data: (_socket, data) => {
           serial.buffer += data.toString("utf8");
@@ -371,7 +382,7 @@ function managementUrl(state: SimState): string {
  * Re-runs this command inside the hub when the router is managed over the tunnel, because only
  * the hub is on the platform side of it. Returns true when it did.
  */
-function delegateToHub(state: SimState, command: string): boolean {
+function delegateToHub(state: SimState, command: string, extra: string[] = []): boolean {
   if (!state.tunnel || IN_HUB) return false;
   const env = ["-e", "SIM_IN_HUB=1"];
   if (process.env.PORTAL_ORIGIN) env.push("-e", `PORTAL_ORIGIN=${process.env.PORTAL_ORIGIN}`);
@@ -386,6 +397,7 @@ function delegateToHub(state: SimState, command: string): boolean {
       "bun",
       "tooling/router-sim.ts",
       command,
+      ...extra,
     ],
     { stdout: "inherit", stderr: "inherit" },
   );
@@ -516,6 +528,263 @@ async function verify(): Promise<void> {
   if (!report.ok) process.exitCode = 1;
 }
 
+// ── Guest: a client on the hotspot segment, standing in for a phone ───────────
+
+const GUEST = {
+  iso: join(SIM, "alpine-virt-3.24.3-x86_64.iso"),
+  serial: join(SIM, "guest-serial.sock"),
+  pid: join(SIM, "guest.pid"),
+} as const;
+const HOTSPOT_GATEWAY = "10.5.50.1";
+
+function guestPid(): number | null {
+  if (!existsSync(GUEST.pid)) return null;
+  const pid = Number(readFileSync(GUEST.pid, "utf8").trim());
+  try {
+    process.kill(pid, 0);
+    return pid;
+  } catch {
+    return null;
+  }
+}
+
+/** The guest's shell over its serial console. */
+class GuestShell {
+  private constructor(private readonly serial: SerialConsole) {}
+
+  static async open(): Promise<GuestShell> {
+    const serial = await SerialConsole.open(GUEST.serial);
+    serial.send("\r");
+    const text = await serial.waitFor(/(login:|# )\s*$/, 120_000);
+    if (/login:\s*$/.test(text)) {
+      serial.send("root\r");
+      await serial.waitFor(/# \s*$/, 30_000);
+    }
+    return new GuestShell(serial);
+  }
+
+  /** Runs a shell command and returns its output and exit status. */
+  async run(command: string, timeoutMs = 60_000): Promise<{ output: string; status: number }> {
+    const marker = `SIM-DONE-${crypto.randomUUID().slice(0, 8)}`;
+    // printf starts the marker on a fresh line: output cut short (head -c) has no final newline.
+    this.serial.send(`${command}; printf '\\n%s %d\\n' ${marker} $?\r`);
+    const text = await this.serial.waitFor(new RegExp(`\\n${marker} (\\d+)\\n`), timeoutMs);
+    const match = text.match(new RegExp(`\\n${marker} (\\d+)\\n`));
+    const body = text.slice(0, match?.index ?? text.length);
+    // Drop the echoed command line.
+    const output = body.slice(body.indexOf("\n") + 1);
+    return { output, status: Number(match?.[1] ?? 1) };
+  }
+
+  close(): void {
+    this.serial.close();
+  }
+}
+
+function guest(): void {
+  const action = args[0] ?? "up";
+  if (action === "down") {
+    const pid = guestPid();
+    if (pid !== null) process.kill(pid, "SIGTERM");
+    console.log("Guest stopped.");
+    return;
+  }
+  if (guestPid() !== null) {
+    console.log("Guest is already running.");
+    return;
+  }
+  if (!existsSync(GUEST.iso)) {
+    throw new Error(`Missing ${GUEST.iso}. See docs/runbooks/router-sim.md (Guest).`);
+  }
+  run([
+    "qemu-system-x86_64",
+    "-name",
+    "hashifi-router-sim-guest",
+    "-enable-kvm",
+    "-m",
+    "256",
+    "-smp",
+    "1",
+    "-cdrom",
+    GUEST.iso,
+    "-boot",
+    "d",
+    // The other end of the router's ether2 link: a client of the hotspot and nothing else.
+    "-netdev",
+    `socket,id=guests,udp=127.0.0.1:${GUEST_LINK.router},localaddr=127.0.0.1:${GUEST_LINK.guest}`,
+    "-device",
+    "virtio-net-pci,netdev=guests,mac=52:54:00:4a:00:10",
+    "-display",
+    "none",
+    "-serial",
+    `unix:${GUEST.serial},server=on,wait=off`,
+    "-pidfile",
+    GUEST.pid,
+    "-daemonize",
+  ]);
+  console.log("Guest is booting.");
+}
+
+/**
+ * Creates a voucher on the router the way the API does: the per-package profile where the
+ * board rejects per-user limits, then the hotspot user, read back. Prints `VOUCHER=<code>`.
+ */
+async function voucher(): Promise<void> {
+  const state = readState();
+  if (delegateToHub(state, "voucher", args)) return;
+  const minutes = Number(args[0] ?? 1);
+  const code = `SIM${randomPassword(6).toUpperCase()}`;
+  const caps = state.capabilities as Partial<HotspotUserCapabilities> | null;
+  const needsProfile = caps?.userRateLimit === false || caps?.userSharedUsers === false;
+  const conn = await connectToRouter(simCredentials(state));
+  try {
+    const profileName = needsProfile ? "wbs-pkg-sim" : null;
+    if (profileName) {
+      await ensureHotspotUserProfile(conn, {
+        name: profileName,
+        rateLimit: "1M/2M",
+        sharedUsers: 1,
+      });
+    }
+    await createHotspotUser(
+      conn,
+      {
+        code,
+        deviceLimit: 1,
+        downloadSpeedMbps: 2,
+        uploadSpeedMbps: 1,
+        dataLimitGb: null,
+        durationMinutes: minutes,
+        profileName,
+      },
+      caps?.userRateLimit !== undefined && caps.userSharedUsers !== undefined
+        ? { userRateLimit: caps.userRateLimit, userSharedUsers: caps.userSharedUsers }
+        : null,
+    );
+    if (!(await hotspotUserExists(conn, code)))
+      throw new Error("The router did not confirm the voucher");
+  } finally {
+    await closeConnection(conn);
+  }
+  console.log(`VOUCHER=${code}`);
+}
+
+/** Every step a guest takes, from joining the network to being cut off at expiry. */
+async function guestTest(): Promise<void> {
+  const portalOrigin = portalOriginFor(managementUrl(readState()));
+  const shell = await GuestShell.open();
+  const results: { step: string; ok: boolean; detail: string }[] = [];
+  const record = (step: string, ok: boolean, detail: string) => {
+    results.push({ step, ok, detail });
+    console.log(`${ok ? "✓" : "✗"} ${step}${detail ? ` — ${detail}` : ""}`);
+  };
+  /** Fetches a page in full and reports what it is: the open internet, the portal, or neither. */
+  const fetchPage = async (url: string) => {
+    const result = await shell.run(
+      `rm -f /tmp/page; wget -q -T 8 -O /tmp/page '${url}' 2>&1 | head -c 300; ` +
+        // printf formats keep the result words out of the echoed command line, which the serial
+        // console prints back and which would otherwise match.
+        "grep -q 'Example Domain' /tmp/page && printf 'PAGE=%s\\n' internet; " +
+        "grep -o 'https\\?://[^\"]*/portal/login' /tmp/page | head -1 | sed 's/^/PORTAL /'",
+      30_000,
+    );
+    return {
+      internet: result.output.includes("PAGE=internet"),
+      portal: result.output.match(/PORTAL (https?:\/\/\S+)/)?.[1] ?? null,
+      raw: result.output.trim(),
+    };
+  };
+  const describe = (page: Awaited<ReturnType<typeof fetchPage>>) =>
+    page.internet
+      ? "the open internet"
+      : page.portal
+        ? `the portal (${page.portal})`
+        : `neither: ${page.raw.slice(0, 160)}`;
+
+  try {
+    await shell.run("ip link set eth0 up");
+    const lease = await shell.run(
+      "udhcpc -i eth0 -n -q -t 6 -T 2 2>&1; ip -4 -o addr show eth0",
+      60_000,
+    );
+    const address = lease.output.match(/inet (10\.5\.50\.\d+)/)?.[1] ?? null;
+    record(
+      "Gets an address from the hotspot",
+      address !== null,
+      address ?? lease.output.trim().slice(-120),
+    );
+
+    const intercepted = await fetchPage("http://example.com/");
+    record(
+      "An unauthenticated page request gets the portal",
+      !intercepted.internet && intercepted.portal === `${portalOrigin}/portal/login`,
+      describe(intercepted),
+    );
+
+    /** Whether an HTTPS request completes against the real site (not the hotspot's redirect). */
+    const httpsReaches = async (url: string) => {
+      const r = await shell.run(
+        `wget -q -T 8 -S -O /dev/null '${url}' 2>&1 | grep -qE 'HTTP/[0-9.]+ [0-9]+' && printf 'TLS=%s\\n' ok`,
+        30_000,
+      );
+      return r.output.includes("TLS=ok");
+    };
+    if (portalOrigin.startsWith("https://")) {
+      record(
+        "Before login the portal host is reachable over HTTPS (walled garden)",
+        await httpsReaches(`${portalOrigin}/`),
+        portalOrigin,
+      );
+    }
+    record(
+      "Before login other HTTPS sites are blocked",
+      !(await httpsReaches("https://example.com/")),
+      "https://example.com/",
+    );
+
+    const issued = Bun.spawnSync(["bun", "tooling/router-sim.ts", "voucher", "1"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: ROOT,
+    });
+    const code = issued.stdout.toString().match(/VOUCHER=(\S+)/)?.[1] ?? null;
+    record(
+      "The API code issues a 1-minute voucher the router confirms",
+      code !== null,
+      code ?? issued.stderr.toString().trim().slice(-200),
+    );
+    if (!code) return;
+
+    const login = await shell.run(
+      `wget -q -T 8 -O - --post-data 'username=${code}&password=${code}&dst=&popup=true' 'http://${HOTSPOT_GATEWAY}/login' 2>&1 | head -c 2000`,
+      30_000,
+    );
+    const loggedIn = await fetchPage("http://example.com/");
+    record(
+      "Logging in with the voucher opens the internet",
+      loggedIn.internet,
+      loggedIn.internet
+        ? ""
+        : `${describe(loggedIn)}; login answered: ${login.output.trim().slice(0, 120)}`,
+    );
+
+    // limit-uptime is enforced by the router; allow its accounting interval on top.
+    console.log("  waiting 80 s for the voucher to expire…");
+    await Bun.sleep(80_000);
+    const expired = await fetchPage("http://example.com/");
+    record(
+      "At expiry the router cuts the guest off",
+      !expired.internet && expired.portal === `${portalOrigin}/portal/login`,
+      describe(expired),
+    );
+  } finally {
+    shell.close();
+    const failed = results.filter((r) => !r.ok).length;
+    console.log(`\nGuest test: ${results.length - failed} passed, ${failed} failed.`);
+    if (failed > 0) process.exitCode = 1;
+  }
+}
+
 // ── Hub: the platform side of the management tunnel ───────────────────────────
 
 function docker(cmd: string[], input: string | null = null): string {
@@ -626,6 +895,9 @@ const commands: Record<string, () => Promise<void> | void> = {
   console: () => consoleCommand(args.join(" ")),
   hub,
   "tunnel-status": tunnelStatus,
+  guest,
+  voucher,
+  "guest-test": guestTest,
   bootstrap,
   setup,
   verify,

@@ -31,13 +31,13 @@ The free CHR licence caps throughput at 1 Mbps, which is irrelevant to the sim.
 host 127.0.0.1:18728 ──forward──► ether1 ─┐
 host 10.0.2.2 ("ISP router")  ◄─────────── ├─ bridgeLocal 10.0.2.15/24 (venue LAN)
                                            │
-guest segment (multicast 230.0.0.1:18100) ─ ether2  hotspot 10.5.50.0/24
+guest VM ── UDP link 127.0.0.1:18100-18101 ── ether2  hotspot 10.5.50.0/24
 ```
 
 QEMU's user network is the venue LAN, with the host as the ISP router at `10.0.2.2`. The
 API, forwarded to `127.0.0.1:18728`, is how the sim reaches the router (its *management
-target*). CHR has no radio, so the hotspot runs on `ether2`, a multicast segment that a client
-VM can join. During `setup`, the sim serves the portal pages the router fetches on
+target*). CHR has no radio, so the hotspot runs on `ether2`, a point-to-point UDP link to the guest VM
+(not multicast, which a host VPN such as Cloudflare WARP can swallow). During `setup`, the sim serves the portal pages the router fetches on
 `127.0.0.1:8080`, which the router reaches as `http://10.0.2.2:8080`.
 
 ## Commands
@@ -60,6 +60,33 @@ the management URL, the purchased LAN design.
 a minute and must end with `Setup succeeded.`; a second `setup` must report 0 changes.
 `verify` then passes with two expected warnings: no client activity, and the voucher speed
 cap applied through a profile (CHR rejects a per-user `rate-limit`).
+
+## Guest
+
+A guest VM stands in for a phone on the hotspot: Alpine Linux's `virt` ISO booted live, with
+nothing installed, on the other end of the router's `ether2` link.
+
+```bash
+cd data/router-sim
+curl -fLO https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/alpine-virt-3.24.3-x86_64.iso
+curl -fs https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/latest-releases.yaml \
+  | grep -A8 'flavor: alpine-virt'      # compare its sha256 with:
+sha256sum alpine-virt-3.24.3-x86_64.iso
+cd ../..
+bun run router-sim guest          # boot it (about 25 s); `guest down` stops it
+bun run router-sim guest-test     # about 90 s, most of it waiting for the voucher to expire
+```
+
+`guest-test` walks a guest's whole path and must pass every step: an address from the hotspot;
+an unauthenticated page request redirected to the portal origin; with an HTTPS portal, the
+portal host reachable before login (the walled garden) while other HTTPS sites stay blocked; a
+1-minute voucher created by the API's own code and confirmed by the router; the internet open
+after logging in with it; and the guest cut off again at expiry. Run it after `setup`, with or
+without `PORTAL_ORIGIN`. `bun run router-sim voucher [minutes]` creates a voucher on its own.
+
+The guest's checks look at what really answered, not at whether a connection opened: the
+hotspot redirects unauthenticated port 80 and 443 connections to the router itself, so a bare
+TCP connect "succeeds" to any host.
 
 ## Management tunnel
 

@@ -32,7 +32,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Analytics, `next-maps`, `dotenv`, `tsx`); TypeScript 7 in both apps with type errors failing
   the build; no `any` or `!` in kept code; HashiFi naming throughout; `ENCRYPTION_KEY` required.
   `bun run verify` passes: 170/170 tests, both typechecks, lint, format, web build.
-- [ ] M2 Router sim on CHR.
+- [x] (2026-10-29) M2 Router sim on CHR. Done apart from what needs hardware (M7).
   - [x] (2026-10-29) Router sim: `bun run router-sim` boots RouterOS 7.25 CHR in QEMU and runs onboarding
     through the real code (serial-console bootstrap, `setupRouter`, `probeVerify`). A
     factory-fresh router onboards in one pass (14 changes applied and verified); a second run
@@ -51,9 +51,15 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     walled garden as `dst-host`, and the address-only forward rule then does not apply. Both
     modes onboard a fresh CHR and verify clean; with `https://handbook.hashikome.com` RouterOS
     resolved both Cloudflare addresses into pass-through rules.
-  - [ ] A guest client on the hotspot segment: DHCP, portal redirect, voucher login.
-  - [ ] `sharp` under Bun (`routeros` is proved by the router sim; it hangs on a closed connection,
-    which `connectToRouter`'s timeout covers).
+  - [x] (2026-10-29) Guest VM on the hotspot: `guest-test` passes all steps on a fresh router
+    with either portal origin: DHCP lease, redirect to the portal, walled garden open to an
+    HTTPS portal host and closed to other sites, a voucher from the API's code, internet after
+    login, cut off at expiry. A negative control (walled garden disabled) fails the walled-
+    garden step, so the check discriminates.
+  - [x] (2026-10-29) `sharp` 0.35.5 (libvips 8.18.7) under Bun: `utils/image.test.ts` runs the
+    portal-image pipeline (logo crop, background fit, invalid input rejected). `routeros` is
+    proved by the router sim; it hangs on a closed connection, which `connectToRouter`'s
+    timeout covers.
 - [ ] M3 Prisma schema on PostgreSQL.
 - [ ] M4 NestJS API.
 - [ ] M5 Captive portal in the web, and the security pass.
@@ -128,6 +134,10 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   the API sits on the guest network; it is kept for now and reviewed with the tunnel.
 - Observation: a walled-garden `dst-host` entry is accepted but flagged invalid while its name
   does not resolve; resolved, RouterOS keeps one pass-through rule pair per address.
+- Observation: the guest segment first used a QEMU multicast socket, which never delivered:
+  this host routes multicast into its Cloudflare WARP VPN interface. A point-to-point UDP link
+  on 127.0.0.1 replaced it.
+  Evidence: `ip route get 230.0.0.1` → `dev CloudflareWARP`; router `ether2` rx-packet 0.
 - Observation: CHR 7.25 rejects `rate-limit` on a hotspot user; the self-test measures it and
   vouchers fall back to per-package profiles, as designed.
 - Observation: Bun 1.4 workspaces install in isolated mode (`node_modules/.bun/`, symlinked per
