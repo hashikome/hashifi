@@ -81,6 +81,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - [ ] M5 Captive portal in the web, and the security pass.
 - [ ] M6 Release pipeline and deployment.
 - [ ] M7 Live acceptance on a physical router.
+- [ ] M8 Mobile-money payments (Snippe) and customers.
 
 ## Surprises & Discoveries
 
@@ -214,9 +215,10 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Decision: the API owns logic and workflows; the portal moves to the web.
   Rationale: [ADR-0003](../../engineering-decisions/0003-api-owns-logic-web-presents.md).
   Date/Author: 2026-10-28 / Paul, Claude
-- Decision: vouchers first; Snippe mobile-money payments deferred.
-  Rationale: vouchers prove the router path without a payment provider.
-  Date/Author: 2026-10-28 / Paul
+- Decision: vouchers first; Snippe mobile-money payments follow as M8, with a `customers` table.
+  Rationale: vouchers prove the router path without a payment provider; the owner is obtaining
+  the Snippe API (M8 selected 2026-10-29).
+  Date/Author: 2026-10-28 / Paul; widened 2026-10-29 / Paul
 - Decision: develop against MikroTik CHR (Cloud Hosted Router, free licence, 1 Mbps);
   buy one physical board (an ARM model with built-in WiFi, not a `smips` board) before M7.
   Rationale: a hotspot must sit on the guests' network, so production needs hardware at
@@ -345,6 +347,13 @@ Admins must enroll TOTP with recovery codes; managers may. Rate limits on reques
 verifying codes, one answer whether or not an email is staff. Then the routes, each behind the
 role and venue guard.
 
+The same first migration renames what the purchased names got wrong, folded into the baseline
+(nothing is deployed): `admin_users` becomes `staff` (it holds managers too) and
+`wifi_customers` becomes `devices`, dropping its unused `username` and `email`. A row there is
+one MAC address the network saw, created when a voucher is redeemed: one person can be several
+devices, and a phone that randomises its MAC can be a new device at each venue, so it is not a
+customer. Sessions, vouchers and payments refer to `deviceId`.
+
 Each purchased Express route, read from the import commit (`git show
 45ebd53:apps/api/src/routes/<name>.ts`), is ported straight to a NestJS module: venues,
 routers, packages, vouchers, customers, sessions, analytics, revenue, portal settings, team,
@@ -392,6 +401,28 @@ deployment; Uptime Kuma monitors. The production domain is chosen here.
 A physical MikroTik at Paul's home onboarded through the admin; a phone redeems a voucher,
 browses, reconnects, and is cut off at expiry.
 
+### M8 Mobile-money payments (Snippe) and customers
+
+Selected by the owner, 29 October 2026, who is obtaining the Snippe API. Gate: vouchers work end
+to end on a physical router (M7). Guests buy a package on the portal with mobile money, and a
+voucher is issued and confirmed by the router before access is granted.
+
+- **`customers`**: the person who pays, identified by a normalised Tanzanian mobile number
+  (E.164, `+255…`, unique), with the devices they used and their payments. Created on a first
+  payment; the phone number is the only personal data, shown to admins and to managers for
+  their venues.
+- Ported from the import commit `45ebd53`: `routes/snippe-webhook.ts` and `payments.ts`,
+  `utils/snippe.ts`, `scripts/reconcile-pending-payments.ts` and the payment half of
+  `services/reconcile-daemon.ts`, as a NestJS module and jobs on the M3 foundation.
+- Kept from the purchased design: a payment's `router_provisioned_at` is tracked apart from
+  `status = paid`, and access waits on it; pending payments are reconciled after the
+  authorisation window; the webhook is verified by signature and idempotent per event.
+- The API decides payment state; the portal presents it (ADR-0003). Copy never names a
+  provider ("mobile money", "mobile number").
+- Acceptance: on the router sim, a payment through Snippe's sandbox issues a voucher the router
+  confirms and the guest test passes with it; a replayed or unsigned webhook changes nothing;
+  a paid-but-unprovisioned payment is retried and recovers.
+
 ## Concrete Steps
 
 From the repository root, once M1 lands:
@@ -412,6 +443,7 @@ Expected result: every check passes, including the 170 purchased tests.
   unregistered or non-http `link-login` is refused, a manager cannot read another venue's
   routers or customers, voucher codes come from a CSPRNG, and redemption is rate-limited.
 - M7: the outcome in Purpose, on a physical router and a real phone.
+- M8: as listed in its section, then once with a real mobile-money payment.
 
 ## Idempotence And Recovery
 

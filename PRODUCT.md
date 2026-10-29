@@ -80,7 +80,8 @@ Admin and manager roles; managers see only their venues. Sensitive actions are a
 | Data | Purpose | Visible to |
 | --- | --- | --- |
 | Admin users | Sign-in (email and one-time code), roles | Admins |
-| Guests | Optional phone number, device MAC and details, sessions | Admins; managers for their venues |
+| Devices | A guest device's MAC address, name and type, and its sessions (not a person: one guest can be several devices) | Admins; managers for their venues |
+| Customers (M8) | A paying guest's mobile number, their devices and payments | Admins; managers for their venues |
 | Router credentials | Configuring routers | Encrypted at rest; never returned to clients |
 
 Development and tests use invented data only.
@@ -96,7 +97,7 @@ Development and tests use invented data only.
 
 ## 7. Out of scope
 
-- **Payments** (Snippe mobile money) are deferred until vouchers work end to end
+- **Payments** (Snippe mobile money) follow once vouchers work end to end: planned as M8
   ([docs/backlog/mobile-money-payments.md](docs/backlog/mobile-money-payments.md)).
 - **Routers other than MikroTik** (OpenWrt, UniFi, Omada, pfSense) are future options.
 - **PPPoE** settings exist in the purchased code but are not selected.

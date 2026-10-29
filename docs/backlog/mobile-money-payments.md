@@ -1,6 +1,8 @@
 # Mobile-money payments
 
-Status: `candidate`.
+Status: `ready`. Planned as M8 of the
+[adoption plan](../exec-plans/active/adopt-purchased-billing-system.md#m8-mobile-money-payments-snippe-and-customers),
+which holds the work; this item is removed when M8 completes.
 
 ## Problem
 
