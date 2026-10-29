@@ -3,7 +3,7 @@
 Use the router sim to run router onboarding, provisioning and verification against real
 RouterOS without hardware. It is a MikroTik Cloud Hosted Router (CHR) in QEMU, driven by the
 same provisioning code the API runs. It proves everything except a phone joining real WiFi,
-which needs a physical board (adoption plan M7).
+which needs a physical board (adoption plan M8).
 
 ## Prerequisites
 

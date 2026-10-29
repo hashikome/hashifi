@@ -23,6 +23,6 @@ truly planned.
 
 ## Current items
 
-- [mobile-money-payments.md](mobile-money-payments.md) (ready, planned as M8): selling packages
-  on the portal through Snippe, with a `customers` table, after vouchers work end to end.
+- [mobile-money-payments.md](mobile-money-payments.md) (ready, planned as M6): selling packages
+  on the portal through Snippe, with a `customers` table: the default way in, in the first release.
 - [technical-debt.md](technical-debt.md): accepted compromises and their follow-up.

@@ -1,8 +1,8 @@
 # Mobile-money payments
 
-Status: `ready`. Planned as M8 of the
-[adoption plan](../exec-plans/active/adopt-purchased-billing-system.md#m8-mobile-money-payments-snippe-and-customers),
-which holds the work; this item is removed when M8 completes.
+Status: `ready`. Planned as M6 of the
+[adoption plan](../exec-plans/active/adopt-purchased-billing-system.md#m6-mobile-money-payments-snippe-and-customers),
+which holds the work; this item is removed when M6 completes.
 
 ## Problem
 
@@ -22,6 +22,7 @@ pushed to the router once paid. Payments track `router_provisioned_at` separatel
 
 ## Gate
 
-Vouchers work end to end on a physical router (adoption plan M7). Then: a Snippe merchant
-account, its webhook verified against the published contract, and the portal flow reviewed
-under ADR-0003 (the API decides payment state; the web presents it).
+The portal works (adoption plan M5) and a Snippe merchant account exists. Its webhook is
+verified against the published contract, and the portal flow reviewed under ADR-0003 (the API
+decides payment state; the web presents it). No physical router is needed: the router sim and
+Snippe's test environment prove it before the release.

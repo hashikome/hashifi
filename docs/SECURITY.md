@@ -27,7 +27,7 @@ reaches domain logic. Webhooks are verified by signature.
 ## Personal data
 
 HashiFi holds staff emails; for guest devices, the MAC address, device name and type, and
-sessions; and from M8, a paying customer's mobile number and payments. Managers see devices and customers only at their venues. External telemetry
+sessions; and from M6, a paying customer's mobile number and payments. Managers see devices and customers only at their venues. External telemetry
 never carries personal data unredacted. Development and tests use invented data; real
 customers' data, including that delivered with the purchased system, never enters the
 repository, `ref/` or logs.

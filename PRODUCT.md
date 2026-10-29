@@ -5,10 +5,12 @@ The canonical product definition: what HashiFi must do and why. How it is built 
 
 ## 1. Summary
 
-Sharing an internet connection means repeatedly handing out passwords, enabling and
-disabling devices and tracking MAC addresses by hand. HashiFi replaces that with prepaid
-access: a guest joins the WiFi, the router shows a captive portal, the guest enters a
-voucher, and the router lets them online for the package's time, speed and device limit.
+Sharing an internet connection means people asking for access, some late at night, and the
+owner enabling and disabling their devices and tracking MAC addresses by hand. HashiFi
+replaces that with prepaid access nobody has to ask for: a guest joins the WiFi, the router
+shows a captive portal, and the guest buys a package with mobile money and is online straight
+away. Guests who pay cash get a printed voucher instead. Either way the router lets them online
+for the package's time, speed and device limit, and cuts them off when it ends.
 The same system serves one home and many venues, each with its own routers, packages and
 branding.
 
@@ -28,6 +30,10 @@ Paul's home is the first venue.
 
 ## 3. Principles
 
+- **Nobody has to ask.** Self-service purchase on the portal is the default way in; it works at
+  any hour without the owner or a venue's staff acting for the guest.
+- **Cash still works.** Printed vouchers sold for cash are a first-class way in for guests who
+  will not use a mobile wallet. Both ways end in the same voucher on the router.
 - **Access follows the router, not the database.** HashiFi reports access granted only
   after the router confirms it.
 - **The voucher is the guest's identity.** MAC addresses are a soft device signal:
@@ -54,13 +60,14 @@ limit, and is offered at selected venues.
 ### 4.3 Vouchers
 
 Admins and managers generate vouchers in batches for a package and print them with QR
-codes. A voucher's lifecycle is `unused → pending_activation → active → expired`, decided by
+codes, to sell for cash. A voucher bought on the portal is the same kind of voucher, issued
+when the payment is confirmed. A voucher's lifecycle is `unused → pending_activation → active → expired`, decided by
 the API and the router.
 
 ### 4.4 Captive portal
 
-A guest on a venue's WiFi sees that venue's branded portal, enters or scans a voucher and
-is online once the router confirms. A returning device with an active voucher reconnects
+A guest on a venue's WiFi sees that venue's branded portal and either buys a package with
+mobile money (4.7) or enters or scans a printed voucher, and is online once the router confirms. A returning device with an active voucher reconnects
 without re-entering the code, without the code ever being exposed.
 
 Acceptance: a phone on a HashiFi hotspot reaches the portal, redeems a voucher and browses;
@@ -75,13 +82,23 @@ calculated by the API.
 
 Admin and manager roles; managers see only their venues. Sensitive actions are audited.
 
+### 4.7 Buying access with mobile money
+
+The default way in. On the portal, a guest picks a package and pays with their mobile number;
+when the payment is confirmed, HashiFi issues a voucher, the router confirms it, and the guest
+is online, with no one acting for them, at any hour. A payment that succeeds while the router
+is unreachable is retried until the guest has access, and is shown as access owed until then. Built with Snippe (adoption plan M6).
+
+Acceptance: on the router sim with Snippe's test environment, a purchase gets the guest online
+and expiry cuts them off; then once with a real payment on a physical router (M8).
+
 ## 5. Data
 
 | Data | Purpose | Visible to |
 | --- | --- | --- |
-| Admin users | Sign-in (email and one-time code), roles | Admins |
+| Staff | Sign-in (email and one-time code, an authenticator app for admins), roles, venue scope | Admins |
 | Devices | A guest device's MAC address, name and type, and its sessions (not a person: one guest can be several devices) | Admins; managers for their venues |
-| Customers (M8) | A paying guest's mobile number, their devices and payments | Admins; managers for their venues |
+| Customers | A paying guest's mobile number, their devices and payments (from M6) | Admins; managers for their venues |
 | Router credentials | Configuring routers | Encrypted at rest; never returned to clients |
 
 Development and tests use invented data only.
@@ -97,8 +114,6 @@ Development and tests use invented data only.
 
 ## 7. Out of scope
 
-- **Payments** (Snippe mobile money) follow once vouchers work end to end: planned as M8
-  ([docs/backlog/mobile-money-payments.md](docs/backlog/mobile-money-payments.md)).
 - **Routers other than MikroTik** (OpenWrt, UniFi, Omada, pfSense) are future options.
 - **PPPoE** settings exist in the purchased code but are not selected.
 

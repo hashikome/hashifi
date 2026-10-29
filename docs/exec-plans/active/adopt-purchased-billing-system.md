@@ -32,7 +32,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Analytics, `next-maps`, `dotenv`, `tsx`); TypeScript 7 in both apps with type errors failing
   the build; no `any` or `!` in kept code; HashiFi naming throughout; `ENCRYPTION_KEY` required.
   `bun run verify` passes: 170/170 tests, both typechecks, lint, format, web build.
-- [x] (2026-10-29) M2 Router sim on CHR. Done apart from what needs hardware (M7).
+- [x] (2026-10-29) M2 Router sim on CHR. Done apart from what needs hardware (M8).
   - [x] (2026-10-29) Router sim: `bun run router-sim` boots RouterOS 7.25 CHR in QEMU and runs onboarding
     through the real code (serial-console bootstrap, `setupRouter`, `probeVerify`). A
     factory-fresh router onboards in one pass (14 changes applied and verified); a second run
@@ -79,9 +79,9 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
 - [ ] M4 NestJS API.
 - [ ] M5 Captive portal in the web, and the security pass.
-- [ ] M6 Release pipeline and deployment.
-- [ ] M7 Live acceptance on a physical router.
-- [ ] M8 Mobile-money payments (Snippe) and customers.
+- [ ] M6 Mobile-money payments (Snippe) and customers.
+- [ ] M7 Release pipeline and deployment.
+- [ ] M8 Live acceptance on a physical router: a mobile-money purchase and a printed voucher.
 
 ## Surprises & Discoveries
 
@@ -189,7 +189,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Observation: from the Pigfarm session (2026-10-29), for when HashiFi adds BullMQ: BullMQ
   6.5.1 or later; `autoReconnect: false` on producer clients built with
   `createBunRedisClient` (on Bun 1.4.4 they otherwise reconnect without calling `onclose`);
-  re-attach listeners in a `duplicate()` wrapper; no unbounded retries. And for M6: a CI job
+  re-attach listeners in a `duplicate()` wrapper; no unbounded retries. And for M7: a CI job
   that runs tests apart from the build must run `prisma generate` first (here `bun install`
   does, through `postinstall`).
 - Observation: CHR 7.25 rejects `rate-limit` on a hotspot user; the self-test measures it and
@@ -215,12 +215,17 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Decision: the API owns logic and workflows; the portal moves to the web.
   Rationale: [ADR-0003](../../engineering-decisions/0003-api-owns-logic-web-presents.md).
   Date/Author: 2026-10-28 / Paul, Claude
-- Decision: vouchers first; Snippe mobile-money payments follow as M8, with a `customers` table.
-  Rationale: vouchers prove the router path without a payment provider; the owner is obtaining
-  the Snippe API (M8 selected 2026-10-29).
-  Date/Author: 2026-10-28 / Paul; widened 2026-10-29 / Paul
+- Decision: two ways in, one mechanism. Self-service mobile-money purchase on the portal is the
+  default (M6, with a `customers` table, before the release); printed vouchers sold for cash
+  stay supported, for guests who will not use a mobile wallet. Both end in a voucher the router
+  confirms. Built in that order: vouchers first, because they prove the router path without a
+  payment provider.
+  Rationale: the purpose is that nobody has to ask the owner for access, at any hour; cash
+  vouchers still remove the connecting and disconnecting of devices.
+  Date/Author: 2026-10-28 / Paul; widened 2026-10-29 / Paul (payments selected, then made part of
+  the first release)
 - Decision: develop against MikroTik CHR (Cloud Hosted Router, free licence, 1 Mbps);
-  buy one physical board (an ARM model with built-in WiFi, not a `smips` board) before M7.
+  buy one physical board (an ARM model with built-in WiFi, not a `smips` board) before M8.
   Rationale: a hotspot must sit on the guests' network, so production needs hardware at
   each venue, but everything except a phone joining real WiFi can be proved on CHR.
   Date/Author: 2026-10-28 / Paul, Claude
@@ -389,23 +394,14 @@ router's own mechanism (MAC cookie) or a short-lived token tied to the router's 
 (findings 1 and 2). Values in scripts are JSON-encoded. A review of every public endpoint
 follows, with findings fixed or recorded.
 
-### M6 Release pipeline and deployment
+### M6 Mobile-money payments (Snippe) and customers
 
-Dockerfiles, `verify` and `release` workflows copied from ntumie. and adapted; images in
-GHCR; the stack's sensitive values as external Docker secrets, the rest in a private env
-file, with an optional 1Password `op run` adapter that the application does not depend on; a database and role on the shared PostgreSQL through the infra repository; Dokploy
-deployment; Uptime Kuma monitors. The production domain is chosen here.
-
-### M7 Live acceptance on a physical router
-
-A physical MikroTik at Paul's home onboarded through the admin; a phone redeems a voucher,
-browses, reconnects, and is cut off at expiry.
-
-### M8 Mobile-money payments (Snippe) and customers
-
-Selected by the owner, 29 October 2026, who is obtaining the Snippe API. Gate: vouchers work end
-to end on a physical router (M7). Guests buy a package on the portal with mobile money, and a
-voucher is issued and confirmed by the router before access is granted.
+Selected by the owner, 29 October 2026, who is obtaining the Snippe API: self-service purchase
+is the default way in and the reason HashiFi exists, so it ships in the first release rather
+than after it. Gate: the portal works (M5) and a Snippe account exists; it needs no physical
+router, because the router sim and Snippe's test environment prove it. Guests buy a package on
+the portal with mobile money, and a voucher is issued and confirmed by the router before
+access is granted. Printed vouchers sold for cash stay a supported path alongside it.
 
 - **`customers`**: the person who pays, identified by a normalised Tanzanian mobile number
   (E.164, `+255…`, unique), with the devices they used and their payments. Created on a first
@@ -422,6 +418,20 @@ voucher is issued and confirmed by the router before access is granted.
 - Acceptance: on the router sim, a payment through Snippe's sandbox issues a voucher the router
   confirms and the guest test passes with it; a replayed or unsigned webhook changes nothing;
   a paid-but-unprovisioned payment is retried and recovers.
+
+### M7 Release pipeline and deployment
+
+Dockerfiles, `verify` and `release` workflows copied from ntumie. and adapted; images in
+GHCR; the stack's sensitive values as external Docker secrets, the rest in a private env
+file, with an optional 1Password `op run` adapter that the application does not depend on; a database and role on the shared PostgreSQL through the infra repository; Dokploy
+deployment; Uptime Kuma monitors. The production domain is chosen here.
+
+### M8 Live acceptance on a physical router
+
+A physical MikroTik at Paul's home onboarded through the admin. Both ways in, on a real phone:
+a guest buys a package on the portal with a real mobile-money payment and is online without
+anyone acting for them; and a printed voucher sold for cash is redeemed. Each browses,
+reconnects, and is cut off at expiry.
 
 ## Concrete Steps
 
@@ -442,13 +452,13 @@ Expected result: every check passes, including the 170 purchased tests.
 - M5: regression tests show the auto-reconnect never returns a voucher code, an
   unregistered or non-http `link-login` is refused, a manager cannot read another venue's
   routers or customers, voucher codes come from a CSPRNG, and redemption is rate-limited.
-- M7: the outcome in Purpose, on a physical router and a real phone.
-- M8: as listed in its section, then once with a real mobile-money payment.
+- M8: a real mobile-money purchase and a cash voucher, on a physical router and a real phone.
+- M6: as listed in its section, then once with a real mobile-money payment.
 
 ## Idempotence And Recovery
 
 The router setup is designed to be re-run safely (tagged configuration). CHR can be reset
-by recreating the VM. Nothing is deployed before M6, so schema changes before then start
+by recreating the VM. Nothing is deployed before M7, so schema changes before then start
 from a fresh database.
 
 ## Artifacts And Notes

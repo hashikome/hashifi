@@ -64,7 +64,7 @@ re-establishes the tunnel within about 45 seconds; a router switched between an 
 - **The bootstrap endpoint.** It passes `tunnel: null` until the NestJS router module (M4)
   calls `TunnelAllocator`.
 - **A physical board.** WireGuard is in RouterOS 7's main package; confirm on the board bought
-  for M7.
+  for M8.
 - **The IP binding** (`ip-binding-backend`) bypasses the hotspot for the management address,
   which matters only if the API sits on the guest network; to be removed once confirmed with a
   guest client.
