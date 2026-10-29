@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-// Control characters would break the pasted script; the quoting handles everything else.
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
+import { CONTROL_CHARACTERS } from "./bootstrap.js";
+
+// Every free-text field: a control character would break the pasted script (see
+// CONTROL_CHARACTERS); the quoting handles everything else.
 
 /**
  * The bootstrap-script request. `buildBootstrapScript` trusts its input and only *warns* about
@@ -10,7 +11,11 @@ const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
  * layer that refuses input outright, so it is where "bad input is rejected" is proved.
  */
 export const bootstrapSchema = z.object({
-  routerName: z.string().min(1).max(160),
+  routerName: z
+    .string()
+    .min(1)
+    .max(160)
+    .refine((v) => !CONTROL_CHARACTERS.test(v), "Router name cannot contain control characters"),
   ipAddress: z.string().regex(/^\d{1,3}(\.\d{1,3}){3}$/, "Must be an IPv4 address"),
   lanPrefix: z.coerce.number().int().min(8).max(30).optional(),
   gatewayIp: z

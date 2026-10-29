@@ -157,7 +157,36 @@ function radioLines(ssid: string): string[] {
   ];
 }
 
+/**
+ * Control characters, which no value interpolated into the script may contain: the script is
+ * pasted line by line into the RouterOS terminal, so a newline in any value (even inside the
+ * banner comment, or a quoted string) ends that line and runs the rest as a command.
+ */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
+export const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
+
 export function buildBootstrapScript(input: BootstrapInput): BootstrapScript {
+  // The request schema rejects these first; this holds for every caller.
+  const values: [string, string | undefined][] = [
+    ["routerName", input.routerName],
+    ["ipAddress", input.ipAddress],
+    ["gatewayIp", input.gatewayIp],
+    ["apiUsername", input.apiUsername],
+    ["apiPassword", input.apiPassword],
+    ["adminPassword", input.adminPassword],
+    ["ssid", input.ssid],
+    ["tunnel.endpointHost", input.tunnel?.endpointHost],
+    ["tunnel.routerAddress", input.tunnel?.routerAddress],
+    ["tunnel.serverAddress", input.tunnel?.serverAddress],
+    ["tunnel.routerPrivateKey", input.tunnel?.routerPrivateKey],
+    ["tunnel.serverPublicKey", input.tunnel?.serverPublicKey],
+  ];
+  for (const [name, value] of values) {
+    if (value !== undefined && CONTROL_CHARACTERS.test(value)) {
+      throw new Error(`${name} cannot contain control characters`);
+    }
+  }
+
   const warnings: string[] = [];
 
   const routerName = input.routerName.trim() || "MikroTik";

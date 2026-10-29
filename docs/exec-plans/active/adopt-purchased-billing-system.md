@@ -117,6 +117,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
      guests (phone numbers, devices). M4 scopes customers to the manager's venues through their
      sessions and returns 404 outside them.
      Evidence: `45ebd53:apps/api/src/routes/customers.ts` (list and `GET /:id`).
+  7. The bootstrap script put the router name, unchecked, into its banner comment, so a name
+     containing a newline ended the comment and ran the rest as a RouterOS command when the
+     admin pasted the script (for example a full-rights `/user add`). Fixed in M3: the script
+     builder refuses control characters in every value it interpolates, and the request schema
+     rejects them in the router name as in the other fields; `bootstrap.test.ts`.
+     Evidence: `45ebd53:apps/api/src/services/router-provision/bootstrap.ts` (banner and
+     `routerName` schema).
 - Observation: typing the web exposed defects that `any` hid: `lib/types.ts` no longer matches
   the API (stale voucher statuses and removed portal fields); the voucher print page crashed
   when portal settings were missing (now falls back to the defaults); the voucher preview's

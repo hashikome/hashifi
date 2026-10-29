@@ -223,6 +223,9 @@ describe("the endpoint rejects bad input rather than emitting a broken script", 
     ["a prefix below /8", { lanPrefix: 4 }],
     ["a prefix above /30", { lanPrefix: 31 }],
     ["an empty router name", { routerName: "" }],
+    // A newline ended the script's banner comment, so the rest of the name ran as a command.
+    ["a router name containing a newline", { routerName: "Home\n/user add name=x group=full" }],
+    ["a router name containing a carriage return", { routerName: "Home\r/system reset" }],
   ];
 
   for (const [label, over] of invalid) {
@@ -236,6 +239,24 @@ describe("the endpoint rejects bad input rather than emitting a broken script", 
     // case where the admin knows better than we do.
     expect(bootstrapSchema.safeParse({ ...VALID, gatewayIp: "10.0.0.1" }).success).toBe(true);
     expect(build({ gatewayIp: "10.0.0.1" }).warnings.join(" ")).toContain("not inside");
+  });
+});
+
+describe("the script builder refuses control characters whoever calls it", () => {
+  // The endpoint validates first; this holds for any other caller, such as the router module.
+  for (const field of ["routerName", "apiPassword", "adminPassword", "ssid"] as const) {
+    test(`in ${field}`, () => {
+      expect(() => build({ [field]: "Home\n/user add name=x group=full password=y" })).toThrow(
+        /control characters/,
+      );
+    });
+  }
+
+  test("no line of a script for a hostile name runs anything but the generated commands", () => {
+    const { script } = build({ routerName: 'Home "$x" \\ name' });
+    const banner = script.split("\n").find((l) => l.startsWith("# == Bootstrap for"));
+    expect(banner).toBeDefined();
+    expect(script).toContain('/system identity set name="Home \\"\\$x\\" \\\\ name"');
   });
 });
 
