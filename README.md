@@ -57,7 +57,7 @@ bun run dev
 
 Sign in as a seeded person (`admin@example.com`, `manager@example.com`) or add one with
 `bun run --filter @hashifi/api staff:add --email you@example.com --name "You"`. Without
-`RESEND_API_KEY`, sign-in codes are written to `apps/api/.local/outbox/`. Admins set up an
+`RESEND_API_KEY`, sign-in codes are written to `data/email/`. Admins set up an
 authenticator app at first sign-in.
 
 `bun run verify` runs every check CI runs.

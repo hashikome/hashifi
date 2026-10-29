@@ -2,6 +2,9 @@
 ref/*
 !ref/README.md
 
+# Local runtime data: development email and other files the apps write.
+data/
+
 # Local secrets. Track redacted examples only.
 .local/
 .env

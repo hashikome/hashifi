@@ -14,6 +14,7 @@ describe("loadConfig", () => {
     expect(config.encryptionKey).toHaveLength(32);
     expect(config.routerManagementUrl).toBeNull();
     expect(config.telemetry.sentryDsn).toBeNull();
+    expect(config.email.outboxDir).toMatch(/\/data\/email\/$/);
   });
 
   test("a missing or malformed secret stops startup, naming the variable", () => {

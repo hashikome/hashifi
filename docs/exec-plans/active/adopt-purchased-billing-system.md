@@ -89,7 +89,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     authenticator gate is widened to the email-code sign-in, and no device is trusted to
     skip it. `StaffGuard` is global and default-deny: active staff on every request, admins
     without an authenticator reach only `GET /api/me`. `bun run staff:add` creates the first
-    admin; email goes through Resend, or to `.local/outbox/` in development.
+    admin; email goes through Resend, or to `data/email/` in development.
     Acceptance: `sign-in.integration.test.ts` over HTTP against PostgreSQL (code to session,
     identical answers for strangers, codes not stored as sent, five wrong codes, address
     and per-person limits, suspension, refused library routes, authenticator enrollment and

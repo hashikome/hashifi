@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { readSecret } from "./secret.js";
 
@@ -43,6 +44,9 @@ export interface AppConfig {
 
 const url = z.url({ protocol: /^https?$/ });
 
+/** `data/email/` at the repository root (git-ignored), wherever the API is started from. */
+const DEFAULT_OUTBOX_DIR = fileURLToPath(new URL("../../../../data/email/", import.meta.url));
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
@@ -56,7 +60,7 @@ const schema = z.object({
   TRUSTED_PROXIES: z.string().default(""),
   RESEND_API_KEY: z.string().min(1).nullable().default(null),
   EMAIL_FROM: z.string().min(3).default("HashiFi <no-reply@hashikome.com>"),
-  EMAIL_OUTBOX_DIR: z.string().min(1).default(".local/outbox"),
+  EMAIL_OUTBOX_DIR: z.string().min(1).default(DEFAULT_OUTBOX_DIR),
   MIKROTIK_API_PORT: z.coerce.number().int().min(1).max(65535).default(8728),
   MIKROTIK_CONNECT_TIMEOUT: z.coerce.number().int().min(1).max(120).default(10),
   ROUTER_MANAGEMENT_URL: url.nullable().default(null),
