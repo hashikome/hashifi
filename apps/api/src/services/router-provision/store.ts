@@ -1,8 +1,8 @@
-import type { routers } from "../../db/schema.js";
+import type { Router } from "../../generated/prisma/client.js";
 import type { RouterCredentials } from "../mikrotik.js";
 import type { RouterCapabilities, RouterProfile } from "./probe.js";
 
-export type RouterRow = typeof routers.$inferSelect;
+export type RouterRow = Router;
 
 /** What a finished, non-dry provisioning run records about the router. */
 export interface ProvisionOutcome {

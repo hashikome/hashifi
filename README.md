@@ -12,7 +12,7 @@ disabling access and tracking MAC addresses by hand, sometimes late at night.
 > **Status:** in development. HashiFi is being built from a purchased hotspot billing system
 > (Express, MySQL and a Next.js admin), now being ported to the Hashikome stack. The plan is
 > [docs/exec-plans/active/adopt-purchased-billing-system.md](docs/exec-plans/active/adopt-purchased-billing-system.md).
-> Until the Prisma port (M3), running the API locally needs MySQL 8.
+> The API's services run on PostgreSQL; its HTTP endpoints arrive in M4.
 
 ## How it works
 
@@ -47,9 +47,10 @@ Requirements: [Bun](https://bun.sh) and Docker (for local PostgreSQL).
 
 ```bash
 bun install
-cp apps/api/.env.example apps/api/.env          # then fill it in
+cp apps/api/.env.example apps/api/.env          # then set ENCRYPTION_KEY (openssl rand -hex 32)
 cp apps/web/.env.example apps/web/.env.local
-bun run db:migrate
+bun run infra:up                                # PostgreSQL 18 on 127.0.0.1:5437
+bun run db:deploy && bun run db:seed            # schema and invented data
 bun run dev
 ```
 

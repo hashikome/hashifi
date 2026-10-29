@@ -86,15 +86,25 @@ describe("probeRouterMerged is the only way callers build a profile", () => {
    * `probe.ts` itself calls `probeRouter` — that is the implementation. Everywhere else that has a
    * stored row must go through `probeRouterMerged`.
    */
-  const CALLERS = ["setup.ts", "index.ts", "../../routes/routers.ts"];
+  const SRC = new URL("../../", import.meta.url).pathname;
 
-  for (const file of CALLERS) {
-    test(`${file} does not call probeRouter directly`, async () => {
-      const source = await Bun.file(new URL(file, import.meta.url)).text();
+  test("no source file but probe.ts calls probeRouter directly", async () => {
+    const offenders: string[] = [];
+    for await (const path of new Bun.Glob("**/*.ts").scan(SRC)) {
+      if (path.endsWith(".test.ts") || path.startsWith("generated/")) continue;
+      if (path === "services/router-provision/probe.ts") continue;
+      const source = await Bun.file(SRC + path).text();
       // Strip comments so prose mentioning the name does not trip this.
       const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-      expect(code).not.toMatch(/\bprobeRouter\s*\(/);
-      expect(code).toMatch(/\bprobeRouterMerged\s*\(/);
-    });
-  }
+      if (/\bprobeRouter\s*\(/.test(code)) offenders.push(path);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test("the provisioning phases do use the merged probe", async () => {
+    for (const file of ["setup.ts", "index.ts"]) {
+      const source = await Bun.file(new URL(file, import.meta.url)).text();
+      expect(source).toMatch(/\bprobeRouterMerged\s*\(/);
+    }
+  });
 });

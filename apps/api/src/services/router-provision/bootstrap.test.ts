@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { bootstrapSchema } from "../../routes/routers.js";
 import { buildBootstrapScript, rosQuote } from "./bootstrap.js";
+import { bootstrapSchema } from "./bootstrap-request.js";
 
 const VALID = {
   routerName: "Bloc 3 Main Router",

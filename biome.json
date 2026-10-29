@@ -65,36 +65,6 @@
           }
         }
       }
-    },
-    {
-      "includes": [
-        "apps/api/src/routes/**",
-        "apps/api/src/middleware/**",
-        "apps/api/src/server.ts",
-        "apps/api/src/db/**",
-        "apps/api/drizzle.config.ts"
-      ],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noExplicitAny": "warn",
-            "noImplicitAnyLet": "warn",
-            "noControlCharactersInRegex": "warn",
-            "noGlobalIsNan": "warn",
-            "noAssignInExpressions": "warn"
-          },
-          "style": {
-            "noNonNullAssertion": "warn"
-          },
-          "correctness": {
-            "noInnerDeclarations": "warn",
-            "noUnusedVariables": "warn"
-          },
-          "complexity": {
-            "noImportantStyles": "warn"
-          }
-        }
-      }
     }
   ]
 }

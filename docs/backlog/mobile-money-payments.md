@@ -10,11 +10,13 @@ venue.
 
 ## What exists
 
-The purchased code integrates Snippe (`apps/api/src/routes/snippe-webhook.ts`,
-`src/utils/snippe.ts`, `src/scripts/reconcile-pending-payments.ts`): a payment request from
+The purchased code, in the import commit `45ebd53`, integrates Snippe
+(`apps/api/src/routes/snippe-webhook.ts` and `payments.ts`, `src/utils/snippe.ts`,
+`src/scripts/reconcile-pending-payments.ts`, and the payment half of
+`src/services/reconcile-daemon.ts`; read with `git show 45ebd53:<path>`): a payment request from
 the portal, a signed webhook, reconciliation of pending payments, and a voucher issued and
 pushed to the router once paid. Payments track `router_provisioned_at` separately from
-`status = "paid"`. The NestJS port leaves it out.
+`status = "paid"`. The NestJS port left it out; the schema keeps the `payments` table.
 
 ## Gate
 

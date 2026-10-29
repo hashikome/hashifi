@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- The API runs on NestJS 12 and Bun with Prisma on PostgreSQL 18 (adoption plan M3): a baseline
+  migration with UUIDv7 keys, `timestamptz` and `CHECK` constraints keeping voucher codes
+  upper-case (RouterOS compares them case-sensitively); validated configuration with Docker
+  secrets; health and readiness endpoints; background jobs as LogTape and Sentry wide events,
+  with voucher codes, credentials and personal data redacted.
+- Router provisioning, sync, expiry, reconciliation and the live monitor run on Prisma; router
+  secrets are sealed with AES-256-GCM; each router can be allocated a management tunnel once.
+- Fixed: an expired voucher still waiting on router confirmation stayed `pending_activation`
+  forever; it now expires. Voucher codes no longer appear in logs or audit records.
+- The router sim provisions through the real database store and sells vouchers through
+  `RouterSync`, in LAN and tunnel modes.
+- The purchased Express, Drizzle and MySQL backend is removed; the import commit `45ebd53` keeps
+  it for reference while M4 ports its routes.
+
 - HashiFi is built from a purchased hotspot billing system, imported as received under
   `apps/api` and `apps/web` without the seller's database dumps and uploads
   ([ADR-0001](docs/engineering-decisions/0001-adopt-purchased-billing-system.md)).

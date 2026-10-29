@@ -2,30 +2,18 @@ import { randomUUID } from "node:crypto";
 import { mkdir, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Request } from "express";
-import type { FileFilterCallback } from "multer";
-import multer from "multer";
 import sharp from "sharp";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// backend/src/utils → ../../uploads = backend/uploads
+// src/utils → ../../uploads = apps/api/uploads
 export const UPLOADS_DIR = join(__dirname, "../../uploads");
 
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-
-export const imageUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB hard limit
-  fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-    if (ALLOWED_MIME.has(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only JPEG, PNG, WebP, and GIF images are allowed"));
-    }
-  },
-});
+/** Image types the portal accepts; the upload endpoint (M4) checks them before processing. */
+export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+/** The upload limit, 10 MB. */
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 /**
  * Process an uploaded image buffer with sharp:

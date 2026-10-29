@@ -1,7 +1,7 @@
-import { and, eq, inArray } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { packages, routers, vouchers } from "../db/schema.js";
-import { logSystemEvent } from "../utils/audit.js";
+import { getLogger } from "@logtape/logtape";
+import type { AuditLog } from "../audit/audit-log.js";
+import type { Package, PrismaClient, Router } from "../generated/prisma/client.js";
+import { enrichWideEvent } from "../observability/wide-event.js";
 import { withRetry } from "../utils/retry.js";
 import {
   type CreateHotspotUserOptions,
@@ -15,21 +15,20 @@ import {
   kickHotspotSession,
   type MikroTikConn,
   packageCanThrottle,
-  type RouterCredentials,
   rateLimitFor,
   removeHotspotUser,
   throttledProfileNameForPackage,
   throttledRateLimitFor,
   userProfileNameForPackage,
 } from "./mikrotik.js";
-import { getRouterCredentials } from "./router-credentials.js";
+import type { RouterAccess } from "./router-credentials.js";
 
-type RouterRow = typeof routers.$inferSelect;
-type PackageRow = typeof packages.$inferSelect;
+// Voucher codes are credentials: they appear in no log line, only counts do.
+const logger = getLogger(["hashifi", "router-sync"]);
 
-function getCredentials(router: RouterRow): RouterCredentials | null {
-  return getRouterCredentials(router, "RouterSync");
-}
+/** Statuses whose vouchers must exist on the venue's routers. pending_activation: redeemed, still
+ * waiting on a router to confirm, so a new router must receive them too. */
+const LIVE_STATUSES = ["unused", "pending_activation", "active"] as const;
 
 /** Outcome of pushing to every router in a venue — callers must be able to see failures. */
 export interface SyncOutcome {
@@ -54,12 +53,12 @@ function emptyOutcome(): SyncOutcome {
  * Capabilities cached by the probe (services/router-provision/probe.ts).
  * null when the router has never been probed — the caller then stays optimistic.
  */
-function capsFor(router: RouterRow): HotspotUserCapabilities | null {
-  const caps = router.capabilities as Partial<HotspotUserCapabilities> | null;
-  if (typeof caps?.userRateLimit !== "boolean" || typeof caps?.userSharedUsers !== "boolean") {
-    return null;
-  }
-  return { userRateLimit: caps.userRateLimit, userSharedUsers: caps.userSharedUsers };
+export function capsFor(router: Router): HotspotUserCapabilities | null {
+  const caps = router.capabilities;
+  if (caps === null || typeof caps !== "object" || Array.isArray(caps)) return null;
+  const { userRateLimit, userSharedUsers } = caps;
+  if (typeof userRateLimit !== "boolean" || typeof userSharedUsers !== "boolean") return null;
+  return { userRateLimit, userSharedUsers };
 }
 
 /** Connection-level problems are worth another attempt; rejected commands are not. */
@@ -119,7 +118,7 @@ export function needsProfile(
  */
 async function ensureProfileFor(
   conn: Awaited<ReturnType<typeof connectToRouter>>,
-  pkg: PackageRow,
+  pkg: Package,
   caps: HotspotUserCapabilities | null,
 ): Promise<string | null> {
   if (!needsProfile(pkg, caps)) return null;
@@ -164,19 +163,22 @@ async function repairProfile(
   // back to full speed mid-window.
   const throttled = [throttledProfileNameForPackage(packageId)];
   if (await ensureHotspotUserProfileAssigned(conn, code, profileName, throttled)) {
-    console.log(
-      `[RouterSync] Moved existing voucher "${code}" onto profile "${profileName}" on ` +
-        `"${routerName}" — it had no speed cap before.`,
+    logger.info(
+      "Moved an existing voucher onto profile {profileName} on {routerName}; it had no speed cap before",
+      {
+        profileName,
+        routerName,
+      },
     );
   }
 }
 
 function buildUserOpts(
   code: string,
-  pkg: PackageRow,
+  pkg: Package,
   dataLimitGb: number | null,
-  durationMinutes?: number | null,
-  profileName?: string | null,
+  durationMinutes: number | null,
+  profileName: string | null,
 ): CreateHotspotUserOptions {
   return {
     code,
@@ -184,353 +186,276 @@ function buildUserOpts(
     downloadSpeedMbps: pkg.downloadSpeedMbps,
     uploadSpeedMbps: pkg.uploadSpeedMbps ?? null,
     dataLimitGb: dataLimitGb ?? pkg.dataLimitGb ?? null,
-    durationMinutes: durationMinutes ?? pkg.durationMinutes ?? null,
-    profileName: profileName ?? null,
+    durationMinutes: durationMinutes ?? pkg.durationMinutes,
+    profileName,
   };
 }
 
-/**
- * Push a batch of new voucher codes to every router in a venue.
- * Called fire-and-forget after voucher batch generation.
- */
-export async function pushVouchersToVenueRouters(
-  venueId: string,
-  codes: string[],
-  pkg: PackageRow,
-  dataLimitGb: number | null,
-): Promise<SyncOutcome> {
-  if (codes.length === 0) return emptyOutcome();
+/** Keeps a venue's routers holding exactly the vouchers it sells (RouterOS hotspot users). */
+export class RouterSync {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly access: RouterAccess,
+    private readonly audit: AuditLog,
+  ) {}
 
-  const venueRouters = await db.select().from(routers).where(eq(routers.venueId, venueId));
+  /** Pushes new voucher codes to every router in a venue. */
+  async pushVouchers(
+    venueId: string,
+    codes: string[],
+    pkg: Package,
+    dataLimitGb: number | null,
+  ): Promise<SyncOutcome> {
+    if (codes.length === 0) return emptyOutcome();
+    const venueRouters = await this.db.router.findMany({ where: { venueId } });
+    if (venueRouters.length === 0) {
+      const reason = `No routers configured for venue ${venueId}`;
+      logger.warn("{reason}: vouchers are saved but on no router", { reason });
+      return { attempted: 0, succeeded: 0, failures: [{ router: "(none)", error: reason }] };
+    }
 
-  if (venueRouters.length === 0) {
-    const reason = `No routers configured for venue ${venueId}`;
-    console.warn(`[RouterSync] ${reason} — vouchers saved to DB but not pushed to any router`);
-    return { attempted: 0, succeeded: 0, failures: [{ router: "(none)", error: reason }] };
+    const outcome = emptyOutcome();
+    for (const router of venueRouters) {
+      const creds = this.access.credentials(router);
+      if (!creds) {
+        outcome.failures.push({ router: router.name, error: "No usable API credentials" });
+        continue;
+      }
+      outcome.attempted++;
+      try {
+        await withRetry(
+          async () => {
+            let conn: MikroTikConn | null = null;
+            try {
+              conn = await connectToRouter(creds);
+              const caps = capsFor(router);
+              // Once for the batch, before any user references it.
+              const profileName = await ensureProfileFor(conn, pkg, caps);
+              for (const code of codes) {
+                if (!(await hotspotUserExists(conn, code))) {
+                  await createHotspotUser(
+                    conn,
+                    buildUserOpts(code, pkg, dataLimitGb, null, profileName),
+                    caps,
+                  );
+                } else if (profileName) {
+                  // Already on the router, possibly from before the profile carried the cap.
+                  await repairProfile(conn, code, profileName, router.name, pkg.id);
+                }
+              }
+            } finally {
+              if (conn) await closeConnection(conn);
+            }
+          },
+          {
+            // Connection blips are worth retrying; a rejected command is not.
+            shouldRetry: (err) => isTransient(err),
+            onRetry: (err, attempt, delay) =>
+              logger.warn("Push to {router} failed (attempt {attempt}); retrying in {delay} ms", {
+                router: router.name,
+                attempt,
+                delay,
+                error: err instanceof Error ? err.message : String(err),
+              }),
+          },
+        );
+        outcome.succeeded++;
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        outcome.failures.push({ router: router.name, error });
+        await this.audit.system(
+          "router.push_failed",
+          { type: "router", id: router.id, name: router.name },
+          { host: router.ipAddress, codes: codes.length, error },
+        );
+      }
+    }
+    enrichWideEvent({ "sync.attempted": outcome.attempted, "sync.succeeded": outcome.succeeded });
+    return outcome;
   }
 
-  const outcome: SyncOutcome = { attempted: 0, succeeded: 0, failures: [] };
+  /** Puts every live voucher of the router's venue on a newly added or re-provisioned router. */
+  async syncRouter(routerId: string): Promise<void> {
+    const router = await this.db.router.findUnique({ where: { id: routerId } });
+    if (!router) return;
+    const creds = this.access.credentials(router);
+    if (!creds) return;
 
-  for (const router of venueRouters) {
-    const creds = getCredentials(router);
-    if (!creds) {
-      outcome.failures.push({ router: router.name, error: "No usable API credentials" });
-      continue;
-    }
-    outcome.attempted++;
+    const venueVouchers = await this.db.voucher.findMany({
+      where: { venueId: router.venueId, status: { in: [...LIVE_STATUSES] } },
+      include: { package: true },
+    });
+    if (venueVouchers.length === 0) return;
 
+    let conn: MikroTikConn | null = null;
     try {
-      await withRetry(
-        async () => {
-          let conn: MikroTikConn | null = null;
-          try {
-            conn = await connectToRouter(creds);
-            const caps = capsFor(router);
-            // Once for the batch, before any user references it.
-            const profileName = await ensureProfileFor(conn, pkg, caps);
-            for (const code of codes) {
+      conn = await connectToRouter(creds);
+      const caps = capsFor(router);
+      // One profile per distinct package, not per voucher: a venue's vouchers usually span a
+      // handful of packages and this loop can be hundreds of codes long.
+      const profileByPackage = new Map<string, string | null>();
+      let synced = 0;
+      for (const voucher of venueVouchers) {
+        const pkg = voucher.package;
+        if (!pkg) continue;
+        if (!profileByPackage.has(pkg.id)) {
+          profileByPackage.set(pkg.id, await ensureProfileFor(conn, pkg, caps));
+        }
+        const exists = await hotspotUserExists(conn, voucher.code);
+        const profileName = profileByPackage.get(pkg.id) ?? null;
+        if (exists && profileName) {
+          await repairProfile(conn, voucher.code, profileName, router.name, pkg.id);
+        }
+        if (!exists) {
+          await createHotspotUser(
+            conn,
+            buildUserOpts(
+              voucher.code,
+              pkg,
+              voucher.dataLimitGb,
+              voucher.durationMinutes,
+              profileName,
+            ),
+            caps,
+          );
+          synced++;
+        }
+      }
+      await this.db.router.update({
+        where: { id: routerId },
+        data: { status: "online", lastSeenAt: new Date() },
+      });
+      enrichWideEvent({ "sync.attempted": venueVouchers.length, "sync.succeeded": synced });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      await this.db.router.update({ where: { id: routerId }, data: { status: "error" } });
+      await this.audit.system(
+        "router.sync_failed",
+        { type: "router", id: routerId, name: router.name },
+        { host: router.ipAddress, error },
+      );
+    } finally {
+      if (conn) await closeConnection(conn);
+    }
+  }
+
+  /**
+   * Makes sure one voucher exists on every router in its venue: the just-in-time safety net when
+   * a guest redeems a voucher that was never pushed (a router was unreachable at batch time).
+   */
+  async ensureVoucher(venueId: string, code: string): Promise<SyncOutcome> {
+    const venueRouters = await this.db.router.findMany({ where: { venueId } });
+    if (venueRouters.length === 0) {
+      return {
+        attempted: 0,
+        succeeded: 0,
+        failures: [{ router: "(none)", error: `No routers configured for venue ${venueId}` }],
+      };
+    }
+    const voucher = await this.db.voucher.findUnique({
+      where: { code },
+      include: { package: true },
+    });
+    const pkg = voucher?.package ?? null;
+    if (!voucher || !pkg) {
+      return {
+        attempted: 0,
+        succeeded: 0,
+        failures: [{ router: "(none)", error: "The voucher has no package" }],
+      };
+    }
+
+    const outcome = emptyOutcome();
+    for (const router of venueRouters) {
+      const creds = this.access.credentials(router);
+      if (!creds) {
+        outcome.failures.push({ router: router.name, error: "No usable API credentials" });
+        continue;
+      }
+      outcome.attempted++;
+      try {
+        await withRetry(
+          async () => {
+            let conn: MikroTikConn | null = null;
+            try {
+              conn = await connectToRouter(creds);
               if (!(await hotspotUserExists(conn, code))) {
+                const caps = capsFor(router);
                 await createHotspotUser(
                   conn,
-                  buildUserOpts(code, pkg, dataLimitGb, null, profileName),
+                  buildUserOpts(
+                    code,
+                    pkg,
+                    voucher.dataLimitGb,
+                    voucher.durationMinutes,
+                    await ensureProfileFor(conn, pkg, caps),
+                  ),
                   caps,
                 );
-              } else if (profileName) {
-                // Already on the router, possibly from before the profile carried the cap.
-                await repairProfile(conn, code, profileName, router.name, pkg.id);
               }
+            } finally {
+              if (conn) await closeConnection(conn);
             }
-          } finally {
-            if (conn) await closeConnection(conn);
-          }
-        },
-        {
-          // Connection blips are worth retrying; a rejected command is not.
-          shouldRetry: (err) => isTransient(err),
-          onRetry: (err, attempt, delay) =>
-            console.warn(
-              `[RouterSync] Push to "${router.name}" failed (attempt ${attempt}) — ` +
-                `retrying in ${delay}ms: ${(err as Error).message}`,
-            ),
-        },
-      );
-
-      outcome.succeeded++;
-      console.log(
-        `[RouterSync] Pushed ${codes.length} vouchers to router "${router.name}" (${router.ipAddress})`,
-      );
-    } catch (err) {
-      const error = (err as Error).message;
-      outcome.failures.push({ router: router.name, error });
-      console.error(
-        `[RouterSync] Failed to push to router "${router.name}" (${router.ipAddress}):`,
-        error,
-      );
-      await logSystemEvent({
-        action: "router.push_failed",
-        entityType: "router",
-        entityId: router.id,
-        entityName: router.name,
-        details: { host: router.ipAddress, codes: codes.length, error },
-      });
-    }
-  }
-
-  return outcome;
-}
-
-/**
- * Sync all active/unused venue vouchers to a single newly-added router.
- * Called fire-and-forget after POST /api/routers.
- */
-export async function syncNewRouter(routerId: string): Promise<void> {
-  const [router] = await db.select().from(routers).where(eq(routers.id, routerId)).limit(1);
-
-  if (!router) return;
-
-  const creds = getCredentials(router);
-  if (!creds) return;
-
-  const venueVouchers = await db
-    .select({ voucher: vouchers, pkg: packages })
-    .from(vouchers)
-    .leftJoin(packages, eq(vouchers.packageId, packages.id))
-    .where(
-      and(
-        eq(vouchers.venueId, router.venueId),
-        // pending_activation included: those are redeemed vouchers still waiting on a
-        // router to confirm them, so a new router must receive them too.
-        inArray(vouchers.status, ["unused", "pending_activation", "active"]),
-      ),
-    );
-
-  if (venueVouchers.length === 0) {
-    console.log(
-      `[RouterSync] No vouchers to sync for router "${router.name}" — venue has none yet`,
-    );
-    return;
-  }
-
-  let conn: MikroTikConn | null = null;
-  try {
-    conn = await connectToRouter(creds);
-    const caps = capsFor(router);
-    // One profile per distinct package, not per voucher — a venue's vouchers usually span a
-    // handful of packages and this loop can be hundreds of codes long.
-    const profileByPackage = new Map<string, string | null>();
-    let synced = 0;
-    for (const { voucher, pkg } of venueVouchers) {
-      if (!pkg) continue;
-      if (!profileByPackage.has(pkg.id)) {
-        profileByPackage.set(pkg.id, await ensureProfileFor(conn, pkg, caps));
-      }
-      const exists = await hotspotUserExists(conn, voucher.code);
-      const profileName = profileByPackage.get(pkg.id) ?? null;
-      if (exists && profileName) {
-        await repairProfile(conn, voucher.code, profileName, router.name, pkg.id);
-      }
-      if (!exists) {
-        await createHotspotUser(
-          conn,
-          buildUserOpts(
-            voucher.code,
-            pkg,
-            voucher.dataLimitGb ?? null,
-            voucher.durationMinutes ?? null,
-            profileName,
-          ),
-          // Was omitted entirely, so this path always paid the rejected-parameter round-trip on a
-          // board whose capabilities we had already measured.
-          caps,
+          },
+          {
+            attempts: 2, // a guest is waiting on this request: do not stall them
+            backoffMs: [400],
+            shouldRetry: (err) => isTransient(err),
+          },
         );
-        synced++;
+        outcome.succeeded++;
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        outcome.failures.push({ router: router.name, error });
+        await this.audit.system(
+          "router.jit_sync_failed",
+          { type: "router", id: router.id, name: router.name },
+          { host: router.ipAddress, voucherId: voucher.id, error },
+        );
       }
     }
-    await db
-      .update(routers)
-      .set({ status: "online", lastSeenAt: new Date() })
-      .where(eq(routers.id, routerId));
-    console.log(`[RouterSync] Synced ${synced} vouchers to router "${router.name}"`);
-  } catch (err) {
-    const error = (err as Error).message;
-    console.error(
-      `[RouterSync] Sync failed for router "${router.name}" (${router.ipAddress}):`,
-      error,
-    );
-    await db.update(routers).set({ status: "error" }).where(eq(routers.id, routerId));
-    await logSystemEvent({
-      action: "router.sync_failed",
-      entityType: "router",
-      entityId: routerId,
-      entityName: router.name,
-      details: { host: router.ipAddress, error },
-    });
-  } finally {
-    if (conn) await closeConnection(conn);
-  }
-}
-
-/**
- * Ensure a voucher's hotspot user exists on every router in the venue.
- * Called just-in-time from validate-voucher as a safety net for vouchers
- * that were never pushed to MikroTik (e.g., RouterSync failed at batch time).
- * No-ops silently if the user already exists on a given router.
- */
-export async function ensureVoucherOnVenueRouters(
-  venueId: string,
-  code: string,
-): Promise<SyncOutcome> {
-  const venueRouters = await db.select().from(routers).where(eq(routers.venueId, venueId));
-  if (venueRouters.length === 0) {
-    return {
-      attempted: 0,
-      succeeded: 0,
-      failures: [{ router: "(none)", error: `No routers configured for venue ${venueId}` }],
-    };
+    return outcome;
   }
 
-  const [row] = await db
-    .select({ voucher: vouchers, pkg: packages })
-    .from(vouchers)
-    .leftJoin(packages, eq(vouchers.packageId, packages.id))
-    .where(eq(vouchers.code, code))
-    .limit(1);
-
-  if (!row?.pkg) {
-    return {
-      attempted: 0,
-      succeeded: 0,
-      failures: [{ router: "(none)", error: `Voucher ${code} has no package` }],
-    };
-  }
-  const pkg = row.pkg;
-
-  const outcome: SyncOutcome = { attempted: 0, succeeded: 0, failures: [] };
-
-  for (const router of venueRouters) {
-    const creds = getCredentials(router);
-    if (!creds) {
-      outcome.failures.push({ router: router.name, error: "No usable API credentials" });
-      continue;
-    }
-    outcome.attempted++;
-
-    try {
-      await withRetry(
-        async () => {
-          let conn: MikroTikConn | null = null;
-          try {
-            conn = await connectToRouter(creds);
-            if (!(await hotspotUserExists(conn, code))) {
-              const caps = capsFor(router);
-              await createHotspotUser(
-                conn,
-                buildUserOpts(
-                  code,
-                  pkg,
-                  row.voucher.dataLimitGb ?? null,
-                  row.voucher.durationMinutes ?? null,
-                  await ensureProfileFor(conn, pkg, caps),
-                ),
-                caps,
-              );
-              console.log(
-                `[RouterSync] JIT: created hotspot user "${code}" on router "${router.name}"`,
-              );
-            }
-          } finally {
-            if (conn) await closeConnection(conn);
-          }
-        },
-        {
-          attempts: 2, // a user is waiting on this request — don't stall them
-          backoffMs: [400],
-          shouldRetry: (err) => isTransient(err),
-        },
-      );
-      outcome.succeeded++;
-    } catch (err) {
-      const error = (err as Error).message;
-      outcome.failures.push({ router: router.name, error });
-      console.warn(`[RouterSync] JIT sync failed for "${code}" on router "${router.name}":`, error);
-      await logSystemEvent({
-        action: "router.jit_sync_failed",
-        entityType: "router",
-        entityId: router.id,
-        entityName: router.name,
-        details: { host: router.ipAddress, voucherCode: code, error },
-      });
-    }
-  }
-
-  return outcome;
-}
-
-/**
- * Kick an active hotspot session without removing the user account.
- * Called fire-and-forget when an admin terminates a session.
- */
-export async function kickVoucherFromVenueRouters(venueId: string, code: string): Promise<void> {
-  const venueRouters = await db.select().from(routers).where(eq(routers.venueId, venueId));
-  if (venueRouters.length === 0) return;
-
-  for (const router of venueRouters) {
-    const creds = getCredentials(router);
-    if (!creds) continue;
-    let conn: MikroTikConn | null = null;
-    try {
-      conn = await connectToRouter(creds);
-      await kickHotspotSession(conn, code);
-    } catch {
-      // best-effort
-    } finally {
-      if (conn) await closeConnection(conn);
-    }
-  }
-}
-
-/**
- * Remove a single voucher's hotspot user from every router in a venue.
- * Called fire-and-forget after DELETE /api/vouchers/:id.
- */
-export async function removeVoucherFromVenueRouters(venueId: string, code: string): Promise<void> {
-  await removeVouchersFromVenueRouters(venueId, [code]);
-}
-
-/**
- * Remove multiple voucher hotspot users from every router in a venue.
- * Connects once per router and removes all codes in one session.
- * Called fire-and-forget after DELETE /api/vouchers/batch.
- */
-export async function removeVouchersFromVenueRouters(
-  venueId: string,
-  codes: string[],
-): Promise<void> {
-  if (codes.length === 0) return;
-
-  const venueRouters = await db.select().from(routers).where(eq(routers.venueId, venueId));
-
-  if (venueRouters.length === 0) return;
-
-  for (const router of venueRouters) {
-    const creds = getCredentials(router);
-    if (!creds) continue;
-
-    let conn: MikroTikConn | null = null;
-    try {
-      conn = await connectToRouter(creds);
-      for (const code of codes) {
-        await kickHotspotSession(conn, code).catch(() => {});
-        await removeHotspotUser(conn, code);
+  /** Ends a voucher's active hotspot session without removing it. Best effort. */
+  async kickVoucher(venueId: string, code: string): Promise<void> {
+    for (const router of await this.db.router.findMany({ where: { venueId } })) {
+      const creds = this.access.credentials(router);
+      if (!creds) continue;
+      let conn: MikroTikConn | null = null;
+      try {
+        conn = await connectToRouter(creds);
+        await kickHotspotSession(conn, code);
+      } catch {
+        // Best effort: the session ends at its limit anyway.
+      } finally {
+        if (conn) await closeConnection(conn);
       }
-      console.log(`[RouterSync] Removed ${codes.length} voucher(s) from router "${router.name}"`);
-    } catch (err) {
-      console.error(
-        `[RouterSync] Failed to remove from router "${router.name}" (${router.ipAddress}):`,
-        (err as Error).message,
-      );
-    } finally {
-      if (conn) await closeConnection(conn);
+    }
+  }
+
+  /** Removes vouchers from every router in a venue, one connection per router. */
+  async removeVouchers(venueId: string, codes: string[]): Promise<void> {
+    if (codes.length === 0) return;
+    for (const router of await this.db.router.findMany({ where: { venueId } })) {
+      const creds = this.access.credentials(router);
+      if (!creds) continue;
+      let conn: MikroTikConn | null = null;
+      try {
+        conn = await connectToRouter(creds);
+        for (const code of codes) {
+          await kickHotspotSession(conn, code).catch(() => {});
+          await removeHotspotUser(conn, code);
+        }
+      } catch (err) {
+        logger.error("Failed to remove {count} voucher(s) from {router}", {
+          count: codes.length,
+          router: router.name,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      } finally {
+        if (conn) await closeConnection(conn);
+      }
     }
   }
 }

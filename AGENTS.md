@@ -10,11 +10,12 @@ External documents are references only. Keep this file short: it is a map, not a
 
 ## Current state
 
-`apps/api` (Express, Drizzle, MySQL) and `apps/web` (Next.js) began as a purchased system,
-imported as received in commit `45ebd53`. The toolchain milestone (M1) is done: Bun, Biome,
-pinned versions, `@hashifi/types`. `apps/api` is still Express on MySQL until the
-[adoption plan](docs/exec-plans/active/adopt-purchased-billing-system.md) ports it (M3 Prisma,
-M4 NestJS): read the plan before changing anything under `apps/`.
+HashiFi began as a purchased system, imported as received in commit `45ebd53`, and is being
+ported by the [adoption plan](docs/exec-plans/active/adopt-purchased-billing-system.md): read
+it before changing anything under `apps/`. M1 to M3 are done: `apps/api` is NestJS on Bun with
+Prisma on PostgreSQL 18, and its services (router provisioning, sync, expiry, reconciliation,
+live monitor) run on it; its HTTP surface is the health endpoints. M4 ports each purchased
+route from the import commit (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
 
 ## Map
 
@@ -36,11 +37,13 @@ M4 NestJS): read the plan before changing anything under `apps/`.
 
 ## Commands
 
-- `bun install`; `bun run dev` starts the API and web against local infrastructure
-  (`bun run infra:up`).
-- `bun run verify`: formatting, lint, typecheck, tests and builds. It must pass before a
-  commit.
-- `bun run db:migrate` is the only way to apply a migration.
+- `bun install` (generates Prisma Client); `bun run infra:up` starts PostgreSQL 18 on
+  `127.0.0.1:5437`; `bun run db:deploy` and `bun run db:seed` prepare it; `bun run dev`.
+- `bun run verify`: formatting, lint, typecheck, unit tests and builds. It must pass before a
+  commit. `bun run test:integration` runs the database tests against `hashifi_test`.
+- Schema changes: edit `apps/api/prisma/schema.prisma`, then `bun run db:migrate` (creates and
+  applies a migration); never edit an applied migration. See `docs/runbooks/database.md`.
+- `bun run router-sim ...` runs a virtual MikroTik (`docs/runbooks/router-sim.md`).
 
 ## Toolchain
 

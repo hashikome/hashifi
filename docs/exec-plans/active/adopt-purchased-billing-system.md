@@ -60,7 +60,23 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     portal-image pipeline (logo crop, background fit, invalid input rejected). `routeros` is
     proved by the router sim; it hangs on a closed connection, which `connectToRouter`'s
     timeout covers.
-- [ ] M3 Prisma schema on PostgreSQL.
+- [x] (2026-10-29) M3 Prisma on PostgreSQL and the NestJS shell. Acceptance met: the baseline
+  migration deploys on an empty PostgreSQL 18; `bun run router-sim setup` provisions a fresh
+  CHR through `PrismaRouterStore` with real rows, in LAN and tunnel modes, and the guest test
+  passes with a voucher sold by `RouterSync`; the business-day test passes; unit and
+  integration tests pass (`bun run test`, `bun run test:integration`).
+  - Schema: `apps/api/prisma/schema.prisma` and one baseline migration with CHECKs for
+    upper-case codes and lower-case emails. Sign-in tables and PPPoE dropped; tunnel fields
+    added; `mpesa` provider renamed `mobile_money`; venue packages keyed by the pair.
+  - Shell: `src/entrypoint.ts` (telemetry first), `src/main.ts`, validated `src/config/` with
+    `_FILE` secrets, `PrismaService`, `/api/health` and `/api/health/ready` (503 without
+    PostgreSQL, recovering with it), background jobs as wide events (`src/jobs/`).
+  - Services on Prisma: `RouterAccess`, `SecretBox` (AES-256-GCM), `AuditLog`, `RouterSync`,
+    `VoucherExpiry`, `VoucherReconciler`, `LiveMonitor`, `PrismaRouterStore`,
+    `TunnelAllocator`; serializers to `@hashifi/types` (`src/serializers/`); business-day
+    helpers (`src/analytics/`); an idempotent invented seed.
+  - The purchased Express app is removed; M4 ports each route from the import commit
+    (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
 - [ ] M4 NestJS API.
 - [ ] M5 Captive portal in the web, and the security pass.
 - [ ] M6 Release pipeline and deployment.
@@ -82,16 +98,25 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   1. The portal's auto-reconnect returns a voucher code (the hotspot username and password)
      to anyone supplying an active device's MAC in the query string, inside a form that
      posts itself to an unvalidated `link-login` URL; a `javascript:` URL there runs script.
-     Evidence: `apps/api/src/routes/captive-portal.ts:120`, `renderAutoReconnect`.
+     Evidence: `45ebd53:apps/api/src/routes/captive-portal.ts:120`, `renderAutoReconnect`.
   2. Query values are placed in inline scripts with HTML escaping only (`esc`), which does
      not escape backslashes or newlines. Not exploitable as found, but the wrong encoding.
-     Evidence: `captive-portal.ts:1149`.
+     Evidence: `45ebd53:apps/api/src/routes/captive-portal.ts:1149`.
   3. `GET /api/routers/provisioning-backlog` requires sign-in but no role or venue scope,
      so a manager sees every venue's routers. Other read routes may share this.
-     Evidence: `apps/api/src/routes/routers.ts:130`.
+     Evidence: `45ebd53:apps/api/src/routes/routers.ts:130`.
   4. Router passwords are encrypted with AES-256-CBC (unauthenticated) and a published
-     fallback key when `ENCRYPTION_KEY` is unset.
-     Evidence: `apps/api/src/utils/encrypt.ts:3`.
+     fallback key when `ENCRYPTION_KEY` is unset. Fixed in M3 (`SecretBox`, AES-256-GCM).
+     Evidence: `45ebd53:apps/api/src/utils/encrypt.ts:3`.
+  5. Voucher codes, which are the hotspot credentials, come from `Math.random()`: six base-36
+     characters (about 31 bits) from a non-cryptographic generator, so they can be guessed or
+     predicted, and nothing rate-limits redemption. M4 generates them with `node:crypto` from an
+     unambiguous upper-case alphabet with enough length, and M5 rate-limits redemption.
+     Evidence: `45ebd53:apps/api/src/routes/vouchers.ts` (batch generation).
+  6. Customers are listed and read with no venue scoping, so a manager sees every venue's
+     guests (phone numbers, devices). M4 scopes customers to the manager's venues through their
+     sessions and returns 404 outside them.
+     Evidence: `45ebd53:apps/api/src/routes/customers.ts` (list and `GET /:id`).
 - Observation: typing the web exposed defects that `any` hid: `lib/types.ts` no longer matches
   the API (stale voucher statuses and removed portal fields); the voucher print page crashed
   when portal settings were missing (now falls back to the defaults); the voucher preview's
@@ -138,6 +163,27 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   this host routes multicast into its Cloudflare WARP VPN interface. A point-to-point UDP link
   on 127.0.0.1 replaced it.
   Evidence: `ip route get 230.0.0.1` → `dev CloudflareWARP`; router `ether2` rx-packet 0.
+- Observation: RouterOS compares hotspot usernames case-sensitively: a lower-cased voucher code
+  was refused (`invalid username or password`) and the exact code logged in. MySQL had compared
+  codes case-insensitively, PostgreSQL does not; codes are now upper-case by CHECK and guest
+  input is to be upper-cased before lookup and login (M5).
+  Evidence: router sim, `/ip hotspot active login` with each case, 2026-10-29.
+- Observation: the purchased expiry job selected expired `pending_activation` vouchers but then
+  marked only `active` and `unused` ones, leaving the rest pending forever (its own comment said
+  otherwise). Fixed; `test/integration/voucher-jobs.integration.test.ts`.
+- Observation: Sentry 11 removed `sendDefaultPii`; its replacement, `dataCollection`, collects
+  user info, cookies, headers, bodies and query parameters by default. Every category is off.
+- Observation: Prisma 7 reads no `.env` and Bun does not load one for Prisma's binary;
+  `prisma.config.ts` loads `apps/api/.env` itself and falls back to the local database URL, so
+  `prisma generate` (run on install) needs no database, as a fresh clone and CI require.
+- Observation: Prisma queries are lazy thenables, which `expect(...).rejects` does not accept;
+  the integration tests await them through a helper.
+- Observation: from the Pigfarm session (2026-10-29), for when HashiFi adds BullMQ: BullMQ
+  6.5.1 or later; `autoReconnect: false` on producer clients built with
+  `createBunRedisClient` (on Bun 1.4.4 they otherwise reconnect without calling `onclose`);
+  re-attach listeners in a `duplicate()` wrapper; no unbounded retries. And for M6: a CI job
+  that runs tests apart from the build must run `prisma generate` first (here `bun install`
+  does, through `postinstall`).
 - Observation: CHR 7.25 rejects `rate-limit` on a hotspot user; the self-test measures it and
   vouchers fall back to per-package profiles, as designed.
 - Observation: Bun 1.4 workspaces install in isolated mode (`node_modules/.bun/`, symlinked per
@@ -196,6 +242,26 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   routers as received; Biome does not touch them.
   Rationale: kept code (`services/`, `utils/`, the web) is fixed; the rest is rewritten.
   Date/Author: 2026-10-28 / Claude
+- Decision: M3 is the data foundation and the NestJS shell; M4 ports each Express route once.
+  M3: Prisma schema and migrations on PostgreSQL 18, the NestJS shell (entrypoint, LogTape and
+  Sentry, configuration with `_FILE` secrets, `PrismaService`), the kept services (router
+  provisioning, sync, reconciliation, expiry, live monitor, credentials, audit) moved onto Prisma
+  as providers, and one serializer layer to `@hashifi/types`. M4: each Express route ported
+  straight to a NestJS module and deleted with its Drizzle code. Between them the old Express
+  server does not run against a database.
+  Rationale: porting the 5.5k lines of route queries to Prisma in M3 and again to NestJS in M4
+  would write them twice; nothing is deployed, so the gap costs nothing.
+  Date/Author: 2026-10-29 / Claude (advisor review), Paul informed
+- Decision: the purchased Express app is removed once M3 replaced its foundation; M4 reads
+  each route from the import commit `45ebd53` rather than from a copy in the tree.
+  Rationale: git keeps it permanently; a copy in the tree looked live, kept the security
+  scanner re-reporting known defects, and the repository removes replaced code.
+  Date/Author: 2026-10-29 / Paul
+- Decision: a router's tunnel key pair is allocated once and its private key stored sealed
+  (AES-256-GCM), amending ADR-0006's "only the public key is kept".
+  Rationale: the bootstrap script is regenerated (it is safe to paste twice); fresh keys each
+  time would orphan the key already on the router.
+  Date/Author: 2026-10-29 / Claude (advisor review)
 - Decision: FSL-1.1-ALv2, Shikome Technology Limited as licensor.
   Rationale: public source without permitting a competing commercial service.
   Date/Author: 2026-10-28 / Paul
@@ -244,9 +310,10 @@ evidence, and record as an ADR:
 A script brings the router sim up so the provisioning steps and readiness checks can be run
 against it repeatably.
 
-### M3 Prisma schema on PostgreSQL
+### M3 Prisma on PostgreSQL and the NestJS shell
 
-Port `apps/api/src/db/schema.ts` to `prisma/schema.prisma`: `uuid` keys, `jsonb`,
+Done (see Progress). The original scope, kept for reference: port the schema to
+`prisma/schema.prisma`: `uuid` keys, `jsonb`,
 `timestamptz`. Watch the MySQL behaviours the code may rely on:
 
 - case-insensitive comparison: voucher codes, emails and phone numbers are normalised on
@@ -264,12 +331,20 @@ The seed uses invented data.
 
 Prerequisite: the shared identity service plan, drafted in the Hashikome workspace (ADR-0005).
 
-One NestJS module per resource (venues, routers, packages, vouchers, customers, sessions,
-analytics, revenue, portal settings, team, audit, auth). Provisioning, router sync and the
-jobs become providers, with their tests carried over unchanged. Every query is scoped by
-role and venue (finding 3). Router secrets use AES-256-GCM with a required key (finding 4). Configuration reads each secret through one helper that prefers `<NAME>_FILE` (a Docker
-secret) over the plain variable, as ntumie.'s `apps/api/src/config/secret.ts` does, and
-validates everything at startup ([SECURITY.md](../../SECURITY.md#credentials)).
+Each purchased Express route, read from the import commit (`git show
+45ebd53:apps/api/src/routes/<name>.ts`), is ported straight to a NestJS module: venues,
+routers, packages, vouchers, customers, sessions, analytics, revenue, portal settings, team,
+audit. The admin/manager role rule comes from `45ebd53:apps/api/src/middleware/rbac.ts`.
+The services, jobs, configuration, secrets, encryption and telemetry already exist (M3):
+modules use them. Every query is scoped by role and venue (finding 3). The router module's
+bootstrap endpoint allocates the router's tunnel with `TunnelAllocator` and passes it to the
+script. The live view (`/ws/live`) becomes a gateway fed by `LiveMonitor.pollOnce`'s
+`onUpdate` and the router log (`45ebd53:apps/api/src/services/provision-broadcast.ts`); portal uploads
+use `@nestjs/platform-express`'s file interceptor with `ALLOWED_IMAGE_TYPES` and
+`MAX_IMAGE_BYTES`. Analytics groups by `businessDaySql` instead of `CONVERT_TZ`. The API normalises
+on write what the schema's CHECKs require, so an admin's typing never becomes a 500: team
+member emails to lower-case, voucher batch prefixes and the portal's `voucherPrefix` to
+upper-case.
 Totals and derived figures the admin pages compute today move into the responses, and the API
 enforces every rule the web pre-checks (the package price and throttle rules). The NestJS DTOs
 implement `@hashifi/types`, which grows to the whole contract, and `apps/web/lib/types.ts` (the
@@ -277,10 +352,8 @@ stale hand-written copy) is deleted; raw `fetch` moves into one client module. `
 (`Record<string, string | undefined>`) becomes a `null`-returning accessor at the RouterOS
 boundary (ADR-0004). Email moves to Resend. Sign-in is not ported: it comes from the shared
 identity service (ADR-0005); the vendor's OTP login, sessions and mailer templates for account
-events are removed with the Express app. The lint override in `biome.json` is removed. Observability (ADR-0002): LogTape and Sentry
-initialised from an entrypoint before the app, one wide event per HTTP request and per job
-(provisioning, router sync, expiry, reconciliation), redacting voucher codes, credentials,
-phone numbers and MACs; the vendor's `console.log` calls go. Snippe
+events are removed with the Express app. HTTP requests get the same wide events the jobs
+have (a NestJS interceptor around `withWideEvent`). Snippe
 routes and the webhook are left out (backlog). The vendor's onboarding knowledge files move
 to `docs/runbooks/`.
 
@@ -322,8 +395,8 @@ Expected result: every check passes, including the 170 purchased tests.
 - M2: the bootstrap script and automated setup turn a fresh CHR into a passing readiness
   checklist, from the API, through the chosen tunnel.
 - M5: regression tests show the auto-reconnect never returns a voucher code, an
-  unregistered or non-http `link-login` is refused, and a manager cannot read another
-  venue's routers.
+  unregistered or non-http `link-login` is refused, a manager cannot read another venue's
+  routers or customers, voucher codes come from a CSPRNG, and redemption is rate-limited.
 - M7: the outcome in Purpose, on a physical router and a real phone.
 
 ## Idempotence And Recovery

@@ -1,47 +1,42 @@
-import type { routers } from "../db/schema.js";
-import { decrypt } from "../utils/encrypt.js";
+import type { SecretBox } from "../crypto/secret-box.js";
+import type { Router } from "../generated/prisma/client.js";
 import type { RouterCredentials } from "./mikrotik.js";
-
-type RouterRow = typeof routers.$inferSelect;
 
 /** The RouterOS API port used when a router has no management target of its own. */
 export const DEFAULT_API_PORT = Number(process.env.MIKROTIK_API_PORT ?? 8728);
 
 /**
- * Where this API reaches a router's RouterOS API.
+ * How this API reaches a router: its management target and decrypted API credentials.
  *
- * Today that is the router's LAN address on one global port, which only works when the API
- * shares the router's LAN. The adoption plan's router sim (M2) decides the cloud design
- * (a router-initiated tunnel) and M3 gives each router its own management address; this is
- * the one place that changes.
+ * The target is the router's tunnel address when it has one (ADR-0006), otherwise its LAN
+ * address, which only works when the API shares the router's LAN.
  */
-export function managementTarget(router: RouterRow): { host: string; port: number } {
-  return { host: router.ipAddress, port: DEFAULT_API_PORT };
-}
+export class RouterAccess {
+  constructor(
+    private readonly box: SecretBox,
+    readonly apiPort: number = DEFAULT_API_PORT,
+  ) {}
 
-/**
- * Pull API credentials off a router row, decrypting the stored password.
- * Returns null (with a warning) when the router has no usable credentials —
- * callers are expected to skip rather than throw.
- */
-export function getRouterCredentials(
-  router: RouterRow,
-  scope = "RouterSync",
-): RouterCredentials | null {
-  if (!router.apiUsername || !router.apiPasswordEncrypted) {
-    console.warn(
-      `[${scope}] Router "${router.name}" (${router.id}) has no API credentials — skipping`,
-    );
-    return null;
+  managementTarget(router: Router): { host: string; port: number } {
+    return { host: router.tunnelAddress ?? router.ipAddress, port: this.apiPort };
   }
-  try {
-    return {
-      ...managementTarget(router),
-      username: router.apiUsername,
-      password: decrypt(router.apiPasswordEncrypted),
-    };
-  } catch {
-    console.warn(`[${scope}] Failed to decrypt credentials for router "${router.name}" — skipping`);
-    return null;
+
+  /** Credentials for the router, or null when it has none usable. */
+  credentials(router: Router): RouterCredentials | null {
+    if (!router.apiUsername || !router.apiPasswordEncrypted) return null;
+    try {
+      return {
+        ...this.managementTarget(router),
+        username: router.apiUsername,
+        password: this.box.open(router.apiPasswordEncrypted),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Seals a password for storage. */
+  sealPassword(password: string): string {
+    return this.box.seal(password);
   }
 }

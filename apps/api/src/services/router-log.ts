@@ -10,6 +10,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { getLogger } from "@logtape/logtape";
 import {
   classifyRouterError,
   RouterError,
@@ -54,6 +55,10 @@ const SYMBOL: Record<RouterLogOutcome, string> = {
   skipped: "skipped",
 };
 
+// Through LogTape, so the transcript is redacted like every other log (voucher codes are
+// hotspot user names); subscribers still receive the structured events.
+const transcript = getLogger(["hashifi", "router"]);
+
 function consoleWrite(e: RouterLogEvent): void {
   const tag = `[${e.scope}:${e.runId.slice(0, 4)}]`;
   const ms = e.durationMs !== undefined ? ` (${e.durationMs}ms)` : "";
@@ -63,15 +68,15 @@ function consoleWrite(e: RouterLogEvent): void {
     const params = e.params?.length ? ` ${e.params.join(" ")}` : "";
     const status = e.outcome ? ` ${SYMBOL[e.outcome]}` : "";
     const line = `${tag} ${arrow} ${e.command}${params}${ms}${status}`;
-    if (e.level === "error") console.error(line, e.error?.rosMessage ?? "");
-    else console.log(line);
+    if (e.level === "error") transcript.error(`${line} ${e.error?.rosMessage ?? ""}`.trimEnd());
+    else transcript.info(line);
     return;
   }
 
   const line = `${tag} ${e.message}${ms}`;
-  if (e.level === "error") console.error(line);
-  else if (e.level === "warn") console.warn(line);
-  else console.log(line);
+  if (e.level === "error") transcript.error(line);
+  else if (e.level === "warn") transcript.warn(line);
+  else transcript.info(line);
 }
 
 export class RouterLogger {

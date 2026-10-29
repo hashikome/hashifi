@@ -11,8 +11,11 @@
     "rootDir": ".",
     "noEmit": true,
     "allowJs": true,
+    // NestJS dependency injection reads constructor parameter types from decorator metadata.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     // Bun runs the API and its tests; "bun" types cover Bun's globals and the `bun:test` module.
     "types": ["node", "bun"]
   },
-  "include": ["src/**/*.ts", "*.ts"]
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "*.ts"]
 }

@@ -1,7 +1,8 @@
 # ADR-0006: Routers are managed through a tunnel they open to the platform
 
-Status: accepted, 29 October 2026, as proved in the router sim. The production endpoint is not
-yet provisioned (see What remains open).
+Status: accepted, 29 October 2026, as proved in the router sim; widened the same day with
+per-router allocation (decision 4). The production endpoint is not yet provisioned (see What
+remains open).
 
 ## Context
 
@@ -26,8 +27,7 @@ sit behind an ISP router, often behind carrier-grade NAT, with no inbound port a
 1. **A router-initiated WireGuard tunnel.** The bootstrap script creates the interface, its
    address and the platform peer, with a 25-second keepalive so NAT mappings stay open. The
    API generates the router's key pair (`generateWireguardKeyPair`, cross-checked against
-   `wg pubkey`); the private key travels in the pasted script, as the API password does, and
-   only the public key needs keeping.
+   `wg pubkey`); the private key travels in the pasted script, as the API password does.
 2. **The RouterOS API accepts only the platform's tunnel address** (`/ip service set api
    address=<server>/32`). Provisioning connects to the router's tunnel address, its
    *management target* (`managementTarget`).
@@ -39,6 +39,11 @@ sit behind an ISP router, often behind carrier-grade NAT, with no inbound port a
    as `dst-host`, which RouterOS resolves into a pass-through rule per address, so a
    Cloudflare-fronted origin keeps working as its addresses change. The address-only forward
    accept is kept only for an IPv4 portal and removed otherwise.
+4. **Each router's tunnel is allocated once** (`TunnelAllocator`): the next free address in
+   the tunnel network (its first host is the platform), and a key pair whose private key is
+   stored sealed (AES-256-GCM). The bootstrap script can be regenerated, and is safe to paste
+   twice; generating fresh keys each time would orphan the key already on the router.
+   Concurrent allocations never share an address (a unique index and a conditional claim).
 
 ## Evidence
 
@@ -56,8 +61,8 @@ re-establishes the tunnel within about 45 seconds; a router switched between an 
   networking, or a userspace WireGuard sidecar). Cloudflare's proxy does not carry WireGuard.
   This is shared-platform work owned by the infra repository; a tunnel concentrator may serve
   other products.
-- **Per-router allocation.** Tunnel addresses and keys per router are stored from M3; the
-  bootstrap route passes no tunnel until then.
+- **The bootstrap endpoint.** It passes `tunnel: null` until the NestJS router module (M4)
+  calls `TunnelAllocator`.
 - **A physical board.** WireGuard is in RouterOS 7's main package; confirm on the board bought
   for M7.
 - **The IP binding** (`ip-binding-backend`) bypasses the hotspot for the management address,

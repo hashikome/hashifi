@@ -24,4 +24,4 @@ A plan must make sense with `ref/` empty while it runs.
 
 | Plan | Status |
 | --- | --- |
-| [active/adopt-purchased-billing-system.md](active/adopt-purchased-billing-system.md) | M1 and M2 done; next: M3 Prisma on PostgreSQL |
+| [active/adopt-purchased-billing-system.md](active/adopt-purchased-billing-system.md) | M1 to M3 done; next: the shared identity plan (workspace), then M4 |

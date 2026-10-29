@@ -49,5 +49,13 @@ A password manager such as 1Password is an optional adapter around the process
 or application code calls it. The running application never receives migrator or
 administrator database credentials; migrations get their own `DATABASE_URL_FILE`.
 
-Router API passwords are encrypted at rest with authenticated encryption and a key the API
-requires at start; they are never returned to clients.
+Router API passwords and tunnel private keys are encrypted at rest with AES-256-GCM
+(`SecretBox`) under `ENCRYPTION_KEY`, which the API requires at start; a tampered value fails
+to decrypt. They are never returned to clients.
+
+## Telemetry
+
+Logs and Sentry receive only allowlisted wide-event fields, and every string is redacted of
+voucher codes, credentials, connection-string passwords, emails, MAC addresses and phone
+numbers (`src/observability/redact.ts`). Sentry collects no request data: every
+`dataCollection` category is off, because Sentry 11 collects them by default.

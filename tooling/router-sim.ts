@@ -4,17 +4,19 @@
 //
 // bun run router-sim <up|down|reset|status|console|hub|bootstrap|setup|verify|voucher|guest|guest-test>
 
+import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { RouterCredentials } from "../apps/api/src/services/mikrotik.js";
+import { AuditLog } from "../apps/api/src/audit/audit-log.js";
+import { SecretBox } from "../apps/api/src/crypto/secret-box.js";
+import { createPrismaClient, type PrismaClient } from "../apps/api/src/database/client.js";
+import type { Router } from "../apps/api/src/generated/prisma/client.js";
 import {
   closeConnection,
   connectToRouter,
-  createHotspotUser,
-  ensureHotspotUserProfile,
-  type HotspotUserCapabilities,
   hotspotUserExists,
 } from "../apps/api/src/services/mikrotik.js";
+import { RouterAccess } from "../apps/api/src/services/router-credentials.js";
 import { RouterLogger } from "../apps/api/src/services/router-log.js";
 import { buildBootstrapScript } from "../apps/api/src/services/router-provision/bootstrap.js";
 import {
@@ -28,14 +30,15 @@ import {
   type PortalFileName,
   renderPortalFile,
 } from "../apps/api/src/services/router-provision/portal-files.js";
+import { PrismaRouterStore } from "../apps/api/src/services/router-provision/prisma-store.js";
 import { probeRouterMerged } from "../apps/api/src/services/router-provision/probe.js";
 import { setupRouter } from "../apps/api/src/services/router-provision/setup.js";
-import type { RouterRow, RouterStore } from "../apps/api/src/services/router-provision/store.js";
 import {
   generateWireguardKeyPair,
   type WireguardKeyPair,
 } from "../apps/api/src/services/router-provision/tunnel.js";
 import { probeVerify } from "../apps/api/src/services/router-provision/verify.js";
+import { describeFailures, outcomeOk, RouterSync } from "../apps/api/src/services/router-sync.js";
 
 const ROOT = resolve(import.meta.dir, "..");
 const SIM = join(ROOT, "data", "router-sim");
@@ -56,8 +59,19 @@ const FORWARD = { api: 18728, ssh: 18022, winbox: 18291 } as const;
 /** The host side of 10.0.2.2:8080, where the router fetches its portal pages. */
 const BACKEND_PORT = 8080;
 const BACKEND_URL = `http://${LAN.gatewayIp}:${BACKEND_PORT}`;
-const ROUTER_ID = "sim-router";
 const API_USER = "hashifi";
+/**
+ * The sim's own database on the compose.yml PostgreSQL, migrated by the real migrations. From
+ * inside the hub container the host's loopback is not reachable, so the hub joins the compose
+ * network and reaches PostgreSQL by its container name.
+ */
+const SIM_DATABASE = "hashifi_sim";
+const COMPOSE_NETWORK = "hashifi_default";
+function simDatabaseUrl(): string {
+  return IN_HUB
+    ? `postgresql://hashifi:hashifi@hashifi-postgres:5432/${SIM_DATABASE}`
+    : `postgresql://hashifi:hashifi@127.0.0.1:5437/${SIM_DATABASE}`;
+}
 const API_PORT = 8728;
 
 /**
@@ -78,16 +92,24 @@ const IN_HUB = process.env.SIM_IN_HUB === "1";
 interface SimState {
   adminPassword: string | null;
   apiPassword: string | null;
-  capabilities: unknown;
   tunnel: { router: WireguardKeyPair; server: WireguardKeyPair } | null;
+  /** The sim's encryption key (hex), sealing the router's credentials in its database. */
+  encryptionKey: string | null;
+  /** The sim router's row in the sim database. */
+  routerId: string | null;
 }
 
 function readState(): SimState {
-  if (!existsSync(STATE_FILE)) {
-    return { adminPassword: null, apiPassword: null, capabilities: null, tunnel: null };
-  }
-  const state = JSON.parse(readFileSync(STATE_FILE, "utf8")) as SimState;
-  return { ...state, tunnel: state.tunnel ?? null };
+  const empty: SimState = {
+    adminPassword: null,
+    apiPassword: null,
+    tunnel: null,
+    encryptionKey: null,
+    routerId: null,
+  };
+  if (!existsSync(STATE_FILE)) return empty;
+  const stored: Partial<SimState> = JSON.parse(readFileSync(STATE_FILE, "utf8"));
+  return { ...empty, ...stored };
 }
 
 function writeState(state: SimState): void {
@@ -364,15 +386,6 @@ async function bootstrap(): Promise<void> {
 
 // ── Setup and verification through the real provisioning code ────────────────
 
-function simCredentials(state: SimState): RouterCredentials {
-  if (!state.apiPassword) throw new Error("Run `bun run router-sim bootstrap` first.");
-  // With a tunnel the router's API accepts only the platform's tunnel address.
-  const target = state.tunnel
-    ? { host: TUNNEL.routerIp, port: API_PORT }
-    : { host: "127.0.0.1", port: FORWARD.api };
-  return { ...target, username: API_USER, password: state.apiPassword };
-}
-
 /** The management URL the router uses to reach "the API" in this sim. */
 function managementUrl(state: SimState): string {
   return state.tunnel ? `http://${TUNNEL.serverIp}:${BACKEND_PORT}` : BACKEND_URL;
@@ -405,59 +418,95 @@ function delegateToHub(state: SimState, command: string, extra: string[] = []): 
   return true;
 }
 
-function simRouter(state: SimState): RouterRow {
-  const now = new Date();
-  return {
-    id: ROUTER_ID,
-    venueId: "sim-venue",
-    name: "hashifi-sim",
-    model: null,
-    identity: null,
-    ipAddress: LAN.routerIp,
-    hotspotGatewayIp: null,
-    macAddress: null,
-    apiUsername: API_USER,
-    apiPasswordEncrypted: null,
-    enablePppoe: false,
-    enableHotspot: true,
-    pppoeSecretEncrypted: null,
-    hotspotName: null,
-    // CHR has no radio: the hotspot runs on the guest-side ethernet port.
-    hotspotInterface: "ether2",
-    ssid: null,
-    networkRange: null,
-    provisioningCommand: null,
-    provisionedAt: null,
-    rosVersion: null,
-    architecture: null,
-    capabilities: state.capabilities,
-    lastProvisionReport: null,
-    lastSeenAt: null,
-    uptimeSeconds: 0,
-    connectedDevices: 0,
-    status: "offline",
-    createdAt: now,
-    updatedAt: now,
-  };
+/**
+ * Router access as the API has it, except that without a tunnel the sim reaches the router's
+ * API through QEMU's port forward rather than at its LAN address.
+ */
+class SimRouterAccess extends RouterAccess {
+  override managementTarget(router: Router): { host: string; port: number } {
+    return router.tunnelAddress
+      ? { host: router.tunnelAddress, port: API_PORT }
+      : { host: "127.0.0.1", port: FORWARD.api };
+  }
 }
 
-function simStore(): RouterStore {
-  return {
-    async load(routerId) {
-      return routerId === ROUTER_ID ? simRouter(readState()) : null;
-    },
-    credentials: () => simCredentials(readState()),
-    async markProvisioning() {},
-    async recordProvisionOutcome(_router, { ok, profile }) {
-      console.log(`  (sim) outcome recorded: ok=${ok}, board ${profile.boardName ?? "unknown"}`);
-    },
-    async recordCapabilities(_routerId, capabilities) {
-      writeState({ ...readState(), capabilities });
-    },
-    async resyncVouchers() {
-      console.log("  (sim) no vouchers to re-sync");
-    },
+/** Creates and migrates the sim database when needed. Runs on the host, before any hub run. */
+function ensureSimDatabase(): void {
+  if (IN_HUB) return;
+  const exists = Bun.spawnSync([
+    "docker",
+    "exec",
+    "hashifi-postgres",
+    "psql",
+    "-U",
+    "hashifi",
+    "-d",
+    "hashifi",
+    "-tAc",
+    `SELECT 1 FROM pg_database WHERE datname = '${SIM_DATABASE}'`,
+  ]);
+  if (exists.exitCode !== 0) {
+    throw new Error("PostgreSQL is not running: start it with `bun run infra:up`.");
+  }
+  if (exists.stdout.toString().trim() !== "1") {
+    run(["docker", "exec", "hashifi-postgres", "createdb", "-U", "hashifi", SIM_DATABASE]);
+  }
+  const migrate = Bun.spawnSync(["bun", "--bun", "prisma", "migrate", "deploy"], {
+    cwd: join(ROOT, "apps", "api"),
+    env: { ...process.env, DATABASE_URL: simDatabaseUrl() },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (migrate.exitCode !== 0) {
+    throw new Error(`Migrating the sim database failed: ${migrate.stderr.toString().trim()}`);
+  }
+}
+
+interface SimServices {
+  db: PrismaClient;
+  access: RouterAccess;
+  sync: RouterSync;
+  store: PrismaRouterStore;
+  router: Router;
+}
+
+/**
+ * The API's own services on the sim database, with the sim router's row brought up to date
+ * from the sim state (credentials sealed, tunnel address when there is a tunnel).
+ */
+async function simServices(state: SimState): Promise<SimServices> {
+  if (!state.apiPassword) throw new Error("Run `bun run router-sim bootstrap` first.");
+  const encryptionKey = state.encryptionKey ?? randomBytes(32).toString("hex");
+  const box = new SecretBox(Buffer.from(encryptionKey, "hex"));
+  const db = createPrismaClient(simDatabaseUrl());
+  const access = new SimRouterAccess(box, API_PORT);
+  const sync = new RouterSync(db, access, new AuditLog(db));
+  const fields = {
+    name: "hashifi-sim",
+    ipAddress: LAN.routerIp,
+    apiUsername: API_USER,
+    apiPasswordEncrypted: box.seal(state.apiPassword),
+    // CHR has no radio: the hotspot runs on the guest-side ethernet port.
+    hotspotInterface: "ether2",
+    tunnelAddress: state.tunnel ? TUNNEL.routerIp : null,
+    tunnelPublicKey: state.tunnel?.router.publicKey ?? null,
+    tunnelPrivateKeyEncrypted: state.tunnel ? box.seal(state.tunnel.router.privateKey) : null,
   };
+  const existing = state.routerId
+    ? await db.router.findUnique({ where: { id: state.routerId } })
+    : null;
+  const router = existing
+    ? await db.router.update({ where: { id: existing.id }, data: fields })
+    : await db.router.create({
+        data: {
+          ...fields,
+          venue: { create: { name: "Router sim venue", city: "Dar es Salaam" } },
+        },
+      });
+  if (router.id !== state.routerId || encryptionKey !== state.encryptionKey) {
+    writeState({ ...state, routerId: router.id, encryptionKey });
+  }
+  return { db, access, sync, store: new PrismaRouterStore(db, access, sync), router };
 }
 
 /** Serves the portal pages the router fetches, as the API's captive-portal route does. */
@@ -486,46 +535,58 @@ function printEvents(logger: RouterLogger): void {
 
 async function setup(): Promise<void> {
   const state = readState();
+  ensureSimDatabase();
   if (delegateToHub(state, "setup")) return;
   process.env.ROUTER_MANAGEMENT_URL = managementUrl(state);
+  const { db, store, router } = await simServices(state);
   const backend = serveBackend(state);
   try {
     const logger = new RouterLogger("provision");
-    const report = await setupRouter(ROUTER_ID, simStore(), { force: false, logger });
+    const report = await setupRouter(router.id, store, { force: false, logger });
     printEvents(logger);
+    const saved = await db.router.findUniqueOrThrow({ where: { id: router.id } });
     console.log(
-      `\nSetup ${report.ok ? "succeeded" : "FAILED"}${report.stoppedAt ? ` at ${report.stoppedAt}` : ""}.`,
+      `\nSetup ${report.ok ? "succeeded" : "FAILED"}${report.stoppedAt ? ` at ${report.stoppedAt}` : ""}.` +
+        ` Database: router ${saved.status}, ${saved.rosVersion ?? "no version"}, ` +
+        `provisioned ${saved.provisionedAt ? "yes" : "no"}.`,
     );
     for (const blocker of report.blockers)
       console.log(`  blocker: ${blocker.reason}\n    fix: ${blocker.fix}`);
     if (!report.ok) process.exitCode = 1;
   } finally {
     backend.stop(true);
+    await db.$disconnect();
   }
 }
 
 async function verify(): Promise<void> {
   const state = readState();
+  ensureSimDatabase();
   if (delegateToHub(state, "verify")) return;
   process.env.ROUTER_MANAGEMENT_URL = managementUrl(state);
-  const creds = simCredentials(state);
-  const logger = new RouterLogger("probe");
-  const router = simRouter(state);
-  const profile = await probeRouterMerged(creds, logger, router.capabilities);
-  const report = await probeVerify(creds, logger, {
-    dialect: dialectFor(profile),
-    plan: buildHotspotPlan(router, profile),
-    endpoints: resolveBackendEndpoints(router.ipAddress),
-  });
-  for (const check of report.checks) {
+  const { db, access, router } = await simServices(state);
+  try {
+    const creds = access.credentials(router);
+    if (!creds) throw new Error("The sim router has no usable credentials");
+    const logger = new RouterLogger("probe");
+    const profile = await probeRouterMerged(creds, logger, router.capabilities);
+    const report = await probeVerify(creds, logger, {
+      dialect: dialectFor(profile),
+      plan: buildHotspotPlan(router, profile),
+      endpoints: resolveBackendEndpoints(router.ipAddress),
+    });
+    for (const check of report.checks) {
+      console.log(
+        `  ${check.status.padEnd(7)} ${check.title}${check.status === "pass" ? "" : ` — ${check.detail}`}`,
+      );
+    }
     console.log(
-      `  ${check.status.padEnd(7)} ${check.title}${check.status === "pass" ? "" : ` — ${check.detail}`}`,
+      `\nVerify: ${report.summary.pass} pass, ${report.summary.warn} warn, ${report.summary.fail} fail.`,
     );
+    if (!report.ok) process.exitCode = 1;
+  } finally {
+    await db.$disconnect();
   }
-  console.log(
-    `\nVerify: ${report.summary.pass} pass, ${report.summary.warn} warn, ${report.summary.fail} fail.`,
-  );
-  if (!report.ok) process.exitCode = 1;
 }
 
 // ── Guest: a client on the hotspot segment, standing in for a phone ───────────
@@ -626,47 +687,57 @@ function guest(): void {
 }
 
 /**
- * Creates a voucher on the router the way the API does: the per-package profile where the
- * board rejects per-user limits, then the hotspot user, read back. Prints `VOUCHER=<code>`.
+ * Sells a voucher the way the API will: a package and voucher rows in the sim database, pushed to
+ * the venue's routers by RouterSync and confirmed by the router. Prints `VOUCHER=<code>`.
  */
 async function voucher(): Promise<void> {
   const state = readState();
+  ensureSimDatabase();
   if (delegateToHub(state, "voucher", args)) return;
   const minutes = Number(args[0] ?? 1);
-  const code = `SIM${randomPassword(6).toUpperCase()}`;
-  const caps = state.capabilities as Partial<HotspotUserCapabilities> | null;
-  const needsProfile = caps?.userRateLimit === false || caps?.userSharedUsers === false;
-  const conn = await connectToRouter(simCredentials(state));
+  const { db, access, sync, router } = await simServices(state);
   try {
-    const profileName = needsProfile ? "wbs-pkg-sim" : null;
-    if (profileName) {
-      await ensureHotspotUserProfile(conn, {
-        name: profileName,
-        rateLimit: "1M/2M",
-        sharedUsers: 1,
-      });
-    }
-    await createHotspotUser(
-      conn,
-      {
-        code,
-        deviceLimit: 1,
+    const pkg = await db.package.create({
+      data: {
+        name: `Sim ${minutes} min`,
+        durationMinutes: minutes,
         downloadSpeedMbps: 2,
         uploadSpeedMbps: 1,
-        dataLimitGb: null,
-        durationMinutes: minutes,
-        profileName,
+        priceTsh: "500",
       },
-      caps?.userRateLimit !== undefined && caps.userSharedUsers !== undefined
-        ? { userRateLimit: caps.userRateLimit, userSharedUsers: caps.userSharedUsers }
-        : null,
-    );
-    if (!(await hotspotUserExists(conn, code)))
-      throw new Error("The router did not confirm the voucher");
+    });
+    const code = `SIM${randomPassword(6).toUpperCase()}`;
+    await db.voucher.create({
+      data: { code, venueId: router.venueId, packageId: pkg.id, priceTsh: pkg.priceTsh },
+    });
+    const outcome = await sync.pushVouchers(router.venueId, [code], pkg, null);
+    if (!outcomeOk(outcome))
+      throw new Error(`The router did not take it: ${describeFailures(outcome)}`);
+    const creds = access.credentials(router);
+    if (!creds) throw new Error("The sim router has no usable credentials");
+    const conn = await connectToRouter(creds);
+    try {
+      if (!(await hotspotUserExists(conn, code)))
+        throw new Error("The router did not confirm the voucher");
+    } finally {
+      await closeConnection(conn);
+    }
+    console.log(`VOUCHER=${code}`);
   } finally {
-    await closeConnection(conn);
+    await db.$disconnect();
   }
-  console.log(`VOUCHER=${code}`);
+}
+
+/** Runs one shell command on the guest and prints its output. */
+async function guestRun(): Promise<void> {
+  const shell = await GuestShell.open();
+  try {
+    const { output, status } = await shell.run(args.join(" "), 60_000);
+    console.log(output.trimEnd());
+    if (status !== 0) process.exitCode = status;
+  } finally {
+    shell.close();
+  }
 }
 
 /** Every step a guest takes, from joining the network to being cut off at expiry. */
@@ -821,6 +892,9 @@ function hub(): void {
       HUB.container,
       "--cap-add",
       "NET_ADMIN",
+      // PostgreSQL is reachable from the hub only on the compose network.
+      "--network",
+      COMPOSE_NETWORK,
       "-p",
       `127.0.0.1:${TUNNEL.port}:${TUNNEL.port}/udp`,
       "-v",
@@ -898,6 +972,7 @@ const commands: Record<string, () => Promise<void> | void> = {
   guest,
   voucher,
   "guest-test": guestTest,
+  "guest-run": guestRun,
   bootstrap,
   setup,
   verify,

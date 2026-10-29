@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "bun run infra:up && bun run --filter '*' dev",
-    "infra:up": "docker compose up -d",
+    "infra:up": "docker compose up -d --wait",
     "infra:down": "docker compose down",
     "api:dev": "bun run --filter @hashifi/api dev",
     "web:dev": "bun run --filter @hashifi/web dev",
@@ -22,7 +22,10 @@
     "test": "bun run --filter '*' test",
     "build": "bun run --filter '*' build",
     "verify": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
-    "router-sim": "bun tooling/router-sim.ts"
+    "router-sim": "bun tooling/router-sim.ts",
+    "db:deploy": "bun run --filter @hashifi/api db:deploy",
+    "db:seed": "bun run --filter @hashifi/api db:seed",
+    "test:integration": "bun run --filter @hashifi/api test:integration"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",

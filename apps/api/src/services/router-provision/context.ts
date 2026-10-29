@@ -8,12 +8,12 @@
  */
 
 import { networkInterfaces } from "node:os";
-import type { routers } from "../../db/schema.js";
+import type { Router } from "../../generated/prisma/client.js";
 import type { Dialect } from "./dialect.js";
 import { intToIpv4, ipv4ToInt } from "./ipv4.js";
 import type { RouterProfile } from "./probe.js";
 
-type RouterRow = typeof routers.$inferSelect;
+type RouterRow = Router;
 
 /**
  * The router fields the addressing plan actually depends on.

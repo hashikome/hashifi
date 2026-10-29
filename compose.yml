@@ -1,15 +1,22 @@
 # Local development infrastructure only. Production uses the shared platform services, so
 # match their major version (infra docs/dokploy-data-services.md), not the newest release.
+# Loopback only, on a port no sibling product uses (ntumie. 5436, Pigfarm 5433).
 services:
   postgres:
     image: postgres:18
+    container_name: hashifi-postgres
     environment:
       POSTGRES_USER: hashifi
       POSTGRES_PASSWORD: hashifi
       POSTGRES_DB: hashifi
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5437:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hashifi -d hashifi"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 volumes:
   postgres-data:
