@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Staff sign in with an email code through Better Auth; admins must also use an authenticator
+  app, asked for at every sign-in. No sign-up (`bun run staff:add` adds people); one answer
+  whether or not an email is staff; rate limits per client address and per person; codes
+  stored keyed; every route requires active staff unless declared public. Email through
+  Resend, or an outbox directory in development.
+- Schema: `staff` (renamed from `admin_users`) holds role, status and venue scope beside
+  Better Auth's tables; guests' devices are `devices` (renamed from `wifi_customers`).
+
 - The API runs on NestJS 12 and Bun with Prisma on PostgreSQL 18 (adoption plan M3): a baseline
   migration with UUIDv7 keys, `timestamptz` and `CHECK` constraints keeping voucher codes
   upper-case (RouterOS compares them case-sensitively); validated configuration with Docker

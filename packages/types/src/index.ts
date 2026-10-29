@@ -122,3 +122,19 @@ export interface PortalSettingsResponse {
 export interface ApiErrorBody {
   error: string;
 }
+
+export type StaffRole = "admin" | "manager";
+
+/** The signed-in staff member (`GET /api/me`). */
+export interface SignedInStaff {
+  id: string;
+  email: string;
+  name: string;
+  role: StaffRole;
+  twoFactorEnabled: boolean;
+  /**
+   * True while an admin has no authenticator app: every other route answers 403
+   * `TWO_FACTOR_ENROLLMENT_REQUIRED` until one is set up.
+   */
+  twoFactorEnrollmentRequired: boolean;
+}

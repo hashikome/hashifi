@@ -17,6 +17,7 @@
     "db:reset": "bun --bun prisma migrate reset",
     "db:seed": "bun --bun prisma db seed",
     "db:studio": "bun --bun prisma studio",
+    "staff:add": "bun src/staff/add-staff.cli.ts",
     "postinstall": "bun --bun prisma generate",
     "test:integration": "bun test test/integration"
   },
@@ -43,6 +44,7 @@
   "devDependencies": {
     "@nestjs/testing": "12.3.2",
     "@types/bun": "1.4.4",
+    "@types/express": "5.0.6",
     "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
     "@types/ws": "8.18.2",

@@ -1,11 +1,19 @@
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "./config/config.module.js";
+import { type DynamicModule, Module } from "@nestjs/common";
+import { AuthModule } from "./auth/auth.module.js";
+import type { AppConfig } from "./config/config.js";
+import { configModule } from "./config/config.module.js";
 import { DatabaseModule } from "./database/database.module.js";
+import type { EmailSender } from "./email/email-sender.js";
 import { HealthController } from "./health/health.controller.js";
 import { RoutersModule } from "./routers/routers.module.js";
 
-@Module({
-  imports: [ConfigModule, DatabaseModule, RoutersModule],
-  controllers: [HealthController],
-})
+@Module({})
 export class AppModule {}
+
+export function appModule(config: AppConfig, email: EmailSender | null): DynamicModule {
+  return {
+    module: AppModule,
+    imports: [configModule(config, email), DatabaseModule, AuthModule, RoutersModule],
+    controllers: [HealthController],
+  };
+}

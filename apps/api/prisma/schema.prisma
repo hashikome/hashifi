@@ -141,6 +141,7 @@ model User {
   accounts   Account[]
   twofactors TwoFactor[]
   staff      Staff?
+  codeBudget SignInCodeBudget?
 
   @@map("users")
 }
@@ -221,6 +222,18 @@ model RateLimit {
   lastRequest BigInt @map("last_request")
 
   @@map("rate_limits")
+}
+
+/// How many sign-in codes were sent to one person in the current window, whatever address
+/// asked: the per-address limit Better Auth's per-IP limits cannot give.
+model SignInCodeBudget {
+  userId          String   @id @map("user_id") @db.Uuid
+  windowStartedAt DateTime @map("window_started_at") @db.Timestamptz(3)
+  codesSent       Int      @map("codes_sent")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sign_in_code_budgets")
 }
 
 // ── Authorization ───────────────────────────────────────────────────────────

@@ -14,7 +14,7 @@ HashiFi began as a purchased system, imported as received in commit `45ebd53`, a
 ported by the [adoption plan](docs/exec-plans/active/adopt-purchased-billing-system.md): read
 it before changing anything under `apps/`. M1 to M3 are done: `apps/api` is NestJS on Bun with
 Prisma on PostgreSQL 18, and its services (router provisioning, sync, expiry, reconciliation,
-live monitor) run on it; its HTTP surface is the health endpoints. M4 ports each purchased
+live monitor) run on it; its HTTP surface is health, staff sign-in and `/api/me`. M4 ports each purchased
 route from the import commit (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
 
 ## Map

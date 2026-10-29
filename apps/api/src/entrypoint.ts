@@ -30,7 +30,7 @@ async function start(): Promise<void> {
     tracesSampleRate: config.telemetry.tracesSampleRate,
   });
   const { bootstrap } = await import("./main.js");
-  const app = await bootstrap();
+  const app = await bootstrap(config);
   const stop = async () => {
     if (stopping) return;
     stopping = true;

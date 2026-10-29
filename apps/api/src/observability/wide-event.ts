@@ -25,7 +25,7 @@ export const WIDE_EVENT_FIELDS = [
   "package.id",
   "voucher.id",
   "voucher.status",
-  "admin.id",
+  "staff.id",
   "router.status",
   "router.ros_version",
   "router.board",

@@ -78,6 +78,26 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   - The purchased Express app is removed; M4 ports each route from the import commit
     (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
 - [ ] M4 NestJS API.
+  - [x] (2026-10-29) Schema: Better Auth's tables, `staff` sharing the user's id, `devices`
+    (`2602b08`); a per-person sign-in code budget table.
+  - [x] (2026-10-29) Sign-in (ADR-0007), `src/auth/`: Better Auth 1.7.14 mounted at
+    `/api/auth` ahead of Nest's body parser, with only the routes HashiFi uses reachable
+    (code request, code sign-in, session, sign-out, authenticator enrollment and checks).
+    Email codes keyed by an HMAC, five attempts, ten minutes, sent only to active staff and in
+    the background, so a stranger's email gets the same answer in the same time; PostgreSQL
+    rate limits per client address plus five codes per person per fifteen minutes. The
+    authenticator gate is widened to the email-code sign-in, and no device is trusted to
+    skip it. `StaffGuard` is global and default-deny: active staff on every request, admins
+    without an authenticator reach only `GET /api/me`. `bun run staff:add` creates the first
+    admin; email goes through Resend, or to `.local/outbox/` in development.
+    Acceptance: `sign-in.integration.test.ts` over HTTP against PostgreSQL (code to session,
+    identical answers for strangers, codes not stored as sent, five wrong codes, address
+    and per-person limits, suspension, refused library routes, authenticator enrollment and
+    the two-step sign-in, trust-device refused); the trust-device test was seen to fail with
+    the protection removed.
+  - [ ] Routes, each behind the role and venue guard, starting with venues (the first scoped
+    route proves a manager cannot read another venue and an unenrolled admin is held);
+    HTTP wide events; the error envelope; the live-view gateway; uploads.
 - [ ] M5 Captive portal in the web, and the security pass.
 - [ ] M6 Mobile-money payments (Snippe) and customers.
 - [ ] M7 Release pipeline and deployment.
@@ -184,12 +204,23 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Observation: Prisma 7 reads no `.env` and Bun does not load one for Prisma's binary;
   `prisma.config.ts` loads `apps/api/.env` itself and falls back to the local database URL, so
   `prisma generate` (run on install) needs no database, as a fresh clone and CI require.
+- Observation: Better Auth 1.7's two-factor gate only covers password-style sign-ins, and its
+  after-hook handler receives the hook input rather than the endpoint context, so Pigfarm's
+  1.6 wrapper (overriding `getSignedCookie`) failed with a 500. HashiFi widens the gate's
+  matcher and hands it the request headers without the trust-device cookie.
+  Evidence: `apps/api/src/auth/create-auth.ts` (`withEmailCodeGate`).
 - Observation: Prisma queries are lazy thenables, which `expect(...).rejects` does not accept;
   the integration tests await them through a helper.
 - Observation: from the Pigfarm session (2026-10-29), for when HashiFi adds BullMQ: BullMQ
   6.5.1 or later; `autoReconnect: false` on producer clients built with
   `createBunRedisClient` (on Bun 1.4.4 they otherwise reconnect without calling `onclose`);
-  re-attach listeners in a `duplicate()` wrapper; no unbounded retries. And for M7: a CI job
+  re-attach listeners in a `duplicate()` wrapper; no unbounded retries. Workers keep
+  `autoReconnect` and the offline queue on (so the job loop waits rather than spinning and
+  starving SIGTERM), but cannot rely on close events to notice a lost Redis: a bounded periodic
+  read (every few seconds, with a timeout) opens an outage window when it fails or hangs and
+  closes it when answered; when the window expires the worker exits, with deployment restarts
+  capped. A test cuts Redis under a running worker and asserts the outage is reported once.
+  And for M7: a CI job
   that runs tests apart from the build must run `prisma generate` first (here `bun install`
   does, through `postinstall`).
 - Observation: CHR 7.25 rejects `rate-limit` on a hotspot user; the self-test measures it and

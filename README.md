@@ -47,12 +47,18 @@ Requirements: [Bun](https://bun.sh) and Docker (for local PostgreSQL).
 
 ```bash
 bun install
-cp apps/api/.env.example apps/api/.env          # then set ENCRYPTION_KEY (openssl rand -hex 32)
+cp apps/api/.env.example apps/api/.env          # then set ENCRYPTION_KEY and BETTER_AUTH_SECRET
+                                                # (openssl rand -hex 32 for each)
 cp apps/web/.env.example apps/web/.env.local
 bun run infra:up                                # PostgreSQL 18 on 127.0.0.1:5437
 bun run db:deploy && bun run db:seed            # schema and invented data
 bun run dev
 ```
+
+Sign in as a seeded person (`admin@example.com`, `manager@example.com`) or add one with
+`bun run --filter @hashifi/api staff:add --email you@example.com --name "You"`. Without
+`RESEND_API_KEY`, sign-in codes are written to `apps/api/.local/outbox/`. Admins set up an
+authenticator app at first sign-in.
 
 `bun run verify` runs every check CI runs.
 
