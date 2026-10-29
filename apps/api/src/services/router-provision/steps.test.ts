@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import type { ProvisionContext } from "./context.js";
 import type { RosClient } from "./ros-client.js";
-import { addRuleFirst, moveRuleAheadOfHotspotRules, ruleAheadOfHotspotRules } from "./steps.js";
+import {
+  addRuleFirst,
+  moveRuleAheadOfHotspotRules,
+  PROVISION_STEPS,
+  ruleAheadOfHotspotRules,
+} from "./steps.js";
 
 /**
  * The `place-before` regression.
@@ -189,5 +195,69 @@ describe("moveRuleAheadOfHotspotRules", () => {
     const { ros, moves } = lateHotspot(Number.POSITIVE_INFINITY);
     await moveRuleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-forward-backend", 300);
     expect(moves).toEqual([]);
+  });
+});
+
+/**
+ * Switching a provisioned router between an IPv4 portal and a host-name portal, measured on
+ * CHR 7.25: RouterOS rejects setting dst-host on an address entry, and the address-only
+ * forward rule must not outlive the IPv4 portal it was written for.
+ */
+describe("changing the portal origin", () => {
+  const step = (id: string) => {
+    const found = PROVISION_STEPS.find((s) => s.id === id);
+    if (!found) throw new Error(`no step ${id}`);
+    return found;
+  };
+
+  function recordingRos(tagged: Record<string, string> | null) {
+    const calls: string[] = [];
+    let current = tagged;
+    const ros = {
+      print: async (_menu: string, filters: string[] = []) =>
+        filters.some((f) => f.startsWith("?comment=")) && current ? [current] : [],
+      findByTag: async () => current,
+      remove: async (menu: string, id: string) => {
+        calls.push(`remove ${menu} ${id}`);
+        current = null;
+      },
+      set: async (menu: string, id: string, params: string[]) => {
+        calls.push(`set ${menu} ${id} ${params.join(" ")}`);
+      },
+      add: async (menu: string, params: string[]) => {
+        calls.push(`add ${menu} ${params.join(" ")}`);
+        return null;
+      },
+    } as unknown as RosClient;
+    return { ros, calls };
+  }
+
+  const hostPortal = {
+    endpoints: {
+      management: { url: "http://10.88.0.1:8080", ip: "10.88.0.1" },
+      portal: { origin: "https://portal.example.com", host: "portal.example.com", hostIsIp: false },
+    },
+    hotspot: { network: "10.5.50.0/24" },
+  } as unknown as ProvisionContext;
+
+  test("an address walled-garden entry is replaced, not set, for a host-name portal", async () => {
+    const { ros, calls } = recordingRos({ ".id": "*1", "dst-address": "10.0.2.2" });
+    await step("walled-garden-backend").apply({ ros, ctx: hostPortal });
+    expect(calls[0]).toBe("remove /ip/hotspot/walled-garden/ip *1");
+    expect(calls.some((c) => c.startsWith("set "))).toBe(false);
+    expect(calls.at(-1)).toContain("=dst-host=portal.example.com");
+  });
+
+  test("a host-name portal wants no address forward rule, and removes a stale one", async () => {
+    const stale = { ".id": "*7", "dst-address": "10.0.2.2" };
+    expect(
+      await step("firewall-forward-backend").check({ ...recordingRos(stale), ctx: hostPortal }),
+    ).toBe(false);
+    const { ros, calls } = recordingRos(stale);
+    await step("firewall-forward-backend").apply({ ros, ctx: hostPortal });
+    expect(calls).toEqual(["remove /ip/firewall/filter *7"]);
+    expect(
+      await step("firewall-forward-backend").check({ ...recordingRos(null), ctx: hostPortal }),
+    ).toBe(true);
   });
 });

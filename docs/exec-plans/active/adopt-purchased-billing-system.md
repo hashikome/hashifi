@@ -39,7 +39,12 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     applies 0; verify passes with the two expected warnings. Two provisioning defects fixed.
     Provisioning reaches persistence only through `RouterStore`, and credentials carry their
     own port (the management target). Runbook: `docs/runbooks/router-lab.md`.
-  - [ ] Management tunnel (router-initiated WireGuard) proved and recorded as an ADR.
+  - [x] (2026-10-29) Management tunnel proved in the lab and recorded as
+    [ADR-0006](../../engineering-decisions/0006-router-management-tunnel.md): the bootstrap
+    brings up a router-initiated WireGuard tunnel and restricts the API to the platform's
+    tunnel address; setup and verify pass over the tunnel alone; the router re-establishes it
+    after a hub restart; switching the portal between an address and a host name re-provisions
+    cleanly. The production endpoint is shared-platform work (ADR-0006, What remains open).
   - [x] (2026-10-29) Management and portal endpoints split (`resolveBackendEndpoints`):
     `ROUTER_MANAGEMENT_URL` (replacing `BACKEND_LAN_URL`) is where routers reach the API;
     `PORTAL_ORIGIN` is where guests' browsers load the portal. A host-name portal goes in the
@@ -47,7 +52,8 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     modes onboard a fresh CHR and verify clean; with `https://handbook.hashikome.com` RouterOS
     resolved both Cloudflare addresses into pass-through rules.
   - [ ] A guest client on the hotspot segment: DHCP, portal redirect, voucher login.
-  - [ ] `routeros` and `sharp` under Bun (`routeros` proved by the lab).
+  - [ ] `sharp` under Bun (`routeros` is proved by the lab; it hangs on a closed connection,
+    which `connectToRouter`'s timeout covers).
 - [ ] M3 Prisma schema on PostgreSQL.
 - [ ] M4 NestJS API.
 - [ ] M5 Captive portal in the web, and the security pass.

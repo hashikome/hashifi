@@ -555,6 +555,13 @@ const walledGarden: ProvisionStep = {
     return matches(row, { [walledGardenField(ctx)]: ctx.endpoints.portal.host, action: "accept" });
   },
   async apply({ ros, ctx }) {
+    // RouterOS refuses to turn an address entry into a host-name entry ("use either dst-host or
+    // dst-address, not both"), so an entry of the other kind is replaced rather than set.
+    const existing = await ros.findByTag("/ip/hotspot/walled-garden/ip", "walled-garden-backend");
+    const otherField = walledGardenField(ctx) === "dst-host" ? "dst-address" : "dst-host";
+    if (existing?.[".id"] && existing[otherField]) {
+      await ros.remove("/ip/hotspot/walled-garden/ip", rowId(existing));
+    }
     await ensureTaggedRule(ros, "/ip/hotspot/walled-garden/ip", "walled-garden-backend", [
       `=${walledGardenField(ctx)}=${ctx.endpoints.portal.host}`,
       "=action=accept",
@@ -566,10 +573,12 @@ const firewallForward: ProvisionStep = {
   id: "firewall-forward-backend",
   title: "Firewall — hotspot clients → backend (§5)",
   critical: true,
-  // A host-name portal is let through by the walled garden alone; this rule needs an address.
-  appliesTo: (ctx) => ctx.profile.capabilities.hotspot && ctx.endpoints.portal.hostIsIp,
+  appliesTo: (ctx) => ctx.profile.capabilities.hotspot,
   async check({ ros, ctx }) {
     const row = await ros.findByTag("/ip/firewall/filter", "firewall-forward-backend");
+    // A host-name portal is let through by the walled garden alone, and this rule needs an
+    // address: correct is "absent", which also clears the rule left from an IPv4 portal.
+    if (!ctx.endpoints.portal.hostIsIp) return row === null;
     const correct = matches(row, {
       chain: "forward",
       "src-address": ctx.hotspot.network,
@@ -584,6 +593,10 @@ const firewallForward: ProvisionStep = {
   },
   async apply({ ros, ctx }) {
     const existing = await ros.findByTag("/ip/firewall/filter", "firewall-forward-backend");
+    if (!ctx.endpoints.portal.hostIsIp) {
+      if (existing?.[".id"]) await ros.remove("/ip/firewall/filter", rowId(existing));
+      return;
+    }
     const params = [
       "=chain=forward",
       `=src-address=${ctx.hotspot.network}`,

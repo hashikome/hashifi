@@ -61,6 +61,24 @@ a minute and must end with `Setup succeeded.`; a second `setup` must report 0 ch
 `verify` then passes with two expected warnings: no client activity, and the voucher speed
 cap applied through a profile (CHR rejects a per-user `rate-limit`).
 
+## Management tunnel
+
+```bash
+bun run lab reset && bun run lab bootstrap --tunnel   # the bootstrap brings up WireGuard
+bun run lab hub up                                    # the platform side, in a container
+bun run lab tunnel-status                             # expect a recent handshake
+bun run lab setup && bun run lab verify               # over the tunnel alone
+bun run lab hub restart                               # the router must reconnect unaided
+bun run lab hub down
+```
+
+The hub (`tooling/router-lab-hub/Dockerfile`, built once with
+`docker build -t hashifi-lab-hub:1 tooling/router-lab-hub`) runs WireGuard in its own network
+namespace with `NET_ADMIN`, published on `127.0.0.1:51820/udp`, which the router reaches as
+`10.0.2.2:51820`. With a tunnel, `setup` and `verify` run inside the hub, as your user, because
+only the hub is on the platform side; the router's API accepts only `10.88.0.1`. Creating the
+interface loads the host kernel's `wireguard` module if it is not already loaded.
+
 ## Notes
 
 - Lab credentials are generated per router and kept in `data/router-lab/state.json`

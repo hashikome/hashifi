@@ -294,7 +294,9 @@ router.post(
 
     // Never logged: the response carries an API password in clear text by necessity — it has
     // to be typed into the router — so it must not also land in the server's stdout.
-    res.json(buildBootstrapScript(parsed.data));
+    // No tunnel yet: a router's tunnel address and keys are allocated once the schema holds
+    // them (adoption plan M3); until then routers are reached on their LAN.
+    res.json(buildBootstrapScript({ ...parsed.data, tunnel: null }));
   }),
 );
 

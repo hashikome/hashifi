@@ -22,3 +22,4 @@ links stay valid.
 | [0003](0003-api-owns-logic-web-presents.md) | The API owns business logic and workflows; the web presents | accepted |
 | [0004](0004-types-without-any-or-undefined.md) | Types without `any` or `undefined` | accepted |
 | [0005](0005-shared-identity.md) | Sign-in comes from the shared Hashikome identity service | accepted |
+| [0006](0006-router-management-tunnel.md) | Routers are managed through a tunnel they open to the platform | accepted |

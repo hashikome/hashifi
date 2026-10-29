@@ -23,6 +23,7 @@
 
 import { randomBytes } from "node:crypto";
 import { intToIpv4, ipv4ToInt } from "./ipv4.js";
+import { type ManagementTunnel, tunnelLines } from "./tunnel.js";
 
 export interface BootstrapInput {
   /** Becomes `/system identity` — also how the router names itself in Neighbors. */
@@ -40,6 +41,8 @@ export interface BootstrapInput {
   adminPassword?: string;
   /** Defaults to the router name. */
   ssid?: string;
+  /** The management tunnel to the platform, or null for a router the API reaches on its LAN. */
+  tunnel: ManagementTunnel | null;
 }
 
 export interface BootstrapScript {
@@ -249,15 +252,25 @@ export function buildBootstrapScript(input: BootstrapInput): BootstrapScript {
 
   lines.push(
     ``,
-    `# 7. RouterOS API, and the account the billing system authenticates with`,
-    `/ip service set api disabled=no port=${apiPort}`,
+    ...(input.tunnel
+      ? [
+          `# 7. Management tunnel. The router dials the platform, so no port is opened at the`,
+          `#    venue; the API is then reachable only from the platform, through the tunnel.`,
+          ...tunnelLines(input.tunnel),
+          ``,
+        ]
+      : []),
+    `# 8. RouterOS API, and the account the billing system authenticates with`,
+    input.tunnel
+      ? `/ip service set api disabled=no port=${apiPort} address=${input.tunnel.serverAddress}/32`
+      : `/ip service set api disabled=no port=${apiPort}`,
     `:if ([:len [/user find where name="${rosQuote(apiUsername)}"]] = 0) do={/user add name="${rosQuote(apiUsername)}" password="${rosQuote(apiPassword)}" group=full} else={/user set [/user find where name="${rosQuote(apiUsername)}"] password="${rosQuote(apiPassword)}" group=full}`,
     ``,
-    `# 8. Radio. Legacy boards report interface type "wlan", wifiwave2 boards "wifi", so the`,
+    `# 9. Radio. Legacy boards report interface type "wlan", wifiwave2 boards "wifi", so the`,
     `#    board decides this - you do not have to know which stack you have.`,
     ...radioLines(ssid),
     ``,
-    `# 9. Prove the router can reach the internet. No replies here means nothing downstream`,
+    `# 10. Prove the router can reach the internet. No replies here means nothing downstream`,
     `#    will work - usually the bridge MAC is not on the ISP router's whitelist.`,
     `:put "Bootstrap complete. Testing internet..."`,
     `/ping 8.8.8.8 count=3`,

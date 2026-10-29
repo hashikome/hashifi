@@ -10,6 +10,7 @@ const VALID = {
   gatewayIp: "192.168.0.1",
   ssid: "VenueWiFi",
   lanPrefix: 24,
+  tunnel: null,
 };
 
 const build = (over: Partial<typeof VALID> & Record<string, unknown> = {}) =>

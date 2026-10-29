@@ -2,7 +2,7 @@
 // so onboarding, provisioning and verification run against real RouterOS without hardware.
 // Procedure and topology: docs/runbooks/router-lab.md.
 //
-// bun run lab <up|down|reset|status|console|bootstrap|setup|verify>
+// bun run lab <up|down|reset|status|console|hub|bootstrap|setup|verify>
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -23,6 +23,10 @@ import {
 import { probeRouterMerged } from "../apps/api/src/services/router-provision/probe.js";
 import { setupRouter } from "../apps/api/src/services/router-provision/setup.js";
 import type { RouterRow, RouterStore } from "../apps/api/src/services/router-provision/store.js";
+import {
+  generateWireguardKeyPair,
+  type WireguardKeyPair,
+} from "../apps/api/src/services/router-provision/tunnel.js";
 import { probeVerify } from "../apps/api/src/services/router-provision/verify.js";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -44,17 +48,36 @@ const BACKEND_PORT = 8080;
 const BACKEND_URL = `http://${LAN.gatewayIp}:${BACKEND_PORT}`;
 const ROUTER_ID = "lab-router";
 const API_USER = "hashifi";
+const API_PORT = 8728;
+
+/**
+ * The management tunnel. The hub container stands in for the platform: the router dials it at
+ * 10.0.2.2:51820 (QEMU's user network, outbound only, like carrier-grade NAT), and the lab
+ * reaches the router through the tunnel alone.
+ */
+const TUNNEL = {
+  serverIp: "10.88.0.1",
+  routerIp: "10.88.0.2",
+  prefix: 24,
+  port: 51820,
+} as const;
+const HUB = { container: "hashifi-lab-hub", image: "hashifi-lab-hub:1" } as const;
+/** Set when this process runs inside the hub container, on the platform side of the tunnel. */
+const IN_HUB = process.env.LAB_IN_HUB === "1";
 
 interface LabState {
   adminPassword: string | null;
   apiPassword: string | null;
   capabilities: unknown;
+  tunnel: { router: WireguardKeyPair; server: WireguardKeyPair } | null;
 }
 
 function readState(): LabState {
-  if (!existsSync(STATE_FILE))
-    return { adminPassword: null, apiPassword: null, capabilities: null };
-  return JSON.parse(readFileSync(STATE_FILE, "utf8")) as LabState;
+  if (!existsSync(STATE_FILE)) {
+    return { adminPassword: null, apiPassword: null, capabilities: null, tunnel: null };
+  }
+  const state = JSON.parse(readFileSync(STATE_FILE, "utf8")) as LabState;
+  return { ...state, tunnel: state.tunnel ?? null };
 }
 
 function writeState(state: LabState): void {
@@ -270,6 +293,12 @@ class SerialConsole {
 
 async function bootstrap(): Promise<void> {
   const state = readState();
+  const tunnel = args.includes("--tunnel")
+    ? {
+        router: generateWireguardKeyPair(),
+        server: state.tunnel?.server ?? generateWireguardKeyPair(),
+      }
+    : null;
   const adminPassword = state.adminPassword ?? randomPassword(20);
   const apiPassword = randomPassword(24);
   const serial = await SerialConsole.open();
@@ -290,6 +319,14 @@ async function bootstrap(): Promise<void> {
     gatewayIp: LAN.gatewayIp,
     apiUsername: API_USER,
     apiPassword,
+    tunnel: tunnel && {
+      routerPrivateKey: tunnel.router.privateKey,
+      routerAddress: `${TUNNEL.routerIp}/${TUNNEL.prefix}`,
+      serverPublicKey: tunnel.server.publicKey,
+      serverAddress: TUNNEL.serverIp,
+      endpointHost: LAN.gatewayIp,
+      endpointPort: TUNNEL.port,
+    },
   });
   const statements = script
     .split("\n")
@@ -306,15 +343,54 @@ async function bootstrap(): Promise<void> {
     if (shown) console.log(`    ${shown.replaceAll("\n", "\n    ")}`);
   }
   serial.close();
-  writeState({ ...state, adminPassword, apiPassword: resolved.apiPassword });
-  console.log(`Bootstrap applied: ${statements.length} statements, API user "${API_USER}".`);
+  writeState({ ...state, adminPassword, apiPassword: resolved.apiPassword, tunnel });
+  console.log(
+    `Bootstrap applied: ${statements.length} statements, API user "${API_USER}"` +
+      `${tunnel ? `, management tunnel to ${LAN.gatewayIp}:${TUNNEL.port}` : ""}.`,
+  );
+  if (tunnel) console.log("Start or refresh the platform side with `bun run lab hub up`.");
 }
 
 // ── Setup and verification through the real provisioning code ────────────────
 
 function labCredentials(state: LabState): RouterCredentials {
   if (!state.apiPassword) throw new Error("Run `bun run lab bootstrap` first.");
-  return { host: "127.0.0.1", port: FORWARD.api, username: API_USER, password: state.apiPassword };
+  // With a tunnel the router's API accepts only the platform's tunnel address.
+  const target = state.tunnel
+    ? { host: TUNNEL.routerIp, port: API_PORT }
+    : { host: "127.0.0.1", port: FORWARD.api };
+  return { ...target, username: API_USER, password: state.apiPassword };
+}
+
+/** The management URL the router uses to reach "the API" in this lab. */
+function managementUrl(state: LabState): string {
+  return state.tunnel ? `http://${TUNNEL.serverIp}:${BACKEND_PORT}` : BACKEND_URL;
+}
+
+/**
+ * Re-runs this command inside the hub when the router is managed over the tunnel, because only
+ * the hub is on the platform side of it. Returns true when it did.
+ */
+function delegateToHub(state: LabState, command: string): boolean {
+  if (!state.tunnel || IN_HUB) return false;
+  const env = ["-e", "LAB_IN_HUB=1"];
+  if (process.env.PORTAL_ORIGIN) env.push("-e", `PORTAL_ORIGIN=${process.env.PORTAL_ORIGIN}`);
+  const result = Bun.spawnSync(
+    [
+      "docker",
+      "exec",
+      "-u",
+      `${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`,
+      ...env,
+      HUB.container,
+      "bun",
+      "tooling/router-lab.ts",
+      command,
+    ],
+    { stdout: "inherit", stderr: "inherit" },
+  );
+  process.exitCode = result.exitCode;
+  return true;
 }
 
 function labRouter(state: LabState): RouterRow {
@@ -373,16 +449,17 @@ function labStore(): RouterStore {
 }
 
 /** Serves the portal pages the router fetches, as the API's captive-portal route does. */
-function serveBackend(): ReturnType<typeof Bun.serve> {
+function serveBackend(state: LabState): ReturnType<typeof Bun.serve> {
+  const origin = portalOriginFor(managementUrl(state));
   return Bun.serve({
-    hostname: "127.0.0.1",
+    hostname: IN_HUB ? "0.0.0.0" : "127.0.0.1",
     port: BACKEND_PORT,
     async fetch(req) {
       const name = new URL(req.url).pathname.replace(/^\/portal\/hotspot-files\//, "");
       if (!(PORTAL_FILES as readonly string[]).includes(name)) {
         return new Response("not found", { status: 404 });
       }
-      const body = await renderPortalFile(name as PortalFileName, portalOriginFor(BACKEND_URL));
+      const body = await renderPortalFile(name as PortalFileName, origin);
       return new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     },
   });
@@ -396,8 +473,10 @@ function printEvents(logger: RouterLogger): void {
 }
 
 async function setup(): Promise<void> {
-  process.env.ROUTER_MANAGEMENT_URL = BACKEND_URL;
-  const backend = serveBackend();
+  const state = readState();
+  if (delegateToHub(state, "setup")) return;
+  process.env.ROUTER_MANAGEMENT_URL = managementUrl(state);
+  const backend = serveBackend(state);
   try {
     const logger = new RouterLogger("provision");
     const report = await setupRouter(ROUTER_ID, labStore(), { force: false, logger });
@@ -414,8 +493,9 @@ async function setup(): Promise<void> {
 }
 
 async function verify(): Promise<void> {
-  process.env.ROUTER_MANAGEMENT_URL = BACKEND_URL;
   const state = readState();
+  if (delegateToHub(state, "verify")) return;
+  process.env.ROUTER_MANAGEMENT_URL = managementUrl(state);
   const creds = labCredentials(state);
   const logger = new RouterLogger("probe");
   const router = labRouter(state);
@@ -436,6 +516,96 @@ async function verify(): Promise<void> {
   if (!report.ok) process.exitCode = 1;
 }
 
+// ── Hub: the platform side of the management tunnel ───────────────────────────
+
+function docker(cmd: string[], input: string | null = null): string {
+  const result = Bun.spawnSync(["docker", ...cmd], {
+    stdin: input === null ? "ignore" : new TextEncoder().encode(input),
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(`docker ${cmd[0]} failed: ${result.stderr.toString().trim()}`);
+  }
+  return result.stdout.toString().trim();
+}
+
+function hub(): void {
+  const action = args[0] ?? "up";
+  if (action === "down") {
+    Bun.spawnSync(["docker", "rm", "-f", HUB.container], { stdout: "ignore", stderr: "ignore" });
+    console.log("Hub stopped.");
+    return;
+  }
+  const { tunnel } = readState();
+  if (!tunnel) throw new Error("No tunnel: run `bun run lab bootstrap --tunnel` first.");
+  if (action === "restart") {
+    // A restart drops the hub's WireGuard state, as a platform restart would: the router must
+    // re-establish the tunnel on its own.
+    docker(["restart", HUB.container]);
+  } else {
+    Bun.spawnSync(["docker", "rm", "-f", HUB.container], { stdout: "ignore", stderr: "ignore" });
+    docker([
+      "run",
+      "-d",
+      "--name",
+      HUB.container,
+      "--cap-add",
+      "NET_ADMIN",
+      "-p",
+      `127.0.0.1:${TUNNEL.port}:${TUNNEL.port}/udp`,
+      "-v",
+      `${ROOT}:${ROOT}`,
+      "-w",
+      ROOT,
+      HUB.image,
+      "sleep",
+      "infinity",
+    ]);
+  }
+  docker(
+    [
+      "exec",
+      "-i",
+      "-u",
+      "0",
+      HUB.container,
+      "sh",
+      "-c",
+      [
+        "set -e",
+        "umask 077",
+        "cat > /run/wg.key",
+        "ip link add wg0 type wireguard",
+        `wg set wg0 private-key /run/wg.key listen-port ${TUNNEL.port}`,
+        `ip address add ${TUNNEL.serverIp}/${TUNNEL.prefix} dev wg0`,
+        "ip link set wg0 up",
+      ].join("; "),
+    ],
+    tunnel.server.privateKey,
+  );
+  docker([
+    "exec",
+    "-u",
+    "0",
+    HUB.container,
+    "wg",
+    "set",
+    "wg0",
+    "peer",
+    tunnel.router.publicKey,
+    "allowed-ips",
+    `${TUNNEL.routerIp}/32`,
+  ]);
+  console.log(
+    `Hub ${action === "restart" ? "restarted" : "up"}: ${TUNNEL.serverIp}/${TUNNEL.prefix}, listening on 127.0.0.1:${TUNNEL.port}/udp.`,
+  );
+}
+
+function tunnelStatus(): void {
+  console.log(docker(["exec", "-u", "0", HUB.container, "wg", "show", "wg0"]));
+}
+
 async function consoleCommand(statement: string): Promise<void> {
   const state = readState();
   const adminPassword = state.adminPassword ?? randomPassword(20);
@@ -454,6 +624,8 @@ const commands: Record<string, () => Promise<void> | void> = {
   status: () =>
     console.log(qemuPid() === null ? "Router lab is not running." : "Router lab is running."),
   console: () => consoleCommand(args.join(" ")),
+  hub,
+  "tunnel-status": tunnelStatus,
   bootstrap,
   setup,
   verify,
