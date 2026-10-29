@@ -24,4 +24,4 @@ A plan must make sense with `ref/` empty while it runs.
 
 | Plan | Status |
 | --- | --- |
-| [active/adopt-purchased-billing-system.md](active/adopt-purchased-billing-system.md) | M1 toolchain and name done; next: M2 router lab on CHR |
+| [active/adopt-purchased-billing-system.md](active/adopt-purchased-billing-system.md) | M1 toolchain and name done; next: M2 router sim on CHR |

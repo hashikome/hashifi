@@ -14,7 +14,7 @@ export interface ProvisionOutcome {
 
 /**
  * Everything provisioning needs from persistence, so the provisioning code itself never
- * touches the database. The API supplies a database-backed store; the router lab supplies an
+ * touches the database. The API supplies a database-backed store; the router sim supplies an
  * in-memory one for a virtual router.
  */
 export interface RouterStore {

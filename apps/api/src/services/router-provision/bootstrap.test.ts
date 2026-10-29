@@ -174,7 +174,7 @@ describe("hardware-agnostic", () => {
   });
 
   test("a DHCP lease is not mistaken for the LAN address or default route", () => {
-    // Measured on CHR 7.25 (router lab): after a no-defaults reset the board re-creates a DHCP
+    // Measured on CHR 7.25 (router sim): after a no-defaults reset the board re-creates a DHCP
     // client on ether1. Its lease matched the old guards, so the static address and route were
     // never added and the router ran on a lease that dies once ether1 is bridged.
     const { script } = build();

@@ -6,4 +6,4 @@ and how to confirm the result.
 | Runbook | Use it for |
 | --- | --- |
 | [reference-context.md](reference-context.md) | the disposable `ref/` area |
-| [router-lab.md](router-lab.md) | onboarding and provisioning a virtual MikroTik (CHR) without hardware |
+| [router-sim.md](router-sim.md) | onboarding and provisioning a virtual MikroTik (CHR) without hardware |

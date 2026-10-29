@@ -32,14 +32,14 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Analytics, `next-maps`, `dotenv`, `tsx`); TypeScript 7 in both apps with type errors failing
   the build; no `any` or `!` in kept code; HashiFi naming throughout; `ENCRYPTION_KEY` required.
   `bun run verify` passes: 170/170 tests, both typechecks, lint, format, web build.
-- [ ] M2 Router lab on CHR.
-  - [x] (2026-10-29) Lab: `bun run lab` boots RouterOS 7.25 CHR in QEMU and runs onboarding
+- [ ] M2 Router sim on CHR.
+  - [x] (2026-10-29) Router sim: `bun run router-sim` boots RouterOS 7.25 CHR in QEMU and runs onboarding
     through the real code (serial-console bootstrap, `setupRouter`, `probeVerify`). A
     factory-fresh router onboards in one pass (14 changes applied and verified); a second run
     applies 0; verify passes with the two expected warnings. Two provisioning defects fixed.
     Provisioning reaches persistence only through `RouterStore`, and credentials carry their
-    own port (the management target). Runbook: `docs/runbooks/router-lab.md`.
-  - [x] (2026-10-29) Management tunnel proved in the lab and recorded as
+    own port (the management target). Runbook: `docs/runbooks/router-sim.md`.
+  - [x] (2026-10-29) Management tunnel proved in the router sim and recorded as
     [ADR-0006](../../engineering-decisions/0006-router-management-tunnel.md): the bootstrap
     brings up a router-initiated WireGuard tunnel and restricts the API to the platform's
     tunnel address; setup and verify pass over the tunnel alone; the router re-establishes it
@@ -52,7 +52,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     modes onboard a fresh CHR and verify clean; with `https://handbook.hashikome.com` RouterOS
     resolved both Cloudflare addresses into pass-through rules.
   - [ ] A guest client on the hotspot segment: DHCP, portal redirect, voucher login.
-  - [ ] `sharp` under Bun (`routeros` is proved by the lab; it hangs on a closed connection,
+  - [ ] `sharp` under Bun (`routeros` is proved by the router sim; it hangs on a closed connection,
     which `connectToRouter`'s timeout covers).
 - [ ] M3 Prisma schema on PostgreSQL.
 - [ ] M4 NestJS API.
@@ -112,7 +112,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   guards matched its lease as "the LAN address and default route already exist", so the static
   ones were never added, and the lease dies once ether1 is bridged. The bootstrap now removes a
   DHCP client from bridged interfaces and counts only static entries.
-  Evidence: router lab, 2026-10-29; `bootstrap.test.ts`.
+  Evidence: router sim, 2026-10-29; `bootstrap.test.ts`.
 - Observation: on CHR 7.25 a running hotspot keeps its dynamic firewall rules first whatever
   static rules do, re-inserting them above its disabled "place hotspot rules here" rule each time
   it starts; on a fresh board they also appear a moment after the server is created. Placing our
@@ -120,7 +120,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   ignored. The firewall steps now wait for the hotspot's rules and place ours above the
   placeholder. The hAP lite (the seller's measurement) let a static rule sit above the dynamic
   ones; both cases are accepted.
-  Evidence: router lab, 2026-10-29; `steps.test.ts`.
+  Evidence: router sim, 2026-10-29; `steps.test.ts`.
 - Observation: the purchased code used one backend address for two roles: management (API
   connections, the router's input accept rule, readiness ping, portal-file download) and the
   guest-facing portal (login redirect, walled garden, forward accept). The IP binding
@@ -206,7 +206,7 @@ Not started beyond the import and scaffold.
   seller's router onboarding procedure and reference, worth keeping as runbooks.
 - `apps/web` (as received): Next.js 16 admin with shadcn components; `lib/types.ts` mirrors
   the API's responses.
-- **CHR**: MikroTik's RouterOS as a virtual machine image, used here as the router lab.
+- **CHR**: MikroTik's RouterOS as a virtual machine image, used here as the router sim.
 - **Walled garden**: hosts a hotspot lets unauthenticated guests reach (the portal and API).
 
 ## Plan Of Work
@@ -221,7 +221,7 @@ cookie and database names, demo addresses, router pages). In the web: remove
 `@vercel/analytics`, replace the `next-maps` GitHub dependency, fix the Recharts error and
 drop `typescript.ignoreBuildErrors`. `bun run verify` passes, with the 170 purchased tests.
 
-### M2 Router lab on CHR
+### M2 Router sim on CHR
 
 Run CHR locally; apply the bootstrap script and the automated setup to it. Decide, with
 evidence, and record as an ADR:
@@ -231,7 +231,7 @@ evidence, and record as an ADR:
 - how the walled garden admits the portal and API by name rather than a changing IP;
 - that `routeros` and `sharp` work under Bun.
 
-A script brings the lab up so the provisioning steps and readiness checks can be run
+A script brings the router sim up so the provisioning steps and readiness checks can be run
 against it repeatably.
 
 ### M3 Prisma schema on PostgreSQL

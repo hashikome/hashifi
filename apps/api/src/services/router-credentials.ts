@@ -11,7 +11,7 @@ export const DEFAULT_API_PORT = Number(process.env.MIKROTIK_API_PORT ?? 8728);
  * Where this API reaches a router's RouterOS API.
  *
  * Today that is the router's LAN address on one global port, which only works when the API
- * shares the router's LAN. The adoption plan's router lab (M2) decides the cloud design
+ * shares the router's LAN. The adoption plan's router sim (M2) decides the cloud design
  * (a router-initiated tunnel) and M3 gives each router its own management address; this is
  * the one place that changes.
  */

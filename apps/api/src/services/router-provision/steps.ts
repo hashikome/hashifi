@@ -118,7 +118,7 @@ export async function addRuleFirst(
  * Boards differ in how that is achieved:
  *
  * - On an hAP lite a static rule moved above the dynamic ones stayed there (index 15 to 0).
- * - On RouterOS 7.25 (CHR, router lab, 2026-10-29) a running hotspot keeps its dynamic rules first
+ * - On RouterOS 7.25 (CHR, router sim, 2026-10-29) a running hotspot keeps its dynamic rules first
  *   whatever static rules do. It inserts them directly above its disabled placeholder rule,
  *   "place hotspot rules here", each time it starts: a rule above the placeholder is evaluated
  *   first from the hotspot's next start, and a move above the dynamic rules is ignored.
@@ -150,7 +150,7 @@ export async function ruleAheadOfHotspotRules(
 
 /**
  * A freshly started hotspot adds its dynamic rules and placeholder a moment after the server is
- * created, and above any rule placed before them (CHR 7.25, router lab). Placing our rule first
+ * created, and above any rule placed before them (CHR 7.25, router sim). Placing our rule first
  * left it below the placeholder and failed the read-back. Returns the menu once the hotspot's
  * rules exist, or as it stands when they never appear within `waitMs`.
  */

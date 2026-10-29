@@ -1,8 +1,8 @@
-// The router lab: a MikroTik Cloud Hosted Router (CHR) in QEMU, standing in for a venue's router
+// The router sim: a MikroTik Cloud Hosted Router (CHR) in QEMU, standing in for a venue's router
 // so onboarding, provisioning and verification run against real RouterOS without hardware.
-// Procedure and topology: docs/runbooks/router-lab.md.
+// Procedure and topology: docs/runbooks/router-sim.md.
 //
-// bun run lab <up|down|reset|status|console|hub|bootstrap|setup|verify>
+// bun run router-sim <up|down|reset|status|console|hub|bootstrap|setup|verify>
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -30,29 +30,29 @@ import {
 import { probeVerify } from "../apps/api/src/services/router-provision/verify.js";
 
 const ROOT = resolve(import.meta.dir, "..");
-const LAB = join(ROOT, "data", "router-lab");
+const SIM = join(ROOT, "data", "router-sim");
 const ROS_VERSION = "7.25";
-const BASE_IMAGE = join(LAB, `chr-${ROS_VERSION}.img`);
-const OVERLAY = join(LAB, "lab.qcow2");
-const SERIAL = join(LAB, "serial.sock");
-const MONITOR = join(LAB, "monitor.sock");
-const PID_FILE = join(LAB, "qemu.pid");
-const STATE_FILE = join(LAB, "state.json");
+const BASE_IMAGE = join(SIM, `chr-${ROS_VERSION}.img`);
+const OVERLAY = join(SIM, "sim.qcow2");
+const SERIAL = join(SIM, "serial.sock");
+const MONITOR = join(SIM, "monitor.sock");
+const PID_FILE = join(SIM, "qemu.pid");
+const STATE_FILE = join(SIM, "state.json");
 
-/** The lab venue LAN is QEMU's user network: the host is the "ISP router" at 10.0.2.2. */
+/** The sim venue LAN is QEMU's user network: the host is the "ISP router" at 10.0.2.2. */
 const LAN = { routerIp: "10.0.2.15", prefix: 24, gatewayIp: "10.0.2.2" } as const;
 /** Host ports forwarded to the router's RouterOS API, SSH and WinBox. */
 const FORWARD = { api: 18728, ssh: 18022, winbox: 18291 } as const;
 /** The host side of 10.0.2.2:8080, where the router fetches its portal pages. */
 const BACKEND_PORT = 8080;
 const BACKEND_URL = `http://${LAN.gatewayIp}:${BACKEND_PORT}`;
-const ROUTER_ID = "lab-router";
+const ROUTER_ID = "sim-router";
 const API_USER = "hashifi";
 const API_PORT = 8728;
 
 /**
  * The management tunnel. The hub container stands in for the platform: the router dials it at
- * 10.0.2.2:51820 (QEMU's user network, outbound only, like carrier-grade NAT), and the lab
+ * 10.0.2.2:51820 (QEMU's user network, outbound only, like carrier-grade NAT), and the sim
  * reaches the router through the tunnel alone.
  */
 const TUNNEL = {
@@ -61,26 +61,26 @@ const TUNNEL = {
   prefix: 24,
   port: 51820,
 } as const;
-const HUB = { container: "hashifi-lab-hub", image: "hashifi-lab-hub:1" } as const;
+const HUB = { container: "hashifi-router-sim-hub", image: "hashifi-router-sim-hub:1" } as const;
 /** Set when this process runs inside the hub container, on the platform side of the tunnel. */
-const IN_HUB = process.env.LAB_IN_HUB === "1";
+const IN_HUB = process.env.SIM_IN_HUB === "1";
 
-interface LabState {
+interface SimState {
   adminPassword: string | null;
   apiPassword: string | null;
   capabilities: unknown;
   tunnel: { router: WireguardKeyPair; server: WireguardKeyPair } | null;
 }
 
-function readState(): LabState {
+function readState(): SimState {
   if (!existsSync(STATE_FILE)) {
     return { adminPassword: null, apiPassword: null, capabilities: null, tunnel: null };
   }
-  const state = JSON.parse(readFileSync(STATE_FILE, "utf8")) as LabState;
+  const state = JSON.parse(readFileSync(STATE_FILE, "utf8")) as SimState;
   return { ...state, tunnel: state.tunnel ?? null };
 }
 
-function writeState(state: LabState): void {
+function writeState(state: SimState): void {
   writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
 }
 
@@ -105,15 +105,15 @@ function qemuPid(): number | null {
 
 async function up(): Promise<void> {
   if (qemuPid() !== null) {
-    console.log("Router lab is already running.");
+    console.log("Router sim is already running.");
     return;
   }
   if (!existsSync(BASE_IMAGE)) {
     throw new Error(
-      `Missing ${BASE_IMAGE}. Download and verify the CHR image first (docs/runbooks/router-lab.md).`,
+      `Missing ${BASE_IMAGE}. Download and verify the CHR image first (docs/runbooks/router-sim.md).`,
     );
   }
-  mkdirSync(LAB, { recursive: true });
+  mkdirSync(SIM, { recursive: true });
   if (!existsSync(OVERLAY)) {
     run(["qemu-img", "create", "-q", "-f", "qcow2", "-b", BASE_IMAGE, "-F", "raw", OVERLAY]);
   }
@@ -125,7 +125,7 @@ async function up(): Promise<void> {
   run([
     "qemu-system-x86_64",
     "-name",
-    "hashifi-router-lab",
+    "hashifi-router-sim",
     "-enable-kvm",
     "-m",
     "256",
@@ -156,17 +156,17 @@ async function up(): Promise<void> {
   const serial = await SerialConsole.open();
   await serial.waitFor(/Login:\s*$/, 120_000);
   serial.close();
-  console.log(`Router lab is up: RouterOS ${ROS_VERSION}, API on 127.0.0.1:${FORWARD.api}.`);
+  console.log(`Router sim is up: RouterOS ${ROS_VERSION}, API on 127.0.0.1:${FORWARD.api}.`);
 }
 
 function down(): void {
   const pid = qemuPid();
   if (pid === null) {
-    console.log("Router lab is not running.");
+    console.log("Router sim is not running.");
     return;
   }
   process.kill(pid, "SIGTERM");
-  console.log("Router lab stopped.");
+  console.log("Router sim stopped.");
 }
 
 async function reset(): Promise<void> {
@@ -276,7 +276,7 @@ class SerialConsole {
       this.send(" ");
     }
     // The prompt can also be a redraw before the command finishes; a marker proves it has.
-    const marker = `LAB-DONE-${crypto.randomUUID().slice(0, 8)}`;
+    const marker = `SIM-DONE-${crypto.randomUUID().slice(0, 8)}`;
     this.send(`:put "${marker}"\r`);
     const rest = await this.waitFor(new RegExp(`\\n${marker}\\n[\\s\\S]*\\] >\\s*$`), timeoutMs);
     output += rest.slice(0, rest.lastIndexOf(`\n${marker}`));
@@ -313,7 +313,7 @@ async function bootstrap(): Promise<void> {
   // Step 2: paste the generated bootstrap script, one statement at a time.
   await serial.login(["", adminPassword], adminPassword);
   const { script, resolved } = buildBootstrapScript({
-    routerName: "hashifi-lab",
+    routerName: "hashifi-sim",
     ipAddress: LAN.routerIp,
     lanPrefix: LAN.prefix,
     gatewayIp: LAN.gatewayIp,
@@ -336,7 +336,7 @@ async function bootstrap(): Promise<void> {
     // Keep what the statement printed; drop the console's echo and prompt redraws.
     const shown = output
       .split("\n")
-      .filter((line) => !line.includes("] >") && !line.includes("LAB-DONE"))
+      .filter((line) => !line.includes("] >") && !line.includes("SIM-DONE"))
       .join("\n")
       .trim();
     console.log(`✓ ${statement.slice(0, 90)}${statement.length > 90 ? " …" : ""}`);
@@ -348,13 +348,13 @@ async function bootstrap(): Promise<void> {
     `Bootstrap applied: ${statements.length} statements, API user "${API_USER}"` +
       `${tunnel ? `, management tunnel to ${LAN.gatewayIp}:${TUNNEL.port}` : ""}.`,
   );
-  if (tunnel) console.log("Start or refresh the platform side with `bun run lab hub up`.");
+  if (tunnel) console.log("Start or refresh the platform side with `bun run router-sim hub up`.");
 }
 
 // ── Setup and verification through the real provisioning code ────────────────
 
-function labCredentials(state: LabState): RouterCredentials {
-  if (!state.apiPassword) throw new Error("Run `bun run lab bootstrap` first.");
+function simCredentials(state: SimState): RouterCredentials {
+  if (!state.apiPassword) throw new Error("Run `bun run router-sim bootstrap` first.");
   // With a tunnel the router's API accepts only the platform's tunnel address.
   const target = state.tunnel
     ? { host: TUNNEL.routerIp, port: API_PORT }
@@ -362,8 +362,8 @@ function labCredentials(state: LabState): RouterCredentials {
   return { ...target, username: API_USER, password: state.apiPassword };
 }
 
-/** The management URL the router uses to reach "the API" in this lab. */
-function managementUrl(state: LabState): string {
+/** The management URL the router uses to reach "the API" in this sim. */
+function managementUrl(state: SimState): string {
   return state.tunnel ? `http://${TUNNEL.serverIp}:${BACKEND_PORT}` : BACKEND_URL;
 }
 
@@ -371,9 +371,9 @@ function managementUrl(state: LabState): string {
  * Re-runs this command inside the hub when the router is managed over the tunnel, because only
  * the hub is on the platform side of it. Returns true when it did.
  */
-function delegateToHub(state: LabState, command: string): boolean {
+function delegateToHub(state: SimState, command: string): boolean {
   if (!state.tunnel || IN_HUB) return false;
-  const env = ["-e", "LAB_IN_HUB=1"];
+  const env = ["-e", "SIM_IN_HUB=1"];
   if (process.env.PORTAL_ORIGIN) env.push("-e", `PORTAL_ORIGIN=${process.env.PORTAL_ORIGIN}`);
   const result = Bun.spawnSync(
     [
@@ -384,7 +384,7 @@ function delegateToHub(state: LabState, command: string): boolean {
       ...env,
       HUB.container,
       "bun",
-      "tooling/router-lab.ts",
+      "tooling/router-sim.ts",
       command,
     ],
     { stdout: "inherit", stderr: "inherit" },
@@ -393,12 +393,12 @@ function delegateToHub(state: LabState, command: string): boolean {
   return true;
 }
 
-function labRouter(state: LabState): RouterRow {
+function simRouter(state: SimState): RouterRow {
   const now = new Date();
   return {
     id: ROUTER_ID,
-    venueId: "lab-venue",
-    name: "hashifi-lab",
+    venueId: "sim-venue",
+    name: "hashifi-sim",
     model: null,
     identity: null,
     ipAddress: LAN.routerIp,
@@ -429,27 +429,27 @@ function labRouter(state: LabState): RouterRow {
   };
 }
 
-function labStore(): RouterStore {
+function simStore(): RouterStore {
   return {
     async load(routerId) {
-      return routerId === ROUTER_ID ? labRouter(readState()) : null;
+      return routerId === ROUTER_ID ? simRouter(readState()) : null;
     },
-    credentials: () => labCredentials(readState()),
+    credentials: () => simCredentials(readState()),
     async markProvisioning() {},
     async recordProvisionOutcome(_router, { ok, profile }) {
-      console.log(`  (lab) outcome recorded: ok=${ok}, board ${profile.boardName ?? "unknown"}`);
+      console.log(`  (sim) outcome recorded: ok=${ok}, board ${profile.boardName ?? "unknown"}`);
     },
     async recordCapabilities(_routerId, capabilities) {
       writeState({ ...readState(), capabilities });
     },
     async resyncVouchers() {
-      console.log("  (lab) no vouchers to re-sync");
+      console.log("  (sim) no vouchers to re-sync");
     },
   };
 }
 
 /** Serves the portal pages the router fetches, as the API's captive-portal route does. */
-function serveBackend(state: LabState): ReturnType<typeof Bun.serve> {
+function serveBackend(state: SimState): ReturnType<typeof Bun.serve> {
   const origin = portalOriginFor(managementUrl(state));
   return Bun.serve({
     hostname: IN_HUB ? "0.0.0.0" : "127.0.0.1",
@@ -479,7 +479,7 @@ async function setup(): Promise<void> {
   const backend = serveBackend(state);
   try {
     const logger = new RouterLogger("provision");
-    const report = await setupRouter(ROUTER_ID, labStore(), { force: false, logger });
+    const report = await setupRouter(ROUTER_ID, simStore(), { force: false, logger });
     printEvents(logger);
     console.log(
       `\nSetup ${report.ok ? "succeeded" : "FAILED"}${report.stoppedAt ? ` at ${report.stoppedAt}` : ""}.`,
@@ -496,9 +496,9 @@ async function verify(): Promise<void> {
   const state = readState();
   if (delegateToHub(state, "verify")) return;
   process.env.ROUTER_MANAGEMENT_URL = managementUrl(state);
-  const creds = labCredentials(state);
+  const creds = simCredentials(state);
   const logger = new RouterLogger("probe");
-  const router = labRouter(state);
+  const router = simRouter(state);
   const profile = await probeRouterMerged(creds, logger, router.capabilities);
   const report = await probeVerify(creds, logger, {
     dialect: dialectFor(profile),
@@ -538,7 +538,7 @@ function hub(): void {
     return;
   }
   const { tunnel } = readState();
-  if (!tunnel) throw new Error("No tunnel: run `bun run lab bootstrap --tunnel` first.");
+  if (!tunnel) throw new Error("No tunnel: run `bun run router-sim bootstrap --tunnel` first.");
   if (action === "restart") {
     // A restart drops the hub's WireGuard state, as a platform restart would: the router must
     // re-establish the tunnel on its own.
@@ -622,7 +622,7 @@ const commands: Record<string, () => Promise<void> | void> = {
   down,
   reset,
   status: () =>
-    console.log(qemuPid() === null ? "Router lab is not running." : "Router lab is running."),
+    console.log(qemuPid() === null ? "Router sim is not running." : "Router sim is running."),
   console: () => consoleCommand(args.join(" ")),
   hub,
   "tunnel-status": tunnelStatus,

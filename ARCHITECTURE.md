@@ -27,7 +27,7 @@ admin browser ──► apps/web (Next.js: admin + captive portal)
 - The MikroTik intercepts unauthenticated guests and redirects them to the portal; the
   walled garden lets the portal and API through before login.
 - The API reaches each router over a tunnel the router opens to the platform, because routers
-  sit behind NAT. The tunnel's design is settled by the plan's router-lab milestone.
+  sit behind NAT. The tunnel design is [ADR-0006](docs/engineering-decisions/0006-router-management-tunnel.md).
 
 ## Codemap
 

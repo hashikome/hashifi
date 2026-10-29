@@ -1,6 +1,6 @@
 # ADR-0006: Routers are managed through a tunnel they open to the platform
 
-Status: accepted, 29 October 2026, as proved in the router lab. The production endpoint is not
+Status: accepted, 29 October 2026, as proved in the router sim. The production endpoint is not
 yet provisioned (see What remains open).
 
 ## Context
@@ -42,8 +42,8 @@ sit behind an ISP router, often behind carrier-grade NAT, with no inbound port a
 
 ## Evidence
 
-Router lab (RouterOS 7.25 CHR behind QEMU's outbound-only user network,
-[runbook](../runbooks/router-lab.md)): a factory-fresh router bootstrapped with the tunnel
+Router sim (RouterOS 7.25 CHR behind QEMU's outbound-only user network,
+[runbook](../runbooks/router-sim.md)): a factory-fresh router bootstrapped with the tunnel
 handshakes with the hub unaided; the direct API path is closed (`available-from 10.88.0.1/32`);
 setup applies and verifies 14 changes over the tunnel alone; after the hub restarts the router
 re-establishes the tunnel within about 45 seconds; a router switched between an IPv4 portal and

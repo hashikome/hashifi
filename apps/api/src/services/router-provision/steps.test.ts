@@ -112,7 +112,7 @@ describe("ruleAheadOfHotspotRules", () => {
 
   test("true above the hotspot's placeholder even while dynamic rules list first", async () => {
     // RouterOS 7.25 (CHR): a running hotspot keeps its dynamic rules first and re-inserts them
-    // directly above the placeholder when it starts. Measured in the router lab.
+    // directly above the placeholder when it starts. Measured in the router sim.
     const rows = rowsFor(["dyn", "dyn", "wbs:firewall-forward-backend", "placeholder"]);
     expect(
       await ruleAheadOfHotspotRules(ros(rows), "/ip/firewall/filter", "firewall-forward-backend"),
@@ -150,7 +150,7 @@ describe("ruleAheadOfHotspotRules", () => {
 });
 
 /**
- * The fresh-board race, measured on CHR 7.25 in the router lab: the hotspot adds its dynamic
+ * The fresh-board race, measured on CHR 7.25 in the router sim: the hotspot adds its dynamic
  * rules and placeholder just after the server is created, above the rule the firewall step had
  * already placed, so the read-back found it below the placeholder.
  */
