@@ -168,8 +168,24 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     terms; prefix defaulting without touching the portal; packages not on sale and another
     venue refused; scoped, paged listing and batches; revoke only unused, admins only; reprint
     by id within scope).
-  - [ ] The remaining routes, each through `venueScope` and the guard:
-    customers (devices), sessions, analytics, revenue, portal settings, team, audit.
+  - [x] (2026-10-30) Devices and sessions (`src/devices/`, `src/sessions/`, one module).
+    `sessionScope` limits a manager to sessions at their venues, and a device belongs to no
+    venue, so a manager sees a device only if it had a session there, with usage and online
+    state counted from those sessions alone (finding 6). Both lists are paged (`before`) with
+    counts or totals over every match. Admins block, unblock and delete devices
+    (`PUT /api/devices/:id/status`, `DELETE`), audited without the MAC address; blocking ends
+    the device's connected sessions everywhere and kicks their vouchers, and the portal will
+    refuse a blocked device (M5: nothing enforced the purchased `blocked` flag). Deleting
+    forgets the device and keeps its sessions unlinked. Managers end sessions at their venues
+    (`POST /api/sessions/:id/terminate`, 409 once ended); the voucher stays valid, so the
+    guest can sign in again. The observed fields the purchased `PATCH /customers/:id` let an
+    admin rewrite (MAC, IP, device name) are read-only. The web's Users and Sessions pages
+    still call `/api/customers` and `PATCH .../terminate` until the web pass.
+    Acceptance: `devices-sessions.integration.test.ts` (one phone at two venues: the manager
+    sees 1 GB and offline, the admin 5 GB and online; filters and paging; blocking ends the
+    remote session and changes the counts; unblock and delete, audited without the MAC; scoped
+    session list and totals; terminate within scope, once).
+  - [ ] The remaining routes, each through `venueScope` and the guard: analytics, revenue, portal settings, team, audit.
     Still to apply as they land:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
       their own checks; the router sim's guest test runs once they are ported.
@@ -223,8 +239,9 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
      (`voucher-codes.ts`, about 39.6 bits); M5 rate-limits redemption.
      Evidence: `45ebd53:apps/api/src/routes/vouchers.ts` (batch generation).
   6. Customers are listed and read with no venue scoping, so a manager sees every venue's
-     guests (phone numbers, devices). M4 scopes customers to the manager's venues through their
-     sessions and returns 404 outside them.
+     guests (phone numbers, devices). Fixed in M4: devices (the renamed customers) are scoped
+     to the manager's venues through their sessions, with usage and online state counted at
+     those venues only, and 404 outside them.
      Evidence: `45ebd53:apps/api/src/routes/customers.ts` (list and `GET /:id`).
   7. The bootstrap script put the router name, unchecked, into its banner comment, so a name
      containing a newline ended the comment and ran the rest as a RouterOS command when the

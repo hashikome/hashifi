@@ -2,10 +2,18 @@ import type {
   PackageRecord,
   PortalSettingsRecord,
   RouterRecord,
+  SessionRecord,
   VenueRecord,
   VoucherRecord,
 } from "@hashifi/types";
-import type { Package, PortalSetting, Router, Venue, Voucher } from "../generated/prisma/client.js";
+import type {
+  Package,
+  PortalSetting,
+  Router,
+  Venue,
+  Voucher,
+  WifiSession,
+} from "../generated/prisma/client.js";
 
 /**
  * The only place database rows become API records (`@hashifi/types`): decimals as strings,
@@ -17,7 +25,7 @@ const iso = (date: Date): string => date.toISOString();
 const isoOrNull = (date: Date | null): string | null => (date ? date.toISOString() : null);
 
 /** Byte counters fit in a JavaScript number far beyond any voucher (2^53 bytes is 8 PB). */
-function bytes(value: bigint): number {
+export function bytes(value: bigint): number {
   if (value > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Byte counter exceeds 2^53");
   return Number(value);
 }
@@ -152,5 +160,42 @@ export function routerRecord(
     status: row.status,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
+  };
+}
+
+export function sessionRecord(
+  row: WifiSession & {
+    voucher: { code: string } | null;
+    package: { name: string } | null;
+    venue: { name: string } | null;
+    router: { name: string } | null;
+  },
+): SessionRecord {
+  return {
+    id: row.id,
+    status: row.status,
+    deviceId: row.deviceId,
+    macAddress: row.macAddress,
+    ipAddress: row.ipAddress,
+    deviceName: row.deviceName,
+    deviceType: row.deviceType,
+    voucherId: row.voucherId,
+    voucherCode: row.voucher?.code ?? null,
+    packageId: row.packageId,
+    packageName: row.package?.name ?? null,
+    venueId: row.venueId,
+    venueName: row.venue?.name ?? null,
+    routerId: row.routerId,
+    routerName: row.router?.name ?? null,
+    startedAt: iso(row.startedAt),
+    endedAt: isoOrNull(row.endedAt),
+    durationSeconds: row.durationSeconds,
+    uploadBytes: bytes(row.uploadBytes),
+    downloadBytes: bytes(row.downloadBytes),
+    uploadSpeedMbps: row.uploadSpeedMbps?.toFixed(2) ?? null,
+    downloadSpeedMbps: row.downloadSpeedMbps?.toFixed(2) ?? null,
+    signalStrengthDbm: row.signalStrengthDbm,
+    isThrottled: row.isThrottled,
+    terminationReason: row.terminationReason,
   };
 }

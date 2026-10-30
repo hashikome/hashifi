@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Devices and sessions through the NestJS API: managers see guests' devices and sessions only
+  as their venues saw them; admins block, unblock and forget devices; managers end sessions at
+  their venues. Blocking ends a device's sessions everywhere.
+- Fixed: managers could list every venue's guests and their usage.
+
 - Vouchers through the NestJS API: batches for a package the venue sells, with codes from a
   cryptographic generator; managers make and print their own venues' vouchers; admins revoke
   unused ones, which stay on record. Printing is by batch or voucher id.

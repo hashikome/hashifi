@@ -7,6 +7,7 @@ import type { EmailSender } from "./email/email-sender.js";
 import { HealthController } from "./health/health.controller.js";
 import { PackagesModule } from "./packages/packages.module.js";
 import { RoutersModule } from "./routers/routers.module.js";
+import { SessionsModule } from "./sessions/sessions.module.js";
 import { VenuesModule } from "./venues/venues.module.js";
 import { VouchersModule } from "./vouchers/vouchers.module.js";
 
@@ -24,6 +25,7 @@ export function appModule(config: AppConfig, email: EmailSender | null): Dynamic
       VenuesModule,
       PackagesModule,
       VouchersModule,
+      SessionsModule,
     ],
     controllers: [HealthController],
   };

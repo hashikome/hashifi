@@ -310,3 +310,80 @@ export interface VenuePackages {
   /** True when the venue has no assignments, and so sells every active package. */
   sellsAll: boolean;
 }
+
+export type DeviceStatus = "active" | "blocked";
+
+/**
+ * A guest device: one MAC address the network saw. Not a person, so it carries no name, phone
+ * or email of its owner. Usage and online state count only the caller's venues.
+ */
+export interface DeviceRecord {
+  id: string;
+  macAddress: string;
+  lastIpAddress: string | null;
+  /** The name the device reported, such as a phone's host name. */
+  deviceName: string | null;
+  deviceType: string | null;
+  status: DeviceStatus;
+  /** Connected now, and not blocked. */
+  isOnline: boolean;
+  downloadBytes: number;
+  uploadBytes: number;
+  firstSeenAt: Timestamp;
+  lastActiveAt: Timestamp | null;
+}
+
+/** `GET /api/devices`: newest first, a page at a time, with counts over every match. */
+export interface DeviceList {
+  devices: DeviceRecord[];
+  nextBefore: string | null;
+  stats: { total: number; online: number; offline: number; blocked: number };
+}
+
+/** `GET /api/devices/:id` and `PUT /api/devices/:id/status`. */
+export interface DeviceResponse {
+  device: DeviceRecord;
+}
+
+export type SessionStatus = "connected" | "disconnected" | "expired" | "terminated";
+
+/** One stay of a device on a venue's network, under one voucher. */
+export interface SessionRecord {
+  id: string;
+  status: SessionStatus;
+  deviceId: string | null;
+  macAddress: string;
+  ipAddress: string | null;
+  deviceName: string | null;
+  deviceType: string | null;
+  voucherId: string | null;
+  voucherCode: string | null;
+  packageId: string | null;
+  packageName: string | null;
+  venueId: string | null;
+  venueName: string | null;
+  routerId: string | null;
+  routerName: string | null;
+  startedAt: Timestamp;
+  endedAt: Timestamp | null;
+  durationSeconds: number;
+  uploadBytes: number;
+  downloadBytes: number;
+  uploadSpeedMbps: DecimalString | null;
+  downloadSpeedMbps: DecimalString | null;
+  signalStrengthDbm: number | null;
+  isThrottled: boolean;
+  terminationReason: string | null;
+}
+
+/** `GET /api/sessions`: newest first, a page at a time, with totals over every match. */
+export interface SessionList {
+  sessions: SessionRecord[];
+  nextBefore: string | null;
+  stats: { total: number; connected: number; uploadBytes: number; downloadBytes: number };
+}
+
+/** `GET /api/sessions/:id` and `POST /api/sessions/:id/terminate`. */
+export interface SessionResponse {
+  session: SessionRecord;
+}
