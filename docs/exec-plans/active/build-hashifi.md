@@ -283,7 +283,8 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   in development, served from the portal's origin, the real portal as the Portal Pages preview,
   and printed cards and prefixes by venue. `backgroundStyle` is dropped.
   Acceptance: `brand.integration.test.ts`, `brand-store.test.ts`, and a browser walk of upload,
-  preview, guest page and printed card. Not done: nothing has run against real R2 (no key yet).
+  preview, guest page and printed card; upload, serve and removal against the real `hashifi`
+  bucket. Not done: a key limited to this bucket for production.
 - [x] (2026-10-30) Sign-in moved to the API, closing M5's open findings. The hotspot is
   `login-by=mac-cookie` alone, and `/ip hotspot active login` is probed and required. No response
   or router page holds a code; `link-login`, the router's login form and `alogin.html` are gone.
