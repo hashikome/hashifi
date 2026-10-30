@@ -13,10 +13,13 @@ export class RouterAccess {
     private readonly box: SecretBox,
     readonly apiPort: number,
     readonly connectTimeoutSeconds: number,
+    private readonly targetOverride: { host: string; port: number } | null = null,
   ) {}
 
   managementTarget(router: Router): { host: string; port: number } {
-    return { host: router.tunnelAddress ?? router.ipAddress, port: this.apiPort };
+    return (
+      this.targetOverride ?? { host: router.tunnelAddress ?? router.ipAddress, port: this.apiPort }
+    );
   }
 
   /** Credentials for the router, or null when it has none usable. */

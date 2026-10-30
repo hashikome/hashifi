@@ -543,7 +543,7 @@ export default function VouchersPage() {
               {/* QR Code */}
               <div className="flex flex-col items-center gap-2 rounded-lg border bg-muted/30 py-4">
                 <QRCodeSVG
-                  value={`${PORTAL_URL}/portal/login?code=${selectedVoucher.code}`}
+                  value={`${PORTAL_URL}/portal/login#code=${selectedVoucher.code}`}
                   size={120}
                   bgColor="transparent"
                   fgColor="currentColor"

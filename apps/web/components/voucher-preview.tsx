@@ -37,7 +37,7 @@ export function VoucherPreview({
 
   const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login";
   const voucherCode = `${prefix || "WIFI"}-8K2F-2026`;
-  const qrData = `${portalUrl}?code=${voucherCode}`;
+  const qrData = `${portalUrl}#code=${voucherCode}`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: replays the preview animation whenever a shown value changes
   useEffect(() => {

@@ -8,6 +8,7 @@ import {
   closeConnection,
   connectToRouter,
   createHotspotUser,
+  disconnectHotspotDevice,
   ensureHotspotUserProfile,
   ensureHotspotUserProfileAssigned,
   type HotspotUserCapabilities,
@@ -17,6 +18,7 @@ import {
   packageCanThrottle,
   rateLimitFor,
   removeHotspotUser,
+  setDeviceBlocked,
   throttledProfileNameForPackage,
   throttledRateLimitFor,
   userProfileNameForPackage,
@@ -285,11 +287,16 @@ export class RouterSync {
       where: { venueId: router.venueId, status: { in: [...LIVE_STATUSES] } },
       include: { package: true },
     });
-    if (venueVouchers.length === 0) return;
+    const blocked = await this.db.device.findMany({
+      where: { status: "blocked" },
+      select: { macAddress: true },
+    });
+    if (venueVouchers.length === 0 && blocked.length === 0) return;
 
     let conn: MikroTikConn | null = null;
     try {
       conn = await connectToRouter(creds);
+      for (const device of blocked) await setDeviceBlocked(conn, device.macAddress, true);
       const caps = capsFor(router);
       // One profile per distinct package, not per voucher: a venue's vouchers usually span a
       // handful of packages and this loop can be hundreds of codes long.
@@ -342,9 +349,17 @@ export class RouterSync {
   /**
    * Makes sure one voucher exists on every router in its venue: the just-in-time safety net when
    * a guest redeems a voucher that was never pushed (a router was unreachable at batch time).
+   * Given a router, only that one: a guest standing at it must not wait on, or fail because of,
+   * another router in the venue.
    */
-  async ensureVoucher(venueId: string, code: string): Promise<SyncOutcome> {
-    const venueRouters = await this.db.router.findMany({ where: { venueId } });
+  async ensureVoucher(
+    venueId: string,
+    code: string,
+    routerId: string | null = null,
+  ): Promise<SyncOutcome> {
+    const venueRouters = await this.db.router.findMany({
+      where: { venueId, ...(routerId === null ? {} : { id: routerId }) },
+    });
     if (venueRouters.length === 0) {
       return {
         attempted: 0,
@@ -434,6 +449,49 @@ export class RouterSync {
     }
   }
 
+  /**
+   * Takes one device off a voucher and forgets it, so it must sign in again. Best effort, like
+   * `kickVoucher`: the session ends at its limit anyway.
+   */
+  async disconnectDevice(venueId: string, code: string, mac: string): Promise<void> {
+    for (const router of await this.db.router.findMany({ where: { venueId } })) {
+      const creds = this.access.credentials(router);
+      if (!creds) continue;
+      let conn: MikroTikConn | null = null;
+      try {
+        conn = await connectToRouter(creds);
+        await disconnectHotspotDevice(conn, code, mac);
+      } catch {
+        // Unreachable: see above.
+      } finally {
+        if (conn) await closeConnection(conn);
+      }
+    }
+  }
+
+  /**
+   * Blocks or unblocks a device on every router, since it can turn up at any venue. A router
+   * that misses this gets it from `syncRouter`.
+   */
+  async setDeviceBlocked(mac: string, blocked: boolean): Promise<void> {
+    for (const router of await this.db.router.findMany()) {
+      const creds = this.access.credentials(router);
+      if (!creds) continue;
+      let conn: MikroTikConn | null = null;
+      try {
+        conn = await connectToRouter(creds);
+        await setDeviceBlocked(conn, mac, blocked);
+      } catch (err) {
+        logger.error("Failed to update a device block on {router}", {
+          router: router.name,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      } finally {
+        if (conn) await closeConnection(conn);
+      }
+    }
+  }
+
   /** Removes vouchers from every router in a venue, one connection per router. */
   async removeVouchers(venueId: string, codes: string[]): Promise<void> {
     if (codes.length === 0) return;
@@ -444,7 +502,7 @@ export class RouterSync {
       try {
         conn = await connectToRouter(creds);
         for (const code of codes) {
-          await kickHotspotSession(conn, code).catch(() => {});
+          await disconnectHotspotDevice(conn, code, null).catch(() => {});
           await removeHotspotUser(conn, code);
         }
       } catch (err) {

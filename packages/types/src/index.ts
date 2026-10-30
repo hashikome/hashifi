@@ -587,3 +587,54 @@ export type LiveMessage =
         outcome: "ok" | "failed" | "unsupported" | "skipped" | null;
       };
     };
+
+/** What the portal page shows a guest: `POST /api/guest/context`. */
+export interface GuestContext {
+  venueName: string;
+  settings: Pick<
+    PortalSettingsRecord,
+    | "brandName"
+    | "headline"
+    | "message"
+    | "primaryColor"
+    | "accentColor"
+    | "backgroundColor"
+    | "backgroundStyle"
+    | "radius"
+    | "voucherLabel"
+    | "voucherHelp"
+    | "requireTerms"
+  >;
+  /** What this venue sells, for reading; buying arrives with payments. */
+  packages: {
+    id: string;
+    name: string;
+    durationMinutes: number;
+    priceTsh: DecimalString;
+    downloadSpeedMbps: number;
+    dataLimitGb: number | null;
+  }[];
+  /** The router's own login page, checked against this router. */
+  loginUrl: string;
+}
+
+/** `POST /api/guest/redeem`: the router has confirmed the voucher; sign in at `loginUrl`. */
+export interface RedeemResult {
+  loginUrl: string;
+  /** The hotspot username and password: the code the guest gave, normalised. */
+  code: string;
+  /** Where to go after signing in, when it was a safe web address. */
+  dst: string | null;
+}
+
+/** `POST /api/guest/session`: a voucher's time and data, for the router's status pages. */
+export interface GuestSession {
+  active: boolean;
+  time: { unlimited: boolean; secondsRemaining: number | null; expiresAt: Timestamp | null } | null;
+  data: {
+    unlimited: boolean;
+    usedBytes: number;
+    limitBytes: number | null;
+    remainingBytes: number | null;
+  } | null;
+}

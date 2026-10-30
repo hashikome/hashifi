@@ -354,25 +354,20 @@
     <div class="footer">HashiFi</div>
 
     <script>
-      var raw = "$(link-orig)";
-      var mac = "$(mac)";
-      var ip = "$(ip)";
-      var llOnly = "$(link-login-only)";
+      // The -esc variables are URL-encoded, so a guest's URL cannot break out of the string.
+      var dest = "$(link-orig-esc)";
+      var code = "$(username)";
       var API = "http://192.168.0.15:8080";
 
       function backToLogin() {
-        var dest = raw.indexOf("$(") === -1 ? raw : "";
         window.location.replace(
           API +
-            "/portal/login" +
-            "?mac=" +
-            encodeURIComponent(mac) +
-            "&ip=" +
-            encodeURIComponent(ip) +
-            "&link-login=" +
-            encodeURIComponent(llOnly) +
+            "/portal/login#router=__ROUTER_ID__" +
+            "&mac=$(mac)" +
+            "&ip=$(ip)" +
+            "&link-login=$(link-login-only-esc)" +
             "&link-orig=" +
-            encodeURIComponent(dest),
+            dest,
         );
       }
 
@@ -586,7 +581,11 @@
         if (syncing) return;
         syncing = true;
 
-        fetch(API + "/portal/session-status?mac=" + encodeURIComponent(mac))
+        fetch(API + "/api/guest/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code }),
+        })
           .then(function (r) {
             return r.json();
           })

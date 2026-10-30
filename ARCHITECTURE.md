@@ -25,7 +25,8 @@ admin browser ──► apps/web (Next.js: admin + captive portal)
 ```
 
 - The MikroTik intercepts unauthenticated guests and redirects them to the portal; the
-  walled garden lets the portal and API through before login.
+  walled garden lets the portal host through before login, and the web proxies the guest API on
+  it ([ADR-0008](docs/engineering-decisions/0008-captive-portal.md)).
 - The API reaches each router over a tunnel the router opens to the platform, because routers
   sit behind NAT. The tunnel design is [ADR-0006](docs/engineering-decisions/0006-router-management-tunnel.md).
 

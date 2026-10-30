@@ -87,12 +87,22 @@ export class PackagesService {
       select: { packageId: true },
     });
     const assignedPackageIds = assigned.map((a) => a.packageId);
-    const sellsAll = assignedPackageIds.length === 0;
+    const packages = await this.onSaleAt(venueId);
+    return { packages, assignedPackageIds, sellsAll: assignedPackageIds.length === 0 };
+  }
+
+  /** The rule for what a venue sells, for the guest portal, which has no staff member. */
+  async onSaleAt(venueId: string): Promise<PackageRecord[]> {
+    const assigned = await this.db.venuePackage.findMany({
+      where: { venueId },
+      select: { packageId: true },
+    });
+    const ids = assigned.map((a) => a.packageId);
     const rows = await this.db.package.findMany({
-      where: { isActive: true, ...(sellsAll ? {} : { id: { in: assignedPackageIds } }) },
+      where: { isActive: true, ...(ids.length === 0 ? {} : { id: { in: ids } }) },
       orderBy: [{ priceTsh: "asc" }, { createdAt: "asc" }],
     });
-    return { packages: rows.map(packageRecord), assignedPackageIds, sellsAll };
+    return rows.map(packageRecord);
   }
 
   /** Puts a package on sale at a venue. Idempotent. */

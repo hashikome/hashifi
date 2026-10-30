@@ -31,7 +31,12 @@ export interface AppConfig {
     from: string;
     outboxDir: string;
   };
-  mikrotik: { apiPort: number; connectTimeoutSeconds: number };
+  mikrotik: {
+    apiPort: number;
+    connectTimeoutSeconds: number;
+    /** Reaches every router here instead (the router sim's port forward). Never in production. */
+    targetOverride: { host: string; port: number } | null;
+  };
   routerManagementUrl: string | null;
   portalOrigin: string | null;
   /**
@@ -75,6 +80,11 @@ const schema = z.object({
   EMAIL_OUTBOX_DIR: z.string().min(1).default(DEFAULT_OUTBOX_DIR),
   MIKROTIK_API_PORT: z.coerce.number().int().min(1).max(65535).default(8728),
   MIKROTIK_CONNECT_TIMEOUT: z.coerce.number().int().min(1).max(120).default(10),
+  MIKROTIK_TARGET_OVERRIDE: z
+    .string()
+    .regex(/^[A-Za-z0-9.-]+:\d{1,5}$/, "must be host:port")
+    .nullable()
+    .default(null),
   ROUTER_MANAGEMENT_URL: url.nullable().default(null),
   PORTAL_ORIGIN: url.nullable().default(null),
   TUNNEL_NETWORK: z
@@ -138,6 +148,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     }
   }
   const tunnel = tunnelSettings(c);
+  const targetOverride = targetOverrideOf(c);
   return {
     environment: c.NODE_ENV,
     port: c.PORT,
@@ -147,7 +158,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     appUrl: c.APP_URL,
     auth: { secret: c.BETTER_AUTH_SECRET, trustedProxies },
     email: { resendApiKey: c.RESEND_API_KEY, from: c.EMAIL_FROM, outboxDir: c.EMAIL_OUTBOX_DIR },
-    mikrotik: { apiPort: c.MIKROTIK_API_PORT, connectTimeoutSeconds: c.MIKROTIK_CONNECT_TIMEOUT },
+    mikrotik: {
+      apiPort: c.MIKROTIK_API_PORT,
+      connectTimeoutSeconds: c.MIKROTIK_CONNECT_TIMEOUT,
+      targetOverride,
+    },
     routerManagementUrl: c.ROUTER_MANAGEMENT_URL,
     portalOrigin: c.PORTAL_ORIGIN,
     tunnel,
@@ -194,4 +209,17 @@ function tunnelSettings(c: z.infer<typeof schema>): AppConfig["tunnel"] {
     throw new Error("Invalid configuration:\n  TUNNEL_ENDPOINT: port out of range");
   }
   return { network, platformPublicKey: key, endpointHost: endpoint.slice(0, at), endpointPort };
+}
+
+/** Development only: a production router must never be reached anywhere but its own address. */
+function targetOverrideOf(c: z.infer<typeof schema>): AppConfig["mikrotik"]["targetOverride"] {
+  const value = c.MIKROTIK_TARGET_OVERRIDE;
+  if (value === null) return null;
+  if (c.NODE_ENV === "production") {
+    throw new Error(
+      "Invalid configuration:\n  MIKROTIK_TARGET_OVERRIDE: not allowed in production",
+    );
+  }
+  const at = value.lastIndexOf(":");
+  return { host: value.slice(0, at), port: Number(value.slice(at + 1)) };
 }

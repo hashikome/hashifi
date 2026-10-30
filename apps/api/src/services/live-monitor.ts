@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import type { PrismaClient } from "../generated/prisma/client.js";
+import type { PrismaClient, Router } from "../generated/prisma/client.js";
 import {
   closeConnection,
   connectToRouter,
@@ -7,6 +7,7 @@ import {
   getActiveClients,
   getSystemUptimeSeconds,
   kickHotspotSession,
+  loginHotspotClient,
   type MikroTikActiveClient,
   type MikroTikConn,
   throttledProfileNameForPackage,
@@ -43,6 +44,11 @@ export function isPeakHour(start: number | null, end: number | null, eatHour: nu
   if (start <= end) return eatHour >= start && eatHour < end;
   // Wraps past midnight (e.g. 22 to 06).
   return eatHour >= start || eatHour < end;
+}
+
+/** A session is one voucher on one device: a voucher can have several online at once. */
+function sessionKey(code: string, mac: string): string {
+  return `${code}|${mac}`;
 }
 
 /** Tanzania is UTC+3 all year (no daylight saving). */
@@ -95,7 +101,8 @@ export class LiveMonitor {
           ]);
           const venueSet = activeByVenue.get(router.venueId) ?? new Set<string>();
           activeByVenue.set(router.venueId, venueSet);
-          for (const client of clients) if (client.user) venueSet.add(client.user);
+          for (const client of clients)
+            if (client.user) venueSet.add(sessionKey(client.user, client.mac));
 
           onUpdate({
             type: "hotspot_update",
@@ -112,37 +119,7 @@ export class LiveMonitor {
             data: { lastSeenAt: new Date(), connectedDevices: clients.length, uptimeSeconds },
           });
 
-          // Traffic counters from the router back onto the sessions.
-          const codes = clients.map((c) => c.user).filter((code) => code !== "");
-          if (codes.length > 0) {
-            const sessions = await this.db.wifiSession.findMany({
-              where: {
-                venueId: router.venueId,
-                status: "connected",
-                voucher: { code: { in: codes } },
-              },
-              select: { id: true, voucher: { select: { code: true } } },
-            });
-            const sessionByCode = new Map(
-              sessions.flatMap((s) => (s.voucher ? [[s.voucher.code, s.id] as const] : [])),
-            );
-            await Promise.allSettled(
-              clients.flatMap((client) => {
-                const sessionId = sessionByCode.get(client.user);
-                if (sessionId === undefined) return [];
-                return [
-                  this.db.wifiSession.update({
-                    where: { id: sessionId },
-                    data: {
-                      uploadBytes: BigInt(client.bytesIn),
-                      downloadBytes: BigInt(client.bytesOut),
-                    },
-                  }),
-                ];
-              }),
-            );
-          }
-
+          await this.recordClients(router, clients);
           await this.applyThrottle(conn, router.id, clients, eatHour);
         } catch (err) {
           logger.error("Poll failed for router {router}", {
@@ -162,13 +139,13 @@ export class LiveMonitor {
 
     // Sessions the routers no longer report have ended.
     const now = new Date();
-    for (const [venueId, activeCodes] of activeByVenue) {
+    for (const [venueId, activeKeys] of activeByVenue) {
       const connected = await this.db.wifiSession.findMany({
         where: { venueId, status: "connected" },
-        select: { id: true, voucher: { select: { code: true } } },
+        select: { id: true, macAddress: true, voucher: { select: { code: true } } },
       });
       const gone = connected
-        .filter((s) => !s.voucher || !activeCodes.has(s.voucher.code))
+        .filter((s) => !s.voucher || !activeKeys.has(sessionKey(s.voucher.code, s.macAddress)))
         .map((s) => s.id);
       if (gone.length > 0) {
         await this.db.wifiSession.updateMany({
@@ -177,6 +154,67 @@ export class LiveMonitor {
         });
       }
     }
+  }
+
+  /**
+   * Brings the sessions in line with what the router reports. A session opens here, not at the
+   * portal: the router is what knows a device is online, and a device it signs back in by its
+   * MAC cookie never passes the portal at all.
+   */
+  private async recordClients(router: Router, clients: MikroTikActiveClient[]): Promise<void> {
+    const codes = clients.map((c) => c.user).filter((code) => code !== "");
+    if (codes.length === 0) return;
+    const [sessions, vouchers] = await Promise.all([
+      this.db.wifiSession.findMany({
+        where: { venueId: router.venueId, status: "connected", voucher: { code: { in: codes } } },
+        select: { id: true, macAddress: true, voucher: { select: { code: true } } },
+      }),
+      this.db.voucher.findMany({
+        where: { code: { in: codes } },
+        select: { id: true, code: true, packageId: true },
+      }),
+    ]);
+    const open = new Map(
+      sessions.flatMap((s) =>
+        s.voucher ? [[sessionKey(s.voucher.code, s.macAddress), s.id] as const] : [],
+      ),
+    );
+    const voucherByCode = new Map(vouchers.map((v) => [v.code, v]));
+    const counters = (client: MikroTikActiveClient) => ({
+      uploadBytes: BigInt(client.bytesIn),
+      downloadBytes: BigInt(client.bytesOut),
+    });
+
+    await Promise.allSettled(
+      clients.map(async (client) => {
+        const sessionId = open.get(sessionKey(client.user, client.mac));
+        if (sessionId !== undefined) {
+          await this.db.wifiSession.update({ where: { id: sessionId }, data: counters(client) });
+          return;
+        }
+        const voucher = voucherByCode.get(client.user);
+        if (voucher === undefined) return;
+        const device = await this.db.device.upsert({
+          where: { macAddress: client.mac },
+          create: { macAddress: client.mac, lastIpAddress: client.ip, lastActiveAt: new Date() },
+          update: { lastIpAddress: client.ip, lastActiveAt: new Date() },
+        });
+        await this.db.wifiSession.create({
+          data: {
+            venueId: router.venueId,
+            routerId: router.id,
+            voucherId: voucher.id,
+            packageId: voucher.packageId,
+            deviceId: device.id,
+            macAddress: client.mac,
+            ipAddress: client.ip,
+            deviceName: device.deviceName,
+            deviceType: device.deviceType,
+            ...counters(client),
+          },
+        });
+      }),
+    );
   }
 
   /** Tries to reach routers marked offline or in error, and marks those that answer online. */
@@ -282,8 +320,8 @@ export class LiveMonitor {
         /*
          * The swap alone governs the *next* login: RouterOS builds a hotspot session's dynamic
          * queue when the user authenticates, so a running session keeps the limit it started
-         * with. Dropping the session puts the new speed in force now, and the portal's reconnect
-         * logs a device with a live voucher straight back in.
+         * with. Dropping the session puts the new speed in force now, and signing the device
+         * straight back in from here keeps it online: the drop also deletes its MAC cookie.
          *
          * `moved` stops this becoming a kick loop, and it is load-bearing: the reconnect opens a
          * new session row with isThrottled at its false default, so the next poll sees a mismatch
@@ -291,7 +329,10 @@ export class LiveMonitor {
          * kicked, and the flag is corrected. Kick unconditionally and the guest is dropped every
          * five seconds for as long as the throttle window lasts.
          */
-        if (moved) await kickHotspotSession(conn, client.user);
+        if (moved) {
+          await kickHotspotSession(conn, client.user);
+          await loginHotspotClient(conn, client);
+        }
         this.throttleBackoff.delete(session.id);
         logger.info("{change} session {sessionId} onto profile {profileName}", {
           change: shouldThrottle ? "Throttled" : "Unthrottled",

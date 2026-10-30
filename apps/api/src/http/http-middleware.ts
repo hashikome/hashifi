@@ -51,3 +51,24 @@ export function requireTrustedOrigin(origins: readonly string[]): RequestHandler
     next();
   };
 }
+
+/**
+ * The router's status pages ask for a voucher's time from the router's own origin. That one
+ * route answers any origin: it sets no cookie and needs the voucher code.
+ */
+export function guestSessionPreflight(): RequestHandler {
+  return (request: Request, response: Response, next: NextFunction) => {
+    if (request.method !== "OPTIONS" || request.path !== "/api/guest/session") {
+      next();
+      return;
+    }
+    response
+      .status(204)
+      .set({
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST",
+        "Access-Control-Allow-Headers": "Content-Type",
+      })
+      .end();
+  };
+}

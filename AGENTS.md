@@ -12,9 +12,9 @@ External documents are references only. Keep this file short: it is a map, not a
 
 HashiFi began as a purchased system, imported as received in commit `45ebd53`, and is being
 ported by the [adoption plan](docs/exec-plans/active/adopt-purchased-billing-system.md): read
-it before changing anything under `apps/`. M1 to M4 are done: `apps/api` is NestJS on Bun with
-Prisma on PostgreSQL 18, serving every admin route, and `apps/web` runs on it through
-`lib/api.ts` and `@hashifi/types`. The captive portal is M5; payments are M6.
+it before changing anything under `apps/`. M1 to M5 are done: `apps/api` is NestJS on Bun with
+Prisma on PostgreSQL 18, and `apps/web` runs on it through `lib/api.ts` and `@hashifi/types`,
+including the captive portal. Payments are M6.
 
 ## Map
 

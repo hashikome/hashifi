@@ -7,7 +7,9 @@ import { PrismaService } from "../database/prisma.service.js";
 import type { Device } from "../generated/prisma/client.js";
 import type { DeviceWhereInput } from "../generated/prisma/models.js";
 import { apiError } from "../http/error-envelope.js";
+import { captureFailure } from "../observability/telemetry.js";
 import { bytes } from "../serializers/records.js";
+import { RouterSync } from "../services/router-sync.js";
 import { sessionScope } from "../sessions/session-scope.js";
 import { SessionsService } from "../sessions/sessions.service.js";
 import type { RequestOrigin } from "../venues/venues.service.js";
@@ -30,6 +32,7 @@ export class DevicesService {
     private readonly db: PrismaService,
     private readonly audit: AuditLog,
     private readonly sessions: SessionsService,
+    private readonly sync: RouterSync,
   ) {}
 
   async list(staff: StaffPrincipal, query: z.infer<typeof deviceQuery>): Promise<DeviceList> {
@@ -83,8 +86,8 @@ export class DevicesService {
   }
 
   /**
-   * Blocks or unblocks a device. Blocking ends its sessions everywhere at once; the portal
-   * refuses a blocked device from M5.
+   * Blocks or unblocks a device: at the routers, which refuse it whatever it tries, and at the
+   * portal. Blocking also ends its sessions everywhere at once.
    */
   async setStatus(
     staff: StaffPrincipal,
@@ -92,8 +95,9 @@ export class DevicesService {
     status: "active" | "blocked",
     origin: RequestOrigin,
   ): Promise<DeviceRecord> {
-    await this.get(staff, id);
+    const device = await this.get(staff, id);
     await this.db.device.update({ where: { id }, data: { status } });
+    void this.sync.setDeviceBlocked(device.macAddress, status === "blocked").catch(captureFailure);
     if (status === "blocked") {
       const connected = await this.db.wifiSession.findMany({
         where: { deviceId: id, status: "connected" },

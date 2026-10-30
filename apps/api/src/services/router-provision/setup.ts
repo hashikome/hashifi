@@ -411,6 +411,7 @@ export async function setupRouter(
     } else {
       try {
         selfTest = await probeVerify(creds, logger, {
+          routerId,
           dialect: dialectFor(profile),
           plan,
           endpoints: resolveBackendEndpoints(router.ipAddress, store.backend),

@@ -5,6 +5,7 @@ import type { AppConfig } from "./config/config.js";
 import { configModule } from "./config/config.module.js";
 import { DatabaseModule } from "./database/database.module.js";
 import type { EmailSender } from "./email/email-sender.js";
+import { GuestModule } from "./guest/guest.module.js";
 import { HealthController } from "./health/health.controller.js";
 import { PackagesModule } from "./packages/packages.module.js";
 import { PortalModule } from "./portal/portal.module.js";
@@ -32,6 +33,7 @@ export function appModule(config: AppConfig, email: EmailSender | null): Dynamic
       AnalyticsModule,
       PortalModule,
       TeamModule,
+      GuestModule,
     ],
     controllers: [HealthController],
   };

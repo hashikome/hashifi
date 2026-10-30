@@ -49,6 +49,7 @@ export interface VerifyReport {
 }
 
 export interface VerifyInput {
+  routerId: string;
   dialect: Dialect;
   plan: HotspotPlan;
   endpoints: BackendEndpoints;
@@ -259,20 +260,24 @@ async function loginModeCheck(ros: RosClient, plan: HotspotPlan): Promise<Readin
     return { ...base, status: "fail", detail: `Hotspot profile "${plan.profileName}" is missing.` };
   }
   const loginBy = row.get("login-by") ?? "";
-  if (!loginBy.includes("http-pap")) {
+  if (!loginBy.includes("http-pap") || !loginBy.includes("mac-cookie")) {
     return {
       ...base,
       status: "fail",
-      detail: `login-by is "${loginBy}", not http-pap.`,
+      detail: `login-by is "${loginBy}", not http-pap and mac-cookie.`,
       fix:
-        "With CHAP the portal cannot submit credentials and every login fails with " +
-        "'password is not chap encrypted' (§11, §2.2). Run Set up again.",
+        "Without http-pap every login fails with 'password is not chap encrypted' (§11, §2.2); " +
+        "without mac-cookie a device cannot come back without its code. Run Set up again.",
     };
   }
   return { ...base, status: "pass", detail: `login-by is "${loginBy}".` };
 }
 
-async function portalFilesCheck(ros: RosClient, portalOrigin: string): Promise<ReadinessCheck> {
+async function portalFilesCheck(
+  ros: RosClient,
+  portalOrigin: string,
+  routerId: string,
+): Promise<ReadinessCheck> {
   const base = { id: "portal-files", title: "Portal pages are on the router, complete" };
   const wrong: string[] = [];
 
@@ -283,7 +288,10 @@ async function portalFilesCheck(ros: RosClient, portalOrigin: string): Promise<R
       wrong.push(`${name} is missing`);
       continue;
     }
-    const expected = Buffer.byteLength(await renderPortalFile(name, portalOrigin), "utf8");
+    const expected = Buffer.byteLength(
+      await renderPortalFile(name, portalOrigin, routerId),
+      "utf8",
+    );
     const actual = Number(row.get("size") ?? 0);
     if (actual !== expected) wrong.push(`${name} is ${actual} bytes, expected ${expected}`);
   }
@@ -609,7 +617,7 @@ async function voucherRoundTripCheck(
 // ── Runner ──────────────────────────────────────────────────────────────────
 
 export async function verifyRouter(ros: RosClient, input: VerifyInput): Promise<VerifyReport> {
-  const { dialect, plan, endpoints, includeWriteTest = true } = input;
+  const { routerId, dialect, plan, endpoints, includeWriteTest = true } = input;
 
   const checks: ReadinessCheck[] = [];
 
@@ -618,7 +626,7 @@ export async function verifyRouter(ros: RosClient, input: VerifyInput): Promise<
   checks.push(await dhcpServerCheck(ros, dialect, plan));
   checks.push(await radioBroadcastingCheck(ros, dialect, plan));
   checks.push(await loginModeCheck(ros, plan));
-  checks.push(await portalFilesCheck(ros, endpoints.portal.origin));
+  checks.push(await portalFilesCheck(ros, endpoints.portal.origin, routerId));
   checks.push(await walledGardenCheck(ros, endpoints.portal));
   checks.push(await activityCheck(ros));
 

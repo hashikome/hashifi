@@ -429,7 +429,7 @@
 
         // Substituted by the router. The backend URL is rewritten at push time by
         // renderPortalFile(), so this literal is only ever a placeholder in the repo.
-        var mac = "$(mac)";
+        var code = "$(username)";
         var API = "http://192.168.0.15:8080";
 
         /* ── Duration handling ─────────────────────────────────────────────
@@ -600,7 +600,11 @@
 
         function sync() {
           if (!window.fetch) return;
-          fetch(API + "/portal/session-status?mac=" + encodeURIComponent(mac))
+          fetch(API + "/api/guest/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: code }),
+          })
             .then(function (r) { return r.json(); })
             .then(function (data) {
               if (!data || !data.active) return;

@@ -7,7 +7,11 @@ import { type Auth, BETTER_AUTH } from "./auth/create-auth.js";
 import type { AppConfig } from "./config/config.js";
 import type { EmailSender } from "./email/email-sender.js";
 import { ErrorEnvelopeFilter } from "./http/error-envelope.js";
-import { httpWideEvents, requireTrustedOrigin } from "./http/http-middleware.js";
+import {
+  guestSessionPreflight,
+  httpWideEvents,
+  requireTrustedOrigin,
+} from "./http/http-middleware.js";
 import { LiveHub } from "./live/live-hub.js";
 
 export interface BootstrapOptions {
@@ -35,6 +39,7 @@ export async function bootstrap(
   );
   // Order matters: the wide event first, so every refusal below it is recorded.
   app.use(httpWideEvents());
+  app.use(guestSessionPreflight());
   app.enableCors({ origin: config.frontendOrigin, credentials: true });
   app.use(requireTrustedOrigin([config.frontendOrigin]));
   app.use(authHttpMiddleware(app.get<Auth>(BETTER_AUTH)));

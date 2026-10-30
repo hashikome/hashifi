@@ -336,6 +336,72 @@ export async function kickHotspotSession(conn: MikroTikConn, code: string): Prom
   await conn.write("/ip/hotspot/active/remove", [`=.id=${id}`]);
 }
 
+/**
+ * Signs a client in from the API, with no code going near the device. Removing an active session
+ * also deletes its MAC cookie (RouterOS 7.25), so a kick alone leaves the device signed out; the
+ * live monitor uses this straight after one, to apply a new speed.
+ */
+export async function loginHotspotClient(
+  conn: MikroTikConn,
+  client: { user: string; ip: string; mac: string },
+): Promise<void> {
+  await conn.write("/ip/hotspot/active/login", [
+    `=user=${client.user}`,
+    `=password=${client.user}`,
+    `=ip=${client.ip}`,
+    `=mac-address=${client.mac}`,
+  ]);
+}
+
+/**
+ * Takes one device off a voucher and forgets it, so it must sign in again; the voucher's other
+ * devices stay on. Null `mac` means every device on the voucher.
+ */
+export async function disconnectHotspotDevice(
+  conn: MikroTikConn,
+  code: string,
+  mac: string | null,
+): Promise<void> {
+  const ofDevice = mac === null ? [] : [`?mac-address=${mac}`];
+  for (const menu of ["/ip/hotspot/active", "/ip/hotspot/cookie"]) {
+    const rows = await conn.write(`${menu}/print`, [`?user=${code}`, ...ofDevice]);
+    for (const row of toRows(rows)) {
+      const id = row.get(".id");
+      if (id !== null) await conn.write(`${menu}/remove`, [`=.id=${id}`]);
+    }
+  }
+}
+
+/** The comment that marks a block as HashiFi's, so hand-made bindings are never touched. */
+const BLOCK_COMMENT = "wbs:device-block";
+
+/** Refuses a device at the router: no login of any kind works while the binding exists. */
+export async function setDeviceBlocked(
+  conn: MikroTikConn,
+  mac: string,
+  blocked: boolean,
+): Promise<void> {
+  const rows = toRows(
+    await conn.write("/ip/hotspot/ip-binding/print", [
+      `?mac-address=${mac}`,
+      `?comment=${BLOCK_COMMENT}`,
+    ]),
+  );
+  if (blocked && rows.length === 0) {
+    await conn.write("/ip/hotspot/ip-binding/add", [
+      `=mac-address=${mac}`,
+      "=type=blocked",
+      `=comment=${BLOCK_COMMENT}`,
+    ]);
+  }
+  if (!blocked) {
+    for (const row of rows) {
+      const id = row.get(".id");
+      if (id !== null) await conn.write("/ip/hotspot/ip-binding/remove", [`=.id=${id}`]);
+    }
+  }
+}
+
 export async function removeHotspotUser(conn: MikroTikConn, code: string): Promise<void> {
   const [row] = toRows(await conn.write("/ip/hotspot/user/print", [`?name=${code}`]));
   const rosId = row?.get(".id") ?? null;

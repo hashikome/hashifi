@@ -14,7 +14,12 @@ import type { Router } from "../apps/api/src/generated/prisma/client.js";
 import {
   closeConnection,
   connectToRouter,
+  disconnectHotspotDevice,
   hotspotUserExists,
+  kickHotspotSession,
+  loginHotspotClient,
+  type MikroTikConn,
+  setDeviceBlocked,
 } from "../apps/api/src/services/mikrotik.js";
 import { RouterAccess } from "../apps/api/src/services/router-credentials.js";
 import { RouterLogger } from "../apps/api/src/services/router-log.js";
@@ -33,6 +38,7 @@ import {
 } from "../apps/api/src/services/router-provision/portal-files.js";
 import { PrismaRouterStore } from "../apps/api/src/services/router-provision/prisma-store.js";
 import { probeRouterMerged } from "../apps/api/src/services/router-provision/probe.js";
+import { toRows } from "../apps/api/src/services/router-provision/ros-client.js";
 import { setupRouter } from "../apps/api/src/services/router-provision/setup.js";
 import {
   generateWireguardKeyPair,
@@ -527,17 +533,17 @@ async function simServices(state: SimState): Promise<SimServices> {
 }
 
 /** Serves the portal pages the router fetches, as the API's captive-portal route does. */
-function serveBackend(state: SimState): ReturnType<typeof Bun.serve> {
+function serveBackend(state: SimState, routerId: string): ReturnType<typeof Bun.serve> {
   const origin = simBackend(state).portalOrigin ?? managementUrl(state);
   return Bun.serve({
     hostname: IN_HUB ? "0.0.0.0" : "127.0.0.1",
     port: BACKEND_PORT,
     async fetch(req) {
-      const name = new URL(req.url).pathname.replace(/^\/portal\/hotspot-files\//, "");
+      const name = new URL(req.url).pathname.split("/").at(-1) ?? "";
       if (!(PORTAL_FILES as readonly string[]).includes(name)) {
         return new Response("not found", { status: 404 });
       }
-      const body = await renderPortalFile(name as PortalFileName, origin);
+      const body = await renderPortalFile(name as PortalFileName, origin, routerId);
       return new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     },
   });
@@ -555,7 +561,7 @@ async function setup(): Promise<void> {
   ensureSimDatabase();
   if (delegateToHub(state, "setup")) return;
   const { db, store, router } = await simServices(state);
-  const backend = serveBackend(state);
+  const backend = serveBackend(state, router.id);
   try {
     const logger = new RouterLogger("provision");
     const report = await setupRouter(router.id, store, { force: false, logger });
@@ -586,6 +592,7 @@ async function verify(): Promise<void> {
     const logger = new RouterLogger("probe");
     const profile = await probeRouterMerged(creds, logger, router.capabilities);
     const report = await probeVerify(creds, logger, {
+      routerId: router.id,
       dialect: dialectFor(profile),
       plan: buildHotspotPlan(router, profile),
       endpoints: resolveBackendEndpoints(router.ipAddress, simBackend(state)),
@@ -723,7 +730,13 @@ async function voucher(): Promise<void> {
     });
     const code = `SIM${randomPassword(6).toUpperCase()}`;
     await db.voucher.create({
-      data: { code, venueId: router.venueId, packageId: pkg.id, priceTsh: pkg.priceTsh },
+      data: {
+        code,
+        venueId: router.venueId,
+        packageId: pkg.id,
+        priceTsh: pkg.priceTsh,
+        durationMinutes: minutes,
+      },
     });
     const outcome = await sync.pushVouchers(router.venueId, [code], pkg, null);
     if (!outcomeOk(outcome))
@@ -755,8 +768,39 @@ async function guestRun(): Promise<void> {
   }
 }
 
+/** The real API on the sim database, reaching the router through its port forward. */
+async function startApi(state: SimState): Promise<ReturnType<typeof Bun.spawn>> {
+  const api = Bun.spawn(["bun", "apps/api/src/entrypoint.ts"], {
+    cwd: ROOT,
+    stdout: "ignore",
+    stderr: "inherit",
+    env: {
+      PATH: process.env.PATH ?? "",
+      NODE_ENV: "development",
+      PORT: String(BACKEND_PORT),
+      DATABASE_URL: simDatabaseUrl(),
+      ENCRYPTION_KEY: state.encryptionKey ?? "",
+      BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      ROUTER_MANAGEMENT_URL: managementUrl(state),
+      ...(process.env.PORTAL_ORIGIN ? { PORTAL_ORIGIN: process.env.PORTAL_ORIGIN } : {}),
+      MIKROTIK_TARGET_OVERRIDE: `127.0.0.1:${FORWARD.api}`,
+    },
+  });
+  for (let i = 0; i < 60; i++) {
+    const up = await fetch(`http://127.0.0.1:${BACKEND_PORT}/api/health`).catch(() => null);
+    if (up?.ok) return api;
+    await Bun.sleep(500);
+  }
+  api.kill();
+  throw new Error("The API did not start");
+}
+
 /** Every step a guest takes, from joining the network to being cut off at expiry. */
 async function guestTest(): Promise<void> {
+  const state = readState();
+  if (state.tunnel) throw new Error("The guest test runs the API on this machine: use LAN mode.");
+  const services = await simServices(state);
+  const api = await startApi(state);
   const portalOrigin = portalOriginFor(
     managementUrl(readState()),
     process.env.PORTAL_ORIGIN ?? null,
@@ -788,9 +832,20 @@ async function guestTest(): Promise<void> {
       ? "the open internet"
       : page.portal
         ? `the portal (${page.portal})`
-        : `neither: ${page.raw.slice(0, 160)}`;
+        : `neither: ${page.raw.slice(-160)}`;
 
   try {
+    // A cookie from an earlier run would sign the guest straight in, with nothing to test.
+    const creds = services.access.credentials(services.router);
+    if (!creds) throw new Error("The sim router has no usable credentials");
+    const conn = await connectToRouter(creds);
+    for (const menu of ["/ip/hotspot/active", "/ip/hotspot/cookie"]) {
+      for (const row of toRows(await conn.write(`${menu}/print`))) {
+        await conn.write(`${menu}/remove`, [`=.id=${row.get(".id") ?? ""}`]);
+      }
+    }
+    await closeConnection(conn);
+
     await shell.run("ip link set eth0 up");
     const lease = await shell.run(
       "udhcpc -i eth0 -n -q -t 6 -T 2 2>&1; ip -4 -o addr show eth0",
@@ -831,23 +886,79 @@ async function guestTest(): Promise<void> {
       "https://example.com/",
     );
 
-    const issued = Bun.spawnSync(["bun", "tooling/router-sim.ts", "voucher", "1"], {
+    // What the router's redirect carries, which is all the portal page would be told.
+    const redirect = (
+      await shell.run(
+        "grep -oE '(router=|&mac=|&ip=|&link-login=|&link-orig=)[^\"]*' /tmp/page",
+        15_000,
+      )
+    ).output;
+    const redirected = (pattern: RegExp) => redirect.match(pattern)?.[1] ?? "";
+    const routerId = redirected(/router=([0-9a-f-]{36})/);
+    const mac = redirected(/&mac=([0-9A-F:]{17})/);
+    const ip = redirected(/&ip=(\d+\.\d+\.\d+\.\d+)/);
+    const linkLogin = decodeURIComponent(redirected(/&link-login=(http[^\s"]*)/));
+    record(
+      "The router's redirect names it, and URL-encodes what it passes on",
+      routerId === services.router.id && linkLogin === `http://${HOTSPOT_GATEWAY}/login`,
+      `${routerId} ${mac} ${linkLogin}`,
+    );
+
+    const issued = Bun.spawnSync(["bun", "tooling/router-sim.ts", "voucher", "30"], {
       stdout: "pipe",
       stderr: "pipe",
       cwd: ROOT,
     });
     const code = issued.stdout.toString().match(/VOUCHER=(\S+)/)?.[1] ?? null;
     record(
-      "The API code issues a 1-minute voucher the router confirms",
+      "A voucher is issued",
       code !== null,
       code ?? issued.stderr.toString().trim().slice(-200),
     );
     if (!code) return;
 
-    const login = await shell.run(
-      `wget -q -T 8 -O - --post-data 'username=${code}&password=${code}&dst=&popup=true' 'http://${HOTSPOT_GATEWAY}/login' 2>&1 | head -c 2000`,
-      30_000,
+    const redeem = await shell.run(
+      "wget -q -T 15 -O - --header 'Content-Type: application/json' --post-data " +
+        `'${JSON.stringify({ router: routerId, mac, ip, linkLogin, code })}' ` +
+        `'${portalOrigin}/api/guest/redeem' 2>&1 | head -c 400`,
+      40_000,
     );
+    const loginUrl = redeem.output.match(/"loginUrl":"([^"]+)"/)?.[1] ?? null;
+    const redeemed = await services.db.voucher.findUniqueOrThrow({ where: { code } });
+    record(
+      "Before login the guest redeems through the walled garden, and the voucher goes active",
+      loginUrl === linkLogin && redeemed.status === "active",
+      `${redeemed.status}; ${redeem.output.trim().slice(-160)}`,
+    );
+
+    const signIn = () =>
+      shell.run(
+        `wget -q -T 8 -O - --post-data 'username=${code}&password=${code}&dst=&popup=true' '${linkLogin}' 2>&1 | head -c 2000`,
+        30_000,
+      );
+    const onRouter = async <T>(work: (conn: MikroTikConn) => Promise<T>): Promise<T> => {
+      const creds = services.access.credentials(services.router);
+      if (!creds) throw new Error("The sim router has no usable credentials");
+      const conn = await connectToRouter(creds);
+      try {
+        return await work(conn);
+      } finally {
+        await closeConnection(conn);
+      }
+    };
+
+    /** What a phone does when it joins the network again. */
+    const rejoin = async () => {
+      // As a phone does, it keeps asking for an address until it has one.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await shell.run("udhcpc -i eth0 -n -q -t 4 -T 2 2>&1 | tail -1", 30_000);
+        const address = await shell.run("ip -4 -o addr show eth0", 10_000);
+        if (/inet 10\.5\.50\.\d+/.test(address.output)) return;
+        await Bun.sleep(3_000);
+      }
+    };
+
+    const login = await signIn();
     const loggedIn = await fetchPage("http://example.com/");
     record(
       "Logging in with the voucher opens the internet",
@@ -857,8 +968,92 @@ async function guestTest(): Promise<void> {
         : `${describe(loggedIn)}; login answered: ${login.output.trim().slice(0, 120)}`,
     );
 
+    // The poll runs every 30 s while nobody watches the live view.
+    let session: { macAddress: string } | null = null;
+    for (let i = 0; i < 20 && session === null; i++) {
+      await Bun.sleep(2_000);
+      session = await services.db.wifiSession.findFirst({
+        where: { status: "connected", voucher: { code } },
+      });
+    }
+    record(
+      "The live monitor opens the session from what the router reports",
+      session?.macAddress === mac,
+      session?.macAddress ?? "no session",
+    );
+
+    await onRouter(async (conn) => {
+      await kickHotspotSession(conn, code);
+      await loginHotspotClient(conn, { user: code, ip, mac });
+    });
+    const throttled = await fetchPage("http://example.com/");
+    record(
+      "A device dropped for a new speed is signed back in by the API, with no code sent to it",
+      throttled.internet,
+      describe(throttled),
+    );
+
+    // The router's keepalive timeout is 2 minutes: gone longer than that, the session ends.
+    console.log("  taking the guest offline for 135 s…");
+    await shell.run("ip link set eth0 down; sleep 135; ip link set eth0 up; sleep 2", 150_000);
+    await rejoin();
+    const returned = await fetchPage("http://example.com/");
+    const byCookie = await onRouter(async (conn) =>
+      toRows(await conn.write("/log/print", ["?topics=hotspot,info,debug"])).some((row) =>
+        row.get("message")?.includes("by mac-cookie"),
+      ),
+    );
+    record(
+      "A device that left and came back is signed in by its MAC cookie, with no code sent",
+      returned.internet && byCookie,
+      `${describe(returned)}; mac-cookie in the log: ${byCookie}`,
+    );
+
+    await onRouter((conn) => disconnectHotspotDevice(conn, code, mac));
+    await Bun.sleep(2_000);
+    const forgotten = await fetchPage("http://example.com/");
+    record(
+      "A disconnected device is forgotten and must sign in again",
+      !forgotten.internet && forgotten.portal !== null,
+      describe(forgotten),
+    );
+
+    await onRouter((conn) => setDeviceBlocked(conn, mac, true));
+    await signIn();
+    const blocked = await fetchPage("http://example.com/");
+    await onRouter((conn) => setDeviceBlocked(conn, mac, false));
+    record(
+      "A blocked device gets nowhere, whatever it tries at the router",
+      !blocked.internet && blocked.portal === null,
+      describe(blocked),
+    );
+
+    // The router takes up to a minute to forget a device that sent traffic while blocked.
+    const unblockedAt = Date.now();
+    let again = await fetchPage("http://example.com/");
+    while (!again.internet && Date.now() - unblockedAt < 90_000) {
+      await rejoin();
+      await signIn();
+      again = await fetchPage("http://example.com/");
+    }
+    record(
+      "Unblocked, it signs in again within 90 s",
+      again.internet,
+      `after ${Math.round((Date.now() - unblockedAt) / 1000)} s; ${describe(again)}`,
+    );
+    await onRouter((conn) => disconnectHotspotDevice(conn, code, mac));
+
+    const short = Bun.spawnSync(["bun", "tooling/router-sim.ts", "voucher", "1"], {
+      stdout: "pipe",
+      cwd: ROOT,
+    });
+    const shortCode = short.stdout.toString().match(/VOUCHER=(\S+)/)?.[1] ?? "";
+    await shell.run(
+      `wget -q -T 8 -O /dev/null --post-data 'username=${shortCode}&password=${shortCode}&dst=' '${linkLogin}'`,
+      30_000,
+    );
     // limit-uptime is enforced by the router; allow its accounting interval on top.
-    console.log("  waiting 80 s for the voucher to expire…");
+    console.log("  waiting 80 s for a 1-minute voucher to expire…");
     await Bun.sleep(80_000);
     const expired = await fetchPage("http://example.com/");
     record(
@@ -868,6 +1063,8 @@ async function guestTest(): Promise<void> {
     );
   } finally {
     shell.close();
+    api.kill();
+    await services.db.$disconnect();
     const failed = results.filter((r) => !r.ok).length;
     console.log(`\nGuest test: ${results.length - failed} passed, ${failed} failed.`);
     if (failed > 0) process.exitCode = 1;

@@ -8,7 +8,7 @@ import { PORTAL_FILES, renderPortalFile, routerPathFor } from "./portal-files.js
  */
 
 const rendered = async (name: (typeof PORTAL_FILES)[number]) =>
-  renderPortalFile(name, "http://10.0.0.9:9000");
+  renderPortalFile(name, "http://10.0.0.9:9000", "router-1");
 
 describe("every page", () => {
   test("all three are registered", () => {

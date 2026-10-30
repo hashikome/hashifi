@@ -324,6 +324,7 @@ export class RoutersService {
     }
     const report = await this.reach(() =>
       probeVerify(creds, logger, {
+        routerId: id,
         dialect: dialectFor(profile),
         plan,
         endpoints: resolveBackendEndpoints(router.ipAddress, backendSettings(this.config)),

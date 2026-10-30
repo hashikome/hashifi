@@ -83,6 +83,7 @@ export class BackgroundJobs implements OnApplicationBootstrap, OnApplicationShut
           new SecretBox(config.encryptionKey),
           config.mikrotik.apiPort,
           config.mikrotik.connectTimeoutSeconds,
+          config.mikrotik.targetOverride,
         ),
     },
     {

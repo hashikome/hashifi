@@ -1077,7 +1077,7 @@ function PhonePreview({
 function VoucherPreview({ portal, packages }: { portal: PortalForm; packages: Package[] }) {
   const samplePackage = packages[1] ?? packages[0];
   const voucherCode = sampleVoucherCode(portal.voucherPrefix);
-  const qrData = `${PORTAL_LOGIN_URL}?code=${voucherCode}`;
+  const qrData = `${PORTAL_LOGIN_URL}#code=${voucherCode}`;
 
   return (
     <Card className="overflow-hidden">

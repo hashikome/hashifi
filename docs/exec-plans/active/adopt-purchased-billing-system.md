@@ -268,10 +268,19 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     their venue and sent away from Team.
     Left for later, in `docs/backlog/technical-debt.md`: the provisioning report types are still
     copied in `provision-dialog.tsx`; a second setup on a busy router is not refused.
-- [ ] M5 Captive portal in the web, and the security pass. Carried from M4: endpoints the
-  router or a guest calls are `@Public()` with their own checks, and the sim's guest test runs
-  on them; the portal refuses a blocked device; printed QR codes carry the voucher code in
-  a URL (`?code=`), which the portal must take without logging or keeping it.
+- [x] (2026-10-30) M5 Captive portal in the web, and the security pass
+  ([ADR-0008](../../engineering-decisions/0008-captive-portal.md)). `apps/web/app/portal/login`
+  takes a voucher, outside the staff route group; the API's `/api/guest/*` decides everything.
+  Findings 1 and 2 are closed: no code is returned for a MAC, `link-login` is checked against the
+  router and rebuilt, and the router pages use URL-encoded variables. Public endpoints are
+  reviewed in `docs/SECURITY.md`.
+  Acceptance: `guest.integration.test.ts` (13 tests: foreign `link-login`, another venue's voucher,
+  two devices racing for one place, blocked devices, attempt limits, session status);
+  `router-sim guest-test` 14/14 through the real API, sign-in back 48 s after an unblock; the page
+  in headless Chrome at phone width, wrong code, handoff to the router page and its POST,
+  a scanned card going round, a hostile `link-orig` inert, nothing fetched from another host.
+  Not done: the page has not been on a real phone or through an iOS or Android captive sheet
+  (M8), and design-audit has not reviewed it.
 - [ ] M6 Mobile-money payments (Snippe) and customers.
 - [ ] M7 Release pipeline and deployment.
 - [ ] M8 Live acceptance on a physical router: a mobile-money purchase and a printed voucher.
@@ -406,6 +415,14 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   test failed now and then). Allocation now takes a PostgreSQL transaction lock.
   Evidence: `tunnel-allocator.integration.test.ts` with 20 routers fails on the previous
   allocator, passes on the new one.
+- Observation: on RouterOS 7.25, removing an active session also deletes its MAC cookie, so the
+  planned reconnect by cookie alone would have left every throttled device signed out. The API
+  signs it back in with `/ip hotspot active login`. Also, a device that sent traffic while blocked
+  is refused for about 50 seconds after unblocking.
+  Evidence: `/ip hotspot cookie print` around a kick; `router-sim guest-test`.
+- Observation: the one guest-test failure left unexplained in M4 was very likely a MAC cookie from
+  an earlier run signing the guest in, so the page had no redirect to read: the same failure
+  came back on a router not reset first, after this was added. The test now clears them.
 - Observation: Prisma queries are lazy thenables, which `expect(...).rejects` does not accept;
   the integration tests await them through a helper.
 - Observation: from the Pigfarm session (2026-10-29), for when HashiFi adds BullMQ: BullMQ

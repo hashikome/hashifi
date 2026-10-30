@@ -45,7 +45,7 @@ export function PrintableVoucher({
   portalUrl,
   venueName,
 }: PrintableVoucherProps) {
-  const qrValue = portalUrl ? `${portalUrl}/portal/login?code=${code}` : code;
+  const qrValue = portalUrl ? `${portalUrl}/portal/login#code=${code}` : code;
   return (
     <div
       className="voucher-print-card w-full max-w-100 border rounded-xl overflow-hidden bg-white text-zinc-950 shadow-sm print:shadow-none print:border-zinc-300"

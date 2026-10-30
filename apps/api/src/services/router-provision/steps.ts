@@ -461,9 +461,16 @@ const dhcpNetwork: ProvisionStep = {
   },
 };
 
+/**
+ * `mac-cookie` is how a device comes back: the router remembers it after a login and signs it in
+ * again without a code, so nothing ever hands a voucher code to a request keyed by a MAC. The
+ * live monitor relies on it too, dropping a session so a new speed takes effect.
+ */
+const LOGIN_BY = "http-pap,mac-cookie";
+
 const hotspotProfile: ProvisionStep = {
   id: "hotspot-profile",
-  title: "Create hotspot profile with HTTP-PAP login (§2.2)",
+  title: "Create hotspot profile with HTTP-PAP and MAC-cookie login (§2.2)",
   critical: true,
   appliesTo: (ctx) => ctx.profile.capabilities.hotspot,
   async check({ ros, ctx }) {
@@ -471,14 +478,14 @@ const hotspotProfile: ProvisionStep = {
     // login-by is the one that silently breaks auth if wrong — see §11.
     return matches(row, {
       "hotspot-address": ctx.hotspot.gatewayIp,
-      "login-by": "http-pap",
+      "login-by": LOGIN_BY,
       "html-directory": "hotspot",
     });
   },
   async apply({ ros, ctx }) {
     const params = [
       `=hotspot-address=${ctx.hotspot.gatewayIp}`,
-      "=login-by=http-pap",
+      `=login-by=${LOGIN_BY}`,
       "=html-directory=hotspot",
       "=use-radius=no",
     ];
@@ -700,7 +707,7 @@ const portalFiles: ProvisionStep = {
       const path = routerPathFor(name);
       const [row] = await ros.print("/file", [`?name=${path}`]);
       if (!row) return false;
-      const rendered = await renderPortalFile(name, ctx.endpoints.portal.origin);
+      const rendered = await renderPortalFile(name, ctx.endpoints.portal.origin, ctx.router.id);
       if (Number(row.get("size") ?? 0) !== Buffer.byteLength(rendered, "utf8")) return false;
     }
     return true;
@@ -708,7 +715,7 @@ const portalFiles: ProvisionStep = {
   async apply({ ros, ctx }) {
     for (const name of PORTAL_FILES) {
       const path = routerPathFor(name);
-      const contents = await renderPortalFile(name, ctx.endpoints.portal.origin);
+      const contents = await renderPortalFile(name, ctx.endpoints.portal.origin, ctx.router.id);
       const [existing] = await ros.print("/file", [`?name=${path}`]);
 
       if (ctx.dialect.fileWrite === "file-contents") {
@@ -729,7 +736,7 @@ const portalFiles: ProvisionStep = {
       // The router pulls the file from the backend — byte-exact, and the backend IP is
       // templated in server-side at fetch time.
       await ros.exec("/tool/fetch", [
-        `=url=${ctx.endpoints.management.url}/portal/hotspot-files/${name}`,
+        `=url=${ctx.endpoints.management.url}/portal/hotspot-files/${ctx.router.id}/${name}`,
         `=dst-path=${path}`,
         "=mode=http",
       ]);

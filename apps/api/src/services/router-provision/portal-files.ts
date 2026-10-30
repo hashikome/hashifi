@@ -19,7 +19,7 @@ const FILES_DIR = join(HERE, "..", "..", "..", "mikrotik-files");
 /**
  * Every page pushed to a router. Adding a name here is all it takes: the `portal-files` step
  * uploads and byte-verifies each one, `verify.ts` checks each is present at the expected length,
- * and `/portal/hotspot-files/:name` will serve it.
+ * and `/portal/hotspot-files/:routerId/:name` will serve it.
  *
  * `status.html` replaces the stock RouterOS page — a bare four-row table with a popup logout that
  * mobile browsers block — with one matching alogin.html. It is the only screen a returning
@@ -31,9 +31,19 @@ export type PortalFileName = (typeof PORTAL_FILES)[number];
 /** Any `http://<ipv4>:<port>` in the templates is the backend base URL. */
 const BACKEND_URL_PATTERN = /https?:\/\/\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?/g;
 
-export async function renderPortalFile(name: PortalFileName, backendUrl: string): Promise<string> {
+/**
+ * A page as this router serves it: the portal's address, and the router's id, because a hotspot
+ * gateway address does not identify a router (every default network shares 10.5.50.1).
+ */
+export async function renderPortalFile(
+  name: PortalFileName,
+  portalOrigin: string,
+  routerId: string,
+): Promise<string> {
   const raw = await readFile(join(FILES_DIR, name), "utf8");
-  return raw.replace(BACKEND_URL_PATTERN, backendUrl.replace(/\/+$/, ""));
+  return raw
+    .replace(BACKEND_URL_PATTERN, portalOrigin.replace(/\/+$/, ""))
+    .replaceAll("__ROUTER_ID__", routerId);
 }
 
 /** Path on the router — RouterOS serves the hotspot pages from `hotspot/`. */

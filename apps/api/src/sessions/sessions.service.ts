@@ -113,8 +113,9 @@ export class SessionsService {
   }
 
   /**
-   * Marks connected sessions terminated and kicks their vouchers off the routers in the
-   * background. Returns how many were still connected.
+   * Marks connected sessions terminated and takes their vouchers' devices off the routers in the
+   * background, forgetting them so that the router does not sign them back in. Returns how many
+   * were still connected.
    */
   async end(ids: string[], reason: string): Promise<number> {
     const now = new Date();
@@ -139,7 +140,9 @@ export class SessionsService {
       ended += updated.count;
       const code = session.voucher?.code ?? null;
       if (updated.count === 1 && code !== null && session.venueId !== null) {
-        void this.sync.kickVoucher(session.venueId, code).catch(captureFailure);
+        void this.sync
+          .disconnectDevice(session.venueId, code, session.macAddress)
+          .catch(captureFailure);
       }
     }
     return ended;

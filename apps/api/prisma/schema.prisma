@@ -424,6 +424,7 @@ model Device {
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   redeemedVouchers Voucher[]
+  vouchers         VoucherDevice[]
   payments         Payment[]
   sessions         WifiSession[]
 
@@ -476,10 +477,11 @@ model Voucher {
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  batch            VoucherBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  package          Package?      @relation(fields: [packageId], references: [id], onDelete: SetNull)
-  venue            Venue?        @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  redeemedByDevice Device?       @relation(fields: [redeemedByDeviceId], references: [id], onDelete: SetNull)
+  batch            VoucherBatch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  package          Package?        @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  venue            Venue?          @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  redeemedByDevice Device?         @relation(fields: [redeemedByDeviceId], references: [id], onDelete: SetNull)
+  devices          VoucherDevice[]
   payments         Payment[]
   sessions         WifiSession[]
 
@@ -488,6 +490,21 @@ model Voucher {
   @@index([venueId])
   @@index([redeemedByDeviceId])
   @@map("vouchers")
+}
+
+/// The devices a voucher has been redeemed on, which its package's device limit counts. Written
+/// under a lock on the voucher, so two devices at once cannot both take the last place.
+model VoucherDevice {
+  voucherId String   @map("voucher_id") @db.Uuid
+  deviceId  String   @map("device_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  device  Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@id([voucherId, deviceId])
+  @@index([deviceId])
+  @@map("voucher_devices")
 }
 
 model Payment {

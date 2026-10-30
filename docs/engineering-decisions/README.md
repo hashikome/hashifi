@@ -22,4 +22,5 @@ links stay valid.
 | [0003](0003-api-owns-logic-web-presents.md) | The API owns business logic and workflows; the web presents | accepted |
 | [0004](0004-types-without-any-or-undefined.md) | Types without `any` or `undefined` | accepted |
 | [0006](0006-router-management-tunnel.md) | Routers are managed through a tunnel they open to the platform | accepted |
+| [0008](0008-captive-portal.md) | How a guest reaches the portal, signs in and comes back |
 | [0007](0007-sign-in-with-better-auth.md) | Sign-in with Better Auth, inside HashiFi (replaces 0005) | accepted |
