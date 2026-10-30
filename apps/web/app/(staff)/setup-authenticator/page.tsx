@@ -76,7 +76,7 @@ export default function SetupAuthenticatorPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md border-border shadow-lg">
+      <Card className="w-full max-w-md border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldCheck className="size-5 text-primary" />

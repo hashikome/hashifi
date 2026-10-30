@@ -174,17 +174,17 @@ function actionColor(action: string): string {
     case "member_created":
     case "member_activated":
     case "venue_created":
-      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+      return "bg-teal-500/10 text-teal-700 dark:text-teal-400";
     case "member_suspended":
     case "member_deleted":
     case "venue_deleted":
-      return "bg-red-500/10 text-red-600 dark:text-red-400";
+      return "bg-red-500/10 text-red-700 dark:text-red-400";
     case "member_promoted":
-      return "bg-violet-500/10 text-violet-600 dark:text-violet-400";
+      return "bg-teal-500/10 text-teal-700 dark:text-teal-400";
     case "member_demoted":
-      return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
+      return "bg-amber-500/10 text-amber-800 dark:text-amber-400";
     case "vouchers_generated":
-      return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
+      return "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -558,12 +558,12 @@ export default function TeamPage() {
                           >
                             {member.status === "suspended" ? (
                               <>
-                                <CheckCircle2 className="size-4 mr-2 text-emerald-600 dark:text-emerald-400" />
+                                <CheckCircle2 className="size-4 mr-2 text-teal-700 dark:text-teal-400" />
                                 Activate Account
                               </>
                             ) : (
                               <>
-                                <Ban className="size-4 mr-2 text-amber-600 dark:text-amber-400" />
+                                <Ban className="size-4 mr-2 text-amber-800 dark:text-amber-400" />
                                 Suspend Account
                               </>
                             )}
@@ -582,7 +582,7 @@ export default function TeamPage() {
                               }}
                               disabled={member.id === user?.id}
                             >
-                              <ArrowDownCircle className="size-4 mr-2 text-amber-600 dark:text-amber-400" />
+                              <ArrowDownCircle className="size-4 mr-2 text-amber-800 dark:text-amber-400" />
                               Demote to Manager
                             </DropdownMenuItem>
                           )}

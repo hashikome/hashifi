@@ -217,13 +217,13 @@ export default function DashboardPage() {
                           {
                             active:
                               "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200",
-                            used: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-200",
+                            used: "bg-zinc-500/15 text-zinc-700 dark:text-zinc-400 border-zinc-200",
                             expired: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-200",
                             unused:
-                              "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200",
+                              "bg-teal-500/15 text-teal-700 dark:text-teal-400 border-teal-200",
                             revoked: "bg-muted text-muted-foreground",
                             pending_activation:
-                              "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-200",
+                              "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200",
                           }[voucher.status] ?? "bg-muted text-muted-foreground"
                         }
                       >
@@ -461,7 +461,7 @@ export default function DashboardPage() {
             {!hasOnlineRouter && (
               <Badge
                 variant="secondary"
-                className="bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                className="bg-amber-500/15 text-amber-800 dark:text-amber-400"
               >
                 {totalCount > 1 ? "All routers offline" : "Router offline"}
               </Badge>
@@ -469,7 +469,7 @@ export default function DashboardPage() {
             {isPartiallyOnline && (
               <Badge
                 variant="secondary"
-                className="bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                className="bg-amber-500/15 text-amber-800 dark:text-amber-400"
               >
                 {onlineCount}/{totalCount} routers online
               </Badge>
@@ -521,9 +521,9 @@ export default function DashboardPage() {
                   <TableCell className="text-center">
                     <Badge
                       variant="secondary"
-                      className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                      className="bg-teal-500/15 text-teal-700 dark:text-teal-400"
                     >
-                      <span className="mr-1 inline-block size-1.5 rounded-full bg-emerald-500" />
+                      <span className="mr-1 inline-block size-1.5 rounded-full bg-teal-500" />
                       connected
                     </Badge>
                   </TableCell>

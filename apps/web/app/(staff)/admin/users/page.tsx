@@ -227,7 +227,7 @@ export default function UsersPage() {
                 <p className="text-2xl font-bold">{stats.online}</p>
               </div>
               <Wifi
-                className={`size-8 ${stats.online > 0 ? "text-emerald-500" : "text-muted-foreground"}`}
+                className={`size-8 ${stats.online > 0 ? "text-teal-700" : "text-muted-foreground"}`}
               />
             </div>
           </CardContent>
@@ -363,7 +363,7 @@ export default function UsersPage() {
                       <TableCell className="text-center">
                         <Badge variant="secondary" className={connection.className}>
                           {connection.live && (
-                            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
+                            <span className="size-1.5 rounded-full bg-teal-500 animate-pulse mr-1.5" />
                           )}
                           {connection.label}
                         </Badge>
@@ -431,7 +431,7 @@ export default function UsersPage() {
                       )}
                       <Badge variant="secondary" className={`mt-1.5 ${connection.className}`}>
                         {connection.live && (
-                          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
+                          <span className="size-1.5 rounded-full bg-teal-500 animate-pulse mr-1.5" />
                         )}
                         {connection.label}
                       </Badge>

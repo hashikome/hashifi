@@ -250,7 +250,7 @@ export function RouterBootstrapDialog({
           )}
 
           {result?.warnings.map((w) => (
-            <p key={w} className="text-xs text-amber-600 dark:text-amber-400">
+            <p key={w} className="text-xs text-amber-800 dark:text-amber-400">
               {w}
             </p>
           ))}

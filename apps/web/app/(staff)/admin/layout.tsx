@@ -1,11 +1,13 @@
 "use client";
 
-import { Loader } from "lucide-react";
+import { Loader, Menu } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AdminSidebar } from "@/components/admin-sidebar";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth-context";
+import { LOGO_SRC } from "@/lib/brand";
 
 function isManagerAllowedRoute(pathname: string) {
   const exact = [
@@ -32,6 +34,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [isNavOpen, setIsNavOpen] = useState(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: choosing a page closes the phone menu
+  useEffect(() => setIsNavOpen(false), [pathname]);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -67,12 +73,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen overflow-hidden bg-background print:h-auto print:overflow-visible">
-        <div className="shrink-0 print:hidden">
+      <div className="flex h-screen flex-col overflow-hidden bg-background md:flex-row print:h-auto print:overflow-visible">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-2 md:hidden print:hidden">
+          <button
+            type="button"
+            aria-label="Open menu"
+            onClick={() => setIsNavOpen(true)}
+            className="flex size-11 items-center justify-center rounded-md text-sidebar-foreground"
+          >
+            <Menu className="size-5" />
+          </button>
+          {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
+          <img src={LOGO_SRC} alt="" className="size-6" />
+          <span className="text-sm font-semibold text-foreground">HashiFi</span>
+        </header>
+        <div className="hidden shrink-0 md:block print:hidden">
           <AdminSidebar />
         </div>
+        <Sheet open={isNavOpen} onOpenChange={setIsNavOpen}>
+          <SheetContent className="w-64">
+            <SheetTitle className="sr-only">Menu</SheetTitle>
+            <AdminSidebar />
+          </SheetContent>
+        </Sheet>
         <main className="flex-1 overflow-y-auto print:overflow-visible">
-          <div className="container mx-auto p-6 max-w-7xl print:max-w-none print:p-0">
+          <div className="container mx-auto max-w-7xl p-4 md:p-6 print:max-w-none print:p-0">
             {children}
           </div>
         </main>

@@ -24,13 +24,13 @@ const STYLES: Record<
 > = {
   pass: {
     icon: CheckCircle2,
-    text: "text-emerald-600 dark:text-emerald-400",
-    border: "border-l-emerald-500",
+    text: "text-teal-700 dark:text-teal-400",
+    border: "border-l-teal-500",
     label: "Ready",
   },
   warn: {
     icon: AlertTriangle,
-    text: "text-amber-600 dark:text-amber-400",
+    text: "text-amber-800 dark:text-amber-400",
     border: "border-l-amber-500",
     label: "Heads-up",
   },

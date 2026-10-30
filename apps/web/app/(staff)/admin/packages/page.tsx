@@ -297,8 +297,8 @@ export default function PackagesPage() {
                             disabled={togglingId === pkg.id}
                             className={
                               pkg.isActive
-                                ? "text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400 dark:hover:text-amber-300"
-                                : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400 dark:hover:text-emerald-300"
+                                ? "text-amber-800 hover:text-amber-700 hover:bg-amber-500/10 dark:text-amber-400 dark:hover:text-amber-300"
+                                : "text-teal-700 hover:text-teal-700 hover:bg-teal-500/10 dark:text-teal-400 dark:hover:text-teal-300"
                             }
                           >
                             {togglingId === pkg.id ? (

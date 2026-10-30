@@ -114,7 +114,7 @@ export function AdminSidebar() {
           <Wifi className="size-5" />
         </div>
         <div>
-          <h1 className="font-semibold text-sm">HashiFi</h1>
+          <p className="font-semibold text-sm">HashiFi</p>
           <p className="text-xs text-sidebar-foreground/60">Admin Portal</p>
         </div>
       </div>

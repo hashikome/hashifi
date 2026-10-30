@@ -88,9 +88,9 @@ const DEFAULT_FORM: PortalForm = {
   brandName: "",
   headline: "Fast & Reliable WiFi",
   message: "Connect to our secure network and enjoy seamless internet access.",
-  primaryColor: "#D97757",
-  accentColor: "#0F766E",
-  backgroundColor: "#1F2937",
+  primaryColor: "#0F766E",
+  accentColor: "#134E4A",
+  backgroundColor: "#134E4A",
   backgroundStyle: "soft",
   radius: 18,
   voucherLabel: "Enter your voucher code",
@@ -102,7 +102,7 @@ const DEFAULT_FORM: PortalForm = {
 };
 
 const colorPresets = [
-  { name: "Sunset", primary: "#D97757", accent: "#0F766E", background: "#1F2937" },
+  { name: "HashiFi", primary: "#0F766E", accent: "#134E4A", background: "#134E4A" },
   { name: "Signal", primary: "#2563EB", accent: "#10B981", background: "#0F172A" },
   { name: "Coral", primary: "#E11D48", accent: "#0891B2", background: "#18181B" },
   { name: "Forest", primary: "#15803D", accent: "#F59E0B", background: "#102018" },
@@ -247,7 +247,7 @@ export default function PortalPage() {
           {isAdmin && (
             <div className="flex items-center gap-3">
               {isDirty && (
-                <span className="text-sm text-amber-600 dark:text-amber-400">Unsaved changes</span>
+                <span className="text-sm text-amber-800 dark:text-amber-400">Unsaved changes</span>
               )}
               <Button onClick={savePortal} disabled={isSaving || !portal.brandName.trim()}>
                 {isSaving ? (

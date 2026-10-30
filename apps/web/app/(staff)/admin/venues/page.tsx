@@ -154,7 +154,7 @@ export default function VenuesPage() {
                 <p className="text-sm text-muted-foreground">Active</p>
                 <p className="text-2xl font-bold">{activeVenues}</p>
               </div>
-              <Building2 className="size-8 text-emerald-500" />
+              <Building2 className="size-8 text-teal-700" />
             </div>
           </CardContent>
         </Card>

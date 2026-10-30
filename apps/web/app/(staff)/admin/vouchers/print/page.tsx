@@ -108,7 +108,7 @@ function PrintVouchersContent() {
       {/* QR URL warning — shown when portal URL is localhost */}
       {PORTAL_URL_IS_LOCAL && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-start gap-3 print:hidden">
-          <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <TriangleAlert className="size-4 text-amber-800 dark:text-amber-400 mt-0.5 shrink-0" />
           <p className="text-sm text-amber-800">
             <strong>QR codes point to localhost</strong> — set{" "}
             <code className="font-mono text-xs bg-amber-100 px-1 py-0.5 rounded">

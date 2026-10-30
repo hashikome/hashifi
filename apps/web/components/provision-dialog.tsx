@@ -142,8 +142,8 @@ type LogLine = Extract<LiveMessage, { type: "provision_log" }>["event"];
 
 const STATE_STYLES: Record<StepState, string> = {
   satisfied: "text-muted-foreground",
-  applied: "text-emerald-600 dark:text-emerald-400",
-  "would-apply": "text-amber-600 dark:text-amber-400",
+  applied: "text-teal-700 dark:text-teal-400",
+  "would-apply": "text-amber-800 dark:text-amber-400",
   skipped: "text-muted-foreground/60",
   failed: "text-destructive",
 };
@@ -463,9 +463,9 @@ export function ProvisionDialog({
                       {i + 1}/{setup.phases.length}
                     </span>
                     {p.status === "pass" ? (
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-teal-700 dark:text-teal-400" />
                     ) : p.status === "warn" ? (
-                      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-800 dark:text-amber-400" />
                     ) : p.status === "fail" ? (
                       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
                     ) : (
@@ -510,7 +510,7 @@ export function ProvisionDialog({
               )}
 
               {setup.ok && (
-                <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                <p className="text-sm text-teal-700 dark:text-teal-400">
                   Configured, verified, and confirmed serving. The remaining checks below need a
                   real phone.
                 </p>
@@ -526,7 +526,7 @@ export function ProvisionDialog({
                 <Badge variant="outline">{profile.architecture}</Badge>
                 <Badge variant="outline">{profile.wirelessStack}</Badge>
                 {compat?.ok ? (
-                  <Badge className="bg-emerald-600">
+                  <Badge className="bg-teal-600">
                     <CheckCircle2 className="mr-1 h-3 w-3" /> Compatible
                   </Badge>
                 ) : (
@@ -542,7 +542,7 @@ export function ProvisionDialog({
                 </p>
               ))}
               {compat?.warnings.map((w) => (
-                <p key={w} className="mt-2 text-amber-600 dark:text-amber-400">
+                <p key={w} className="mt-2 text-amber-800 dark:text-amber-400">
                   {w}
                 </p>
               ))}
@@ -651,9 +651,9 @@ export function ProvisionDialog({
                     key={line.seq}
                     className={
                       line.outcome === "failed" || line.level === "error"
-                        ? "text-red-400"
+                        ? "text-red-700"
                         : line.outcome === "unsupported" || line.level === "warn"
-                          ? "text-amber-400"
+                          ? "text-amber-800"
                           : "text-zinc-300"
                     }
                   >

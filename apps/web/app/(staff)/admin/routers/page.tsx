@@ -176,10 +176,10 @@ export default function RoutersPage() {
       </div>
 
       {backlog && (backlog.stuckVouchers > 0 || backlog.unprovisionedPayments > 0) && (
-        <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-500/10 p-4 text-sm">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-orange-600 dark:text-orange-400" />
+        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-500/10 p-4 text-sm">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-800 dark:text-amber-400" />
           <div>
-            <p className="font-medium text-orange-700 dark:text-orange-400">
+            <p className="font-medium text-amber-700 dark:text-amber-400">
               Customers waiting on router confirmation
             </p>
             <p className="text-muted-foreground">
@@ -222,7 +222,7 @@ export default function RoutersPage() {
                 <p className="text-sm text-muted-foreground">Online</p>
                 <p className="text-2xl font-bold">{onlineCount}</p>
               </div>
-              <Activity className="size-8 text-emerald-500" />
+              <Activity className="size-8 text-teal-700" />
             </div>
           </CardContent>
         </Card>
@@ -343,7 +343,7 @@ export default function RoutersPage() {
                         <span
                           className={`size-1.5 rounded-full mr-1.5 ${
                             router.status === "online"
-                              ? "bg-emerald-500 animate-pulse"
+                              ? "bg-teal-500 animate-pulse"
                               : router.status === "provisioning"
                                 ? "bg-yellow-500 animate-pulse"
                                 : router.status === "error"

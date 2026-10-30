@@ -66,7 +66,7 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
           </div>
           <span
-            className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${isAdmin ? "bg-violet-500/15 text-violet-600 dark:text-violet-400" : "bg-sky-500/15 text-sky-600 dark:text-sky-400"}`}
+            className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${isAdmin ? "bg-teal-500/15 text-teal-700 dark:text-teal-400" : "bg-sky-500/15 text-sky-600 dark:text-sky-400"}`}
           >
             <ShieldCheck className="size-3" />
             {isAdmin ? "Admin" : "Manager"}

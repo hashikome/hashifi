@@ -296,7 +296,7 @@ export default function EditPackagePage() {
             </p>
           </div>
           {isDirty && (
-            <span className="ml-auto text-sm text-amber-600 dark:text-amber-400">
+            <span className="ml-auto text-sm text-amber-800 dark:text-amber-400">
               Unsaved changes
             </span>
           )}
@@ -416,7 +416,7 @@ export default function EditPackagePage() {
                   <CardDescription>
                     Reduce speeds during peak hours or after a data threshold.
                   </CardDescription>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  <p className="text-xs text-amber-800 dark:text-amber-400 mt-1">
                     Speed capping requires RouterOS v6.49+ — settings are saved but not applied on
                     older routers.
                   </p>

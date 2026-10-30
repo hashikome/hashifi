@@ -5,9 +5,9 @@
  * routers, payments, venues, sessions, vouchers, team, users and packages pages, and no
  * two agreed. The failures that produced were all the same shape:
  *
- *   • `text-emerald-700` with no `dark:` counterpart — a dark green on a dark chip,
+ *   • `text-teal-700` with no `dark:` counterpart — a dark green on a dark chip,
  *     which is what made the Team page's "Active" unreadable in dark mode.
- *   • `border-emerald-200` — a near-white hairline that reads as a light outline ring
+ *   • `border-teal-200` — a near-white hairline that reads as a light outline ring
  *     once the page behind it is dark.
  *   • `text-*-600` on one page and `text-*-700` on the next for the same status.
  *
@@ -23,8 +23,8 @@
 export const statusPill = {
   /** Working as intended — online, active, paid, connected. */
   success:
-    "bg-emerald-500/12 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 " +
-    "dark:bg-emerald-400/15 dark:text-emerald-300 dark:ring-emerald-400/25",
+    "bg-teal-500/12 text-teal-700 ring-1 ring-inset ring-teal-600/20 " +
+    "dark:bg-teal-400/15 dark:text-teal-300 dark:ring-teal-400/25",
 
   /** In progress, or fine but worth noticing — provisioning, pending, maintenance. */
   warning:
@@ -38,15 +38,11 @@ export const statusPill = {
 
   /** Finished, neutral-good — a spent voucher, a closed session. */
   info:
-    "bg-blue-500/12 text-blue-700 ring-1 ring-inset ring-blue-600/20 " +
-    "dark:bg-blue-400/15 dark:text-blue-300 dark:ring-blue-400/25",
+    "bg-zinc-500/12 text-zinc-700 ring-1 ring-inset ring-zinc-600/20 " +
+    "dark:bg-zinc-400/15 dark:text-zinc-300 dark:ring-zinc-400/25",
 
   /** Waiting on something external — the router hasn't confirmed yet. */
-  accent:
-    "bg-orange-500/12 text-orange-700 ring-1 ring-inset ring-orange-600/20 " +
-    "dark:bg-orange-400/15 dark:text-orange-300 dark:ring-orange-400/25",
-
-  /** No state worth colouring — offline, inactive, revoked, unknown. */
+  accent: "bg-accent text-accent-foreground ring-1 ring-inset ring-primary/20",
   neutral:
     "bg-muted text-muted-foreground ring-1 ring-inset ring-border " +
     "dark:bg-muted dark:text-muted-foreground",

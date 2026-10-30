@@ -67,16 +67,16 @@ export function ConfirmModal({
           headerBg: "bg-amber-500/5",
           headerBorder: "border-amber-500/10",
           iconBg: "bg-amber-500/10",
-          iconColor: "text-amber-500",
+          iconColor: "text-amber-800",
           buttonVariant: "default" as const,
           icon: AlertCircle,
         };
       case "info":
         return {
-          headerBg: "bg-blue-500/5",
-          headerBorder: "border-blue-500/10",
-          iconBg: "bg-blue-500/10",
-          iconColor: "text-blue-500",
+          headerBg: "bg-zinc-500/5",
+          headerBorder: "border-zinc-500/10",
+          iconBg: "bg-zinc-500/10",
+          iconColor: "text-zinc-500",
           buttonVariant: "default" as const,
           icon: Info,
         };

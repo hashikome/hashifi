@@ -176,7 +176,7 @@ export function RouterConnectionTest({
               {result.wirelessStack === "none" ? "no radio" : result.wirelessStack}
             </Badge>
             {compat?.ok ? (
-              <Badge className="bg-emerald-600 hover:bg-emerald-600">
+              <Badge className="bg-teal-600 hover:bg-teal-600">
                 <CheckCircle2 className="mr-1 size-3" /> Can run the hotspot
               </Badge>
             ) : (
@@ -192,7 +192,7 @@ export function RouterConnectionTest({
             </p>
           ))}
           {compat?.warnings.map((w) => (
-            <p key={w} className="text-xs text-amber-600 dark:text-amber-400">
+            <p key={w} className="text-xs text-amber-800 dark:text-amber-400">
               {w}
             </p>
           ))}
@@ -228,7 +228,7 @@ export function RouterConnectionTest({
           )}
 
           {result.managementError && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">{result.managementError}</p>
+            <p className="text-xs text-amber-800 dark:text-amber-400">{result.managementError}</p>
           )}
 
           {result.readiness && <ReadinessChecklist report={result.readiness} />}

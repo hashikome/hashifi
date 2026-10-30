@@ -8,7 +8,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
@@ -45,126 +45,118 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  /* One tight scale (DESIGN.md): chips 4, controls 6, everything that holds content 8. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
+  --radius-3xl: var(--radius);
+  --radius-4xl: var(--radius);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
 }
 
-/* ─── Light Mode ─────────────────────────────────────────────── */
-/* Claude primary orange: #D97757 → oklch(0.648 0.155 41.5)      */
+/* ─── Tokens ─────────────────────────────────────────────────── */
+/* DESIGN.md is the authority. Provisional until the brand session: one teal ladder, with the full
+   hue on small marks and data, its pale tints on areas, and neutrals for everything else. */
 :root {
-  /* Warm cream background — Claude's signature off-white */
-  --background: oklch(0.985 0.006 75);
-  --foreground: oklch(0.18 0.015 50);
+  --background: #f9fafb;
+  --foreground: #111827;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.015 50);
+  --card: #ffffff;
+  --card-foreground: #111827;
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.015 50);
+  --popover: #ffffff;
+  --popover-foreground: #111827;
 
-  /* PRIMARY = Claude orange #D97757 */
-  --primary: oklch(0.648 0.155 41.5);
-  --primary-foreground: oklch(0.99 0.005 75);
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.945 0.012 60);
-  --secondary-foreground: oklch(0.28 0.02 50);
+  --secondary: #f3f4f6;
+  --secondary-foreground: #374151;
 
-  --muted: oklch(0.945 0.008 70);
-  --muted-foreground: oklch(0.52 0.018 55);
+  --muted: #f3f4f6;
+  --muted-foreground: #5f6672;
 
-  --accent: oklch(0.93 0.025 55);
-  --accent-foreground: oklch(0.28 0.04 45);
+  --accent: #f0fdfa;
+  --accent-foreground: #134e4a;
 
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: #c4242a;
+  /* Teal is also "good": a second green beside it reads as two meanings. */
+  --positive: #0f766e;
+  --warning: #92400e;
 
-  --border: oklch(0.88 0.012 65);
-  --input: oklch(0.88 0.012 65);
-  --ring: oklch(0.648 0.155 41.5);
+  --border: #e5e7eb;
+  --input: #868d9a;
+  --ring: #0f766e;
 
-  /* Chart — orange leads (brand), then a spread of hues.
-     The old ramp was five shades of the same orange, which is unreadable the moment a
-     chart has more than two series: a pie or stacked bar becomes one brown smear.
-     chart-1/2 stay warm so single- and two-series charts read as Claude orange;
-     3–5 only appear once a chart genuinely needs categorical separation. */
-  --chart-1: oklch(0.648 0.155 41.5); /* Claude orange */
-  --chart-2: oklch(0.75 0.13 62); /* amber */
-  --chart-3: oklch(0.6 0.1 200); /* teal */
-  --chart-4: oklch(0.55 0.14 305); /* violet */
-  --chart-5: oklch(0.66 0.12 138); /* green */
-  --chart-grid: oklch(0.9 0.008 65);
+  --chart-1: #0f766e;
+  --chart-2: #6b7280;
+  --chart-3: #5fa8a1;
+  --chart-4: #b7791f;
+  --chart-5: #9ca3af;
+  --chart-grid: #e5e5e5;
 
-  --radius: 0.625rem;
+  --radius: 8px;
 
-  /* ── Sidebar — warm dark brown, Claude-style ── */
-  --sidebar: oklch(0.21 0.018 45);
-  --sidebar-foreground: oklch(0.72 0.018 55);
-  --sidebar-primary: oklch(0.648 0.155 41.5);
-  --sidebar-primary-foreground: oklch(0.99 0.005 75);
-  --sidebar-accent: oklch(0.28 0.02 48);
-  --sidebar-accent-foreground: oklch(0.97 0.008 70);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.648 0.155 41.5);
+  /* The sidebar is on the page ground; it recedes. */
+  --sidebar: #f9fafb;
+  --sidebar-foreground: #4b5563;
+  --sidebar-primary: #0f766e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0fdfa;
+  --sidebar-accent-foreground: #134e4a;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #0f766e;
 }
 
-/* ─── Dark Mode ──────────────────────────────────────────────── */
-/* Two things this palette fixes:
-   1. Surfaces have almost no luminance step to stand on — card on background is only
-      ~1.09:1, so separation has to come from the border and the elevation rule in the
-      base layer, not from the fills. At a 10% border it came from nothing, and the whole
-      UI read as one flat sheet.
-   2. Secondary text is the first thing to go in dark mode. --muted-foreground carries the
-      helper line under every form field, and at 0.62 it was 4.75:1 on the card — over AA,
-      but only just, at the 12px sizes those helpers actually use. Now ~6.95:1.          */
+/* True neutrals, one ground everywhere, elevation by lightness. */
 .dark {
-  --background: oklch(0.155 0.014 50);
-  --foreground: oklch(0.94 0.01 70);
+  --background: #111111;
+  --foreground: #f5f5f5;
 
-  --card: oklch(0.205 0.016 48);
-  --card-foreground: oklch(0.94 0.01 70);
+  --card: #181818;
+  --card-foreground: #f5f5f5;
 
-  --popover: oklch(0.225 0.016 48);
-  --popover-foreground: oklch(0.94 0.01 70);
+  --popover: #202020;
+  --popover-foreground: #f5f5f5;
 
-  --primary: oklch(0.72 0.165 41.5);
-  --primary-foreground: oklch(0.13 0.01 45);
+  --primary: #2dd4bf;
+  --primary-foreground: #042f2e;
 
-  --secondary: oklch(0.28 0.018 50);
-  --secondary-foreground: oklch(0.94 0.01 70);
+  --secondary: #222222;
+  --secondary-foreground: #f5f5f5;
 
-  --muted: oklch(0.26 0.014 52);
-  --muted-foreground: oklch(0.71 0.018 58);
+  --muted: #222222;
+  --muted-foreground: #b4b4b4;
 
-  --accent: oklch(0.31 0.042 45);
-  --accent-foreground: oklch(0.9 0.04 55);
+  --accent: #12302d;
+  --accent-foreground: #99f6e4;
 
-  --destructive: oklch(0.704 0.191 22.216);
+  --destructive: #e5566f;
+  --positive: #2dd4bf;
+  --warning: #f5b454;
 
-  --border: oklch(1 0 0 / 13%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.72 0.165 41.5);
+  --border: #2e2e2e;
+  --input: #7a7a7a;
+  --ring: #2dd4bf;
 
-  /* Lifted well above the light values — a colour tuned to sit on cream is muddy on
-     near-black. Same hues as light mode so the two themes are one system. */
-  --chart-1: oklch(0.72 0.165 42);
-  --chart-2: oklch(0.8 0.13 68);
-  --chart-3: oklch(0.74 0.11 200);
-  --chart-4: oklch(0.72 0.13 305);
-  --chart-5: oklch(0.78 0.13 138);
-  --chart-grid: oklch(1 0 0 / 9%);
+  --chart-1: #2dd4bf;
+  --chart-2: #949494;
+  --chart-3: #1b8f84;
+  --chart-4: #f5b454;
+  --chart-5: #6b6b6b;
+  --chart-grid: #2b2b2b;
 
-  --sidebar: oklch(0.135 0.014 46);
-  --sidebar-foreground: oklch(0.74 0.018 55);
-  --sidebar-primary: oklch(0.72 0.165 41.5);
-  --sidebar-primary-foreground: oklch(0.13 0.01 45);
-  --sidebar-accent: oklch(0.26 0.02 48);
-  --sidebar-accent-foreground: oklch(0.96 0.008 68);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.72 0.165 41.5);
+  --sidebar: #111111;
+  --sidebar-foreground: #b4b4b4;
+  --sidebar-primary: #2dd4bf;
+  --sidebar-primary-foreground: #042f2e;
+  --sidebar-accent: #12302d;
+  --sidebar-accent-foreground: #99f6e4;
+  --sidebar-border: #2e2e2e;
+  --sidebar-ring: #2dd4bf;
 }
 
 @layer base {
@@ -176,15 +168,6 @@
   }
   html {
     @apply font-sans;
-  }
-
-  /* Elevation, dark mode. A drop shadow alone does nothing against a near-black page —
-     black on black is not a shadow. The 1px inset top highlight is what actually reads
-     the edge of the surface, the same way a physical bevel catches a light from above. */
-  .dark [data-slot="card"] {
-    box-shadow:
-      0 1px 3px oklch(0 0 0 / 45%),
-      inset 0 1px 0 oklch(1 0 0 / 5%);
   }
 
   /* Floating surfaces sit a step higher again, so a modal reads as *above* the page

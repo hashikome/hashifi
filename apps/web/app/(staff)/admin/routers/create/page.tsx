@@ -143,7 +143,7 @@ export default function CreateRouterPage() {
             </div>
           </div>
           {isDirty && (
-            <span className="text-sm text-amber-600 dark:text-amber-400">Unsaved changes</span>
+            <span className="text-sm text-amber-800 dark:text-amber-400">Unsaved changes</span>
           )}
         </div>
 

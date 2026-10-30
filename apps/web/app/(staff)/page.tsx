@@ -137,7 +137,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <Card className="border-border shadow-lg">
+        <Card className="border-border">
           <CardHeader className="text-center">
             <CardTitle>{TITLES[step]}</CardTitle>
             <CardDescription>

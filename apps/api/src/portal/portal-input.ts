@@ -6,9 +6,9 @@ export const DEFAULT_PORTAL_SETTINGS: PortalSettingsRecord = {
   brandName: "HashiFi",
   headline: "Welcome to fast WiFi",
   message: "Buy time with mobile money, or enter the voucher you were given.",
-  primaryColor: "#D97757",
-  accentColor: "#0F766E",
-  backgroundColor: "#1F2937",
+  primaryColor: "#0F766E",
+  accentColor: "#134E4A",
+  backgroundColor: "#134E4A",
   backgroundStyle: "soft",
   radius: 18,
   voucherLabel: "Voucher code",
@@ -41,7 +41,7 @@ const paragraph = (max: number) =>
 const colour = z
   .string()
   .trim()
-  .regex(/^#[0-9A-Fa-f]{6}$/, "must be a colour such as #D97757");
+  .regex(/^#[0-9A-Fa-f]{6}$/, "must be a colour such as #0F766E");
 /** The whole branding, as the portal page's form sends it. */
 export const portalInput = z.object({
   brandName: line(160).min(1, "is required"),

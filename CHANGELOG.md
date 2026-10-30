@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Design foundations in `DESIGN.md`: one provisional teal ladder, DM Sans, flat surfaces and a
+  sidebar on the page ground, across the admin, the guest portal and the router's pages.
 - The captive portal is a web page at `/portal/login`: a guest enters a voucher and is online,
   through the API, with the router confirming before anything reports success. A device
   comes back by the router's MAC cookie, a block holds at the router, and sessions open from what
@@ -78,7 +80,7 @@
 - Schema: `staff` (renamed from `admin_users`) holds role, status and venue scope beside
   Better Auth's tables; guests' devices are `devices` (renamed from `wifi_customers`).
 
-- The API runs on NestJS 12 and Bun with Prisma on PostgreSQL 18 (adoption plan M3): a baseline
+- The API runs on NestJS 12 and Bun with Prisma on PostgreSQL 18 (build plan M3): a baseline
   migration with UUIDv7 keys, `timestamptz` and `CHECK` constraints keeping voucher codes
   upper-case (RouterOS compares them case-sensitively); validated configuration with Docker
   secrets; health and readiness endpoints; background jobs as LogTape and Sentry wide events,
@@ -89,19 +91,17 @@
   forever; it now expires. Voucher codes no longer appear in logs or audit records.
 - The router sim provisions through the real database store and sells vouchers through
   `RouterSync`, in LAN and tunnel modes.
-- The purchased Express, Drizzle and MySQL backend is removed; the import commit `45ebd53` keeps
-  it for reference while M4 ports its routes.
+- The Express, Drizzle and MySQL backend is removed.
 
-- HashiFi is built from a purchased hotspot billing system, imported as received under
-  `apps/api` and `apps/web` without the seller's database dumps and uploads
-  ([ADR-0001](docs/engineering-decisions/0001-adopt-purchased-billing-system.md)).
+- HashiFi starts from a working hotspot system under `apps/api` and `apps/web`
+  ([ADR-0001](docs/engineering-decisions/0001-start-from-a-working-system.md)).
 - Repository structure from the Hashikome product template: product, architecture and
   design documents, decisions, ExecPlans, runbooks and policies. The empty Django skeleton
   is removed; the network architecture reference moved to `docs/design-docs/`.
 - Licensed under FSL-1.1-ALv2 (Shikome Technology Limited).
 - Bun manages packages: pnpm and npm files removed; packages renamed `@hashifi/api` and
   `@hashifi/web`.
-- Toolchain (adoption plan M1): one root `bun.lock` with every dependency on its newest stable
+- Toolchain (build plan M1): one root `bun.lock` with every dependency on its newest stable
   release, pinned (Bun 1.4.4, Next.js 16.4.3, React 19.3.1, TypeScript 7.0.2); Biome formats and
   lints; `bun run verify` runs format, lint, typecheck, the 170 tests and the web build. Type
   errors now fail the web build.

@@ -162,7 +162,7 @@ export default function RevenuePage() {
                 <p className="text-2xl font-bold">{loading ? "…" : tsh(summary?.thisMonth ?? 0)}</p>
                 {summary?.monthGrowthPct != null && (
                   <div
-                    className={`flex items-center gap-1 mt-1 text-xs font-medium ${summary.monthGrowthPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}
+                    className={`flex items-center gap-1 mt-1 text-xs font-medium ${summary.monthGrowthPct >= 0 ? "text-teal-700 dark:text-teal-400" : "text-destructive"}`}
                   >
                     {summary.monthGrowthPct >= 0 ? (
                       <ArrowUpRight className="size-3" />
@@ -401,14 +401,14 @@ export default function RevenuePage() {
                       {tx.source !== "cash" ? (
                         <Badge
                           variant="secondary"
-                          className="bg-green-500/15 text-green-600 dark:text-green-400 gap-1"
+                          className="bg-teal-500/15 text-teal-700 dark:text-teal-400 gap-1"
                         >
                           <Smartphone className="size-3" /> Mobile Money
                         </Badge>
                       ) : (
                         <Badge
                           variant="secondary"
-                          className="bg-blue-500/15 text-blue-600 dark:text-blue-400 gap-1"
+                          className="bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 gap-1"
                         >
                           <Ticket className="size-3" /> Voucher
                         </Badge>

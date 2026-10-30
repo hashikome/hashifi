@@ -178,7 +178,7 @@ export function GuestPortal() {
   if (screen.kind === "not-on-wifi" && screen.cardHeld) {
     return (
       <main
-        className="flex min-h-svh items-center bg-zinc-900 p-6 text-white"
+        className="flex min-h-svh items-center bg-teal-900 p-6 text-white"
         style={{ fontFamily: FONT }}
       >
         <div className="mx-auto w-full max-w-md">
@@ -186,7 +186,7 @@ export function GuestPortal() {
           <p className="mt-3 text-lg">Join the venue&apos;s WiFi, then continue.</p>
           <a
             href={TRIGGER_URL}
-            className="mt-6 flex h-14 items-center justify-center rounded-lg bg-white text-lg font-semibold text-zinc-900 active:opacity-80"
+            className="mt-6 flex h-14 items-center justify-center rounded-lg bg-white text-lg font-semibold text-teal-900 active:opacity-80"
           >
             Continue
           </a>
@@ -204,7 +204,7 @@ export function GuestPortal() {
           : "Join the WiFi network, and this page opens by itself.";
     return (
       <main
-        className="flex min-h-svh items-center bg-zinc-900 p-6 text-white"
+        className="flex min-h-svh items-center bg-teal-900 p-6 text-white"
         style={{ fontFamily: FONT }}
       >
         <p className="w-full text-center text-lg">{message}</p>
