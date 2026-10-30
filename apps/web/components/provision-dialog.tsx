@@ -24,8 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { API_URL, api } from "@/lib/api";
 
 /**
  * A labelled group inside the dialog.
@@ -131,6 +130,12 @@ interface ProvisionReport {
     failed: number;
   };
   blockingReasons: string[];
+}
+
+interface ProbeReply {
+  profile: RouterProfile;
+  readiness: ReadinessReport | null;
+  plan: HotspotPlan | null;
 }
 
 type LogLine = Extract<LiveMessage, { type: "provision_log" }>["event"];
@@ -241,12 +246,7 @@ export function ProvisionDialog({
     setLines([]);
     setReport(null);
     try {
-      const res = await fetch(`${API_URL}/api/routers/${routerId}/probe`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Probe failed");
+      const data = await api.post<ProbeReply>(`/api/routers/${routerId}/probe`);
       setProfile(data.profile);
       setReadiness(data.readiness ?? null);
       setPlan(data.plan ?? null);
@@ -275,13 +275,9 @@ export function ProvisionDialog({
       setSetup(null);
       setSelfTest(null);
       try {
-        const res = await fetch(
-          `${API_URL}/api/routers/${routerId}/setup${force ? "?force=1" : ""}`,
-          { method: "POST", credentials: "include" },
+        const data = await api.post<SetupReport>(
+          `/api/routers/${routerId}/setup${force ? "?force=1" : ""}`,
         );
-        const data: SetupReport = await res.json();
-        if (!res.ok)
-          throw new Error((data as unknown as { error?: string }).error || "Setup failed");
 
         setSetup(data);
         setProfile(data.profile);
@@ -312,15 +308,12 @@ export function ProvisionDialog({
     setBusy("verify");
     setLines([]);
     try {
-      const res = await fetch(`${API_URL}/api/routers/${routerId}/verify`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not check the router");
-      setSelfTest(data.verify);
-      if (data.ok) toast.success("Hotspot is serving");
-      else toast.error(`${data.verify.summary.fail} check(s) show it would not serve`);
+      const report = await api.post<NonNullable<SetupReport["selfTest"]>>(
+        `/api/routers/${routerId}/verify`,
+      );
+      setSelfTest(report);
+      if (report.ok) toast.success("Hotspot is serving");
+      else toast.error(`${report.summary.fail} check(s) show it would not serve`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not check the router");
     } finally {
@@ -334,12 +327,9 @@ export function ProvisionDialog({
       setLines([]);
       setReport(null);
       try {
-        const res = await fetch(
-          `${API_URL}/api/routers/${routerId}/provision${dryRun ? "?dryRun=1" : ""}`,
-          { method: "POST", credentials: "include" },
+        const data = await api.post<ProvisionReport>(
+          `/api/routers/${routerId}/provision${dryRun ? "?dryRun=1" : ""}`,
         );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Provisioning failed");
         setReport(data);
         setProfile(data.profile);
 

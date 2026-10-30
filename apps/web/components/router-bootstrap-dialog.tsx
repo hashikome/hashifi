@@ -1,5 +1,6 @@
 "use client";
 
+import type { BootstrapScriptResponse } from "@hashifi/types";
 import { AlertTriangle, Check, Copy, Download, Loader, Terminal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -13,26 +14,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-interface BootstrapResponse {
-  script: string;
-  warnings: string[];
-  resolved: {
-    gatewayIp: string;
-    apiPassword: string;
-    apiPasswordGenerated: boolean;
-    ssid: string;
-    apiPort: number;
-  };
-}
+import { api } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 
 export interface BootstrapDefaults {
   routerName: string;
   ipAddress: string;
   apiUsername: string;
-  apiPassword: string;
   /** Usually the venue name — what customers will see in their WiFi list. */
   ssid: string;
 }
@@ -40,21 +28,22 @@ export interface BootstrapDefaults {
 /**
  * Generates the one-off script that prepares a new or freshly reset MikroTik.
  *
- * The script is produced server-side (`POST /api/routers/bootstrap-script`) because it
+ * The script is produced server-side (`POST /api/routers/:id/bootstrap-script`) because it
  * encodes provisioning's own conventions — the bridge name, the API port, and the run-time
  * detection of which wireless stack the board has.
  */
 export function RouterBootstrapDialog({
   open,
   onOpenChange,
+  routerId,
   defaults,
-  onPasswordGenerated,
   onSsidChosen,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The saved router: the script carries its tunnel and stored credentials. */
+  routerId: string;
   defaults: BootstrapDefaults;
-  onPasswordGenerated?: (password: string) => void;
   /**
    * Push the SSID back onto the router form.
    *
@@ -71,7 +60,7 @@ export function RouterBootstrapDialog({
   const [adminPassword, setAdminPassword] = useState("");
   const [lanPrefix, setLanPrefix] = useState("24");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<BootstrapResponse | null>(null);
+  const [result, setResult] = useState<BootstrapScriptResponse | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Re-seed each time it opens so edits to the form behind it are picked up.
@@ -86,39 +75,25 @@ export function RouterBootstrapDialog({
     setBusy(true);
     setCopied(false);
     try {
-      const res = await fetch(`${API_URL}/api/routers/bootstrap-script`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          routerName: defaults.routerName,
-          ipAddress: defaults.ipAddress,
+      const data = await api.post<BootstrapScriptResponse>(
+        `/api/routers/${routerId}/bootstrap-script`,
+        {
           lanPrefix: Number(lanPrefix) || 24,
-          gatewayIp: gatewayIp.trim() || undefined,
-          apiUsername: defaults.apiUsername,
-          apiPassword: defaults.apiPassword || undefined,
-          adminPassword: adminPassword.trim() || undefined,
-          ssid: ssid.trim() || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Could not generate the script");
-        return;
-      }
+          ...(gatewayIp.trim() ? { gatewayIp: gatewayIp.trim() } : {}),
+          ...(adminPassword.trim() ? { adminPassword: adminPassword.trim() } : {}),
+          ...(ssid.trim() ? { ssid: ssid.trim() } : {}),
+        },
+      );
       setResult(data);
-      if (!gatewayIp.trim() && data.resolved?.gatewayIp) setGatewayIp(data.resolved.gatewayIp);
-      // Mirror the password's write-back: what went into the script must reach the form, or the
-      // row saves ssid = NULL and Set up never re-asserts the name. `resolved.ssid` rather than
-      // the raw field, so the form gets the same value the script baked in — router-name fallback
-      // and 32-character truncation included.
-      if (data.resolved?.ssid) onSsidChosen?.(data.resolved.ssid);
-    } catch {
-      toast.error("Could not reach the billing backend");
+      if (!gatewayIp.trim() && data.resolved.gatewayIp) setGatewayIp(data.resolved.gatewayIp);
+      // The API stored the SSID on the router; the form behind this must not overwrite it.
+      onSsidChosen?.(data.resolved.ssid);
+    } catch (err) {
+      toast.error(errorMessage(err, "Could not generate the script"));
     } finally {
       setBusy(false);
     }
-  }, [defaults, gatewayIp, adminPassword, ssid, lanPrefix, onSsidChosen]);
+  }, [routerId, gatewayIp, adminPassword, ssid, lanPrefix, onSsidChosen]);
 
   const copy = useCallback(async () => {
     if (!result) return;
@@ -268,28 +243,10 @@ export function RouterBootstrapDialog({
           )}
 
           {result?.resolved.apiPasswordGenerated && (
-            <div className="rounded-md border border-amber-500/50 bg-amber-500/5 p-3 text-sm space-y-2">
-              <p className="font-medium text-amber-700 dark:text-amber-400">
-                An API password was generated
-              </p>
-              <p className="font-mono text-xs break-all">{result.resolved.apiPassword}</p>
-              <p className="text-xs text-muted-foreground">
-                It is not stored anywhere until you put it in the API Password field and save.
-              </p>
-              {onPasswordGenerated && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    onPasswordGenerated(result.resolved.apiPassword);
-                    toast.success("Password filled into the form");
-                  }}
-                >
-                  Use this password
-                </Button>
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground">
+              A strong API password was generated and saved on this router. Generating the script
+              again gives the same one.
+            </p>
           )}
 
           {result?.warnings.map((w) => (

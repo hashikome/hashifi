@@ -1,5 +1,6 @@
 "use client";
 
+import type { RouterResponse, VenueList, VenueRecord } from "@hashifi/types";
 import {
   AlertCircle,
   ArrowLeft,
@@ -7,13 +8,11 @@ import {
   Loader,
   Router as RouterIcon,
   Save,
-  Terminal,
   Wifi,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { RouterBootstrapDialog } from "@/components/router-bootstrap-dialog";
 import {
   HotspotInterfacePicker,
   RouterConnectionTest,
@@ -32,11 +31,9 @@ import {
 } from "@/components/ui/select";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
-import type { Venue } from "@/lib/types";
 import { hotspotRangeClashesWithIp } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface FormData {
   venueId: string;
@@ -61,7 +58,7 @@ const INITIAL_FORM: FormData = {
   networkRange: "",
   hotspotGatewayIp: "",
   hotspotName: "",
-  apiUsername: "",
+  apiUsername: "hashifi",
   apiPassword: "",
   model: "",
 };
@@ -69,11 +66,10 @@ const INITIAL_FORM: FormData = {
 export default function CreateRouterPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [venues, setVenues] = useState<Venue[]>([]);
+  const [venues, setVenues] = useState<VenueRecord[]>([]);
   const [isLoadingVenues, setIsLoadingVenues] = useState(true);
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
   const [discoveredInterfaces, setDiscoveredInterfaces] = useState<RouterInterfaceInfo[]>([]);
-  const [bootstrapOpen, setBootstrapOpen] = useState(false);
 
   const isDirty = useMemo(
     () => JSON.stringify(formData) !== JSON.stringify(INITIAL_FORM),
@@ -87,9 +83,9 @@ export default function CreateRouterPage() {
   );
 
   useEffect(() => {
-    fetch(`${API_URL}/api/venues`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setVenues(d.venues.filter((v: Venue) => v.status === "active")))
+    api
+      .get<VenueList>("/api/venues")
+      .then((d) => setVenues(d.venues.filter((v) => v.status === "active")))
       .catch(() => toast.error("Failed to load venues"))
       .finally(() => setIsLoadingVenues(false));
   }, []);
@@ -104,37 +100,25 @@ export default function CreateRouterPage() {
     let createSuccess = false;
 
     try {
-      const body: Record<string, unknown> = {
+      const { router: saved } = await api.post<RouterResponse>("/api/routers", {
         venueId: formData.venueId,
         name: formData.name,
         ipAddress: formData.ipAddress,
         enableHotspot: true,
-      };
-      if (formData.hotspotInterface) body.hotspotInterface = formData.hotspotInterface.trim();
-      if (formData.ssid) body.ssid = formData.ssid.trim();
-      if (formData.networkRange) body.networkRange = formData.networkRange.trim();
-      if (formData.hotspotGatewayIp) body.hotspotGatewayIp = formData.hotspotGatewayIp;
-      if (formData.hotspotName) body.hotspotName = formData.hotspotName.trim();
-      if (formData.apiUsername) body.apiUsername = formData.apiUsername;
-      if (formData.apiPassword) body.apiPassword = formData.apiPassword;
-      if (formData.model) body.model = formData.model;
-
-      const res = await fetch(`${API_URL}/api/routers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
+        hotspotInterface: formData.hotspotInterface.trim() || null,
+        ssid: formData.ssid.trim() || null,
+        networkRange: formData.networkRange.trim() || null,
+        hotspotGatewayIp: formData.hotspotGatewayIp || null,
+        hotspotName: formData.hotspotName.trim() || null,
+        apiUsername: formData.apiUsername || null,
+        apiPassword: formData.apiPassword || null,
+        model: formData.model || null,
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create router");
-      }
-
-      toast.success("Router added successfully!");
+      toast.success("Router added. Now paste its script into the router.");
       setFormData(INITIAL_FORM);
       createSuccess = true;
-      setTimeout(() => router.push("/admin/routers"), 300);
+      setTimeout(() => router.push(`/admin/routers/${saved.id}/edit?bootstrap=1`), 300);
     } catch (err) {
       toast.error(errorMessage(err, "An error occurred"));
     } finally {
@@ -297,26 +281,14 @@ export default function CreateRouterPage() {
                 </div>
               </div>
 
-              <div className="rounded-md border border-dashed p-3 space-y-2">
-                <p className="text-sm font-medium">New or freshly reset router?</p>
-                <p className="text-xs text-muted-foreground">
-                  Generate the one-off script that puts these credentials, the LAN address, the
-                  bridge and the radio onto the router. It detects your board&apos;s wireless stack
-                  itself, so it works on any MikroTik.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBootstrapOpen(true)}
-                >
-                  <Terminal className="size-4" />
-                  Bootstrap script
-                </Button>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                New or freshly reset router? Save it, and HashiFi gives you the script to paste into
+                it, with its credentials and management tunnel.
+              </p>
 
               <RouterConnectionTest
                 values={{
+                  routerId: null,
                   ipAddress: formData.ipAddress,
                   apiUsername: formData.apiUsername,
                   apiPassword: formData.apiPassword,
@@ -462,22 +434,6 @@ export default function CreateRouterPage() {
           </div>
         </form>
       </div>
-
-      <RouterBootstrapDialog
-        open={bootstrapOpen}
-        onOpenChange={setBootstrapOpen}
-        defaults={{
-          routerName: formData.name,
-          ipAddress: formData.ipAddress,
-          apiUsername: formData.apiUsername,
-          apiPassword: formData.apiPassword,
-          // Customers see the SSID, so the venue name is the sensible default.
-          ssid:
-            formData.ssid || venues.find((v) => v.id === formData.venueId)?.name || formData.name,
-        }}
-        onPasswordGenerated={(pw) => handleInputChange("apiPassword", pw)}
-        onSsidChosen={(ssid) => handleInputChange("ssid", ssid)}
-      />
 
       <UnsavedChangesDialog open={showDialog} onLeave={confirmLeave} onStay={cancelLeave} />
     </>

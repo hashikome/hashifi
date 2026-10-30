@@ -186,7 +186,10 @@ describe("routers", () => {
       resolved: { apiPassword: string };
     };
     expect(second.resolved.apiPassword).toBe(script.resolved.apiPassword);
-    expect(routerOf(await c.request("GET", `/api/routers/${id}`)).hasApiPassword).toBe(true);
+    expect(routerOf(await c.request("GET", `/api/routers/${id}`))).toMatchObject({
+      hasApiPassword: true,
+      ssid: "Lobby",
+    });
   });
 
   test("a router that cannot be reached is a 502 naming why, within the connect timeout", async () => {

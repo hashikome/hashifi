@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProvisioningBacklog, RouterList, RouterRecord, RouterResponse } from "@hashifi/types";
 import {
   Activity,
   AlertTriangle,
@@ -31,12 +32,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { errorMessage } from "@/lib/errors";
 import { statusPill } from "@/lib/status-pill";
-import type { Router } from "@/lib/types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function formatUptime(seconds: number) {
   const days = Math.floor(seconds / 86400);
@@ -46,7 +45,7 @@ function formatUptime(seconds: number) {
   return `${hours}h ${minutes}m`;
 }
 
-function getStatusColor(status: Router["status"]) {
+function getStatusColor(status: RouterRecord["status"]) {
   switch (status) {
     case "online":
       return statusPill.success;
@@ -59,7 +58,7 @@ function getStatusColor(status: Router["status"]) {
   }
 }
 
-function getStatusLabel(status: Router["status"]) {
+function getStatusLabel(status: RouterRecord["status"]) {
   if (status === "error") return "disconnected";
   return status;
 }
@@ -67,7 +66,7 @@ function getStatusLabel(status: Router["status"]) {
 export default function RoutersPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [routers, setRouters] = useState<Router[]>([]);
+  const [routers, setRouters] = useState<RouterRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [routerToDelete, setRouterToDelete] = useState<string | null>(null);
@@ -82,13 +81,9 @@ export default function RoutersPage() {
   const handleSync = async (routerId: string, routerName: string) => {
     setSyncingId(routerId);
     try {
-      const res = await fetch(`${API_URL}/api/routers/${routerId}/sync`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Sync failed");
-      toast.success(`${routerName}: ${data.message}`);
+      const { router: synced } = await api.post<RouterResponse>(`/api/routers/${routerId}/sync`);
+      if (synced.status === "error") toast.error(`${routerName}: the sync failed`);
+      else toast.success(`${routerName}: synced`);
       fetchRouters();
     } catch (err) {
       toast.error(`${routerName}: ${errorMessage(err, "request failed")}`);
@@ -101,9 +96,7 @@ export default function RoutersPage() {
     if (showLoading) setIsLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch(`${API_URL}/api/routers`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch routers");
-      const data = await res.json();
+      const data = await api.get<RouterList>("/api/routers");
       setRouters(data.routers);
     } catch {
       // Recorded even on a background refresh — the empty state would otherwise claim there are
@@ -120,10 +113,7 @@ export default function RoutersPage() {
   // daemon retries these; this surfaces the ones it can't fix on its own.
   const fetchBacklog = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/routers/provisioning-backlog`, {
-        credentials: "include",
-      });
-      if (res.ok) setBacklog(await res.json());
+      setBacklog(await api.get<ProvisioningBacklog>("/api/routers/provisioning-backlog"));
     } catch {
       /* non-critical indicator */
     }
@@ -143,14 +133,7 @@ export default function RoutersPage() {
     if (!routerToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${API_URL}/api/routers/${routerToDelete}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete router");
-      }
+      await api.delete(`/api/routers/${routerToDelete}`);
       setRouters((prev) => prev.filter((r) => r.id !== routerToDelete));
       toast.success("Router deleted successfully");
     } catch (err) {

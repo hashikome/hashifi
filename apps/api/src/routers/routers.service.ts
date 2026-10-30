@@ -50,6 +50,7 @@ export const routerNotFound = () =>
 export interface ProbeResult {
   runId: string;
   profile: RouterProfile;
+  interfaces: ReturnType<typeof interfacesOf>;
   plan: HotspotPlan | null;
   planError: string | null;
   readiness: ReadinessReport | null;
@@ -196,12 +197,17 @@ export class RoutersService {
       apiPort: this.config.mikrotik.apiPort,
       tunnel,
     });
-    if (built.resolved.apiPassword !== stored) {
-      await this.db.router.update({
-        where: { id },
-        data: { apiPasswordEncrypted: this.access.sealPassword(built.resolved.apiPassword) },
-      });
-    }
+    // What went into the script goes on the router's record, so setup asserts the same SSID
+    // and reaches the router with the same password.
+    await this.db.router.update({
+      where: { id },
+      data: {
+        ssid: built.resolved.ssid,
+        ...(built.resolved.apiPassword === stored
+          ? {}
+          : { apiPasswordEncrypted: this.access.sealPassword(built.resolved.apiPassword) }),
+      },
+    });
     await this.record(staff, "router_bootstrap_generated", id, router.name, origin, {
       tunnel: tunnel !== null,
       passwordChanged: built.resolved.apiPassword !== stored,
@@ -259,16 +265,7 @@ export class RoutersService {
       wirelessStack: profile.wirelessStack,
       capabilities: profile.capabilities,
       compatibility: profile.compatibility,
-      interfaces: profile.interfaces.map((i) => ({
-        name: i.name,
-        type: i.type,
-        running: i.running,
-        disabled: i.disabled,
-        isRadio: isRadioInterfaceType(i.type),
-        addresses: profile.addresses
-          .filter((a) => a.interface === i.name && !a.disabled)
-          .map((a) => a.address),
-      })),
+      interfaces: interfacesOf(profile),
       plan,
       planError,
       management: managementIp,
@@ -301,7 +298,15 @@ export class RoutersService {
       managementIp,
       managementError,
     }).catch(() => null);
-    return { runId: logger.runId, profile, plan, planError, readiness, log: logger.events() };
+    return {
+      runId: logger.runId,
+      profile,
+      interfaces: interfacesOf(profile),
+      plan,
+      planError,
+      readiness,
+      log: logger.events(),
+    };
   }
 
   /**
@@ -445,6 +450,20 @@ export class RoutersService {
       details,
     });
   }
+}
+
+/** The router's interfaces, as the forms offer them for the hotspot. */
+function interfacesOf(profile: RouterProfile) {
+  return profile.interfaces.map((i) => ({
+    name: i.name,
+    type: i.type,
+    running: i.running,
+    disabled: i.disabled,
+    isRadio: isRadioInterfaceType(i.type),
+    addresses: profile.addresses
+      .filter((a) => a.interface === i.name && !a.disabled)
+      .map((a) => a.address),
+  }));
 }
 
 function planFor(router: Parameters<typeof buildHotspotPlan>[0], profile: RouterProfile) {

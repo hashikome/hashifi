@@ -5,8 +5,8 @@ import { useCallback, useState } from "react";
 import { ReadinessChecklist, type ReadinessReport } from "@/components/readiness-checklist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { api } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 
 export interface RouterInterfaceInfo {
   name: string;
@@ -18,8 +18,8 @@ export interface RouterInterfaceInfo {
 }
 
 export interface RouterTestValues {
-  /** Set on the edit form so a blank password means "use the stored one". */
-  routerId?: string;
+  /** Set on the edit form: a saved router is probed at its stored address, as saved. */
+  routerId: string | null;
   ipAddress: string;
   apiUsername: string;
   apiPassword: string;
@@ -59,11 +59,47 @@ interface TestResult {
   managementError?: string | null;
 }
 
+/** What probing a saved router returns. */
+interface ProbeResponse {
+  profile: {
+    boardName: string | null;
+    identity: string | null;
+    rosVersion: { raw: string };
+    architecture: string | null;
+    wirelessStack: string;
+    compatibility: { ok: boolean; reasons: string[]; warnings: string[] };
+  };
+  interfaces: RouterInterfaceInfo[];
+  plan: HotspotPlan | null;
+  planError: string | null;
+  readiness: ReadinessReport | null;
+}
+
+function probeResult(probe: ProbeResponse): TestResult {
+  const { profile } = probe;
+  return {
+    ok: true,
+    board: {
+      name: profile.boardName,
+      identity: profile.identity,
+      rosVersion: profile.rosVersion.raw,
+      architecture: profile.architecture,
+    },
+    wirelessStack: profile.wirelessStack,
+    compatibility: profile.compatibility,
+    interfaces: probe.interfaces,
+    plan: probe.plan,
+    planError: probe.planError,
+    readiness: probe.readiness,
+  };
+}
+
 /**
  * "Test connection" for the router create/edit forms.
  *
- * Reaches the router with the credentials currently typed in, before anything is saved,
- * and reports back what provisioning would find and decide — including the interfaces it
+ * On the create form it reaches the router with the credentials typed in; on the edit form it
+ * probes the saved router, so a stored password never goes to an address typed into a form.
+ * Either way it reports back what provisioning would find and decide — including the interfaces it
  * discovered, which the parent turns into pickable values for Hotspot Interface.
  */
 export function RouterConnectionTest({
@@ -77,33 +113,24 @@ export function RouterConnectionTest({
   const [result, setResult] = useState<TestResult | null>(null);
 
   const canTest =
-    values.ipAddress.trim() !== "" &&
-    (values.routerId
-      ? values.apiUsername.trim() !== "" || values.apiPassword !== ""
-      : values.apiUsername.trim() !== "" && values.apiPassword !== "");
+    values.routerId !== null ||
+    (values.ipAddress.trim() !== "" &&
+      values.apiUsername.trim() !== "" &&
+      values.apiPassword !== "");
 
   const runTest = useCallback(async () => {
     setBusy(true);
     setResult(null);
     try {
-      const res = await fetch(`${API_URL}/api/routers/test-connection`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(values),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setResult({ ok: false, error: data.error || "Could not test the connection" });
-        return;
-      }
+      const { routerId, ...form } = values;
+      const data =
+        routerId === null
+          ? await api.post<TestResult>("/api/routers/test-connection", form)
+          : probeResult(await api.post<ProbeResponse>(`/api/routers/${routerId}/probe`));
       setResult(data);
       if (data.ok && data.interfaces) onInterfacesFound?.(data.interfaces);
-    } catch {
-      setResult({
-        ok: false,
-        error: "Could not reach the billing backend to run the test.",
-      });
+    } catch (err) {
+      setResult({ ok: false, error: errorMessage(err, "Could not test the connection") });
     } finally {
       setBusy(false);
     }
@@ -120,7 +147,9 @@ export function RouterConnectionTest({
         </Button>
         <p className="text-xs text-muted-foreground">
           {canTest
-            ? "Reads the board read-only. Nothing is saved or written to the router."
+            ? values.routerId === null
+              ? "Reads the board read-only. Nothing is saved or written to the router."
+              : "Reads the board read-only, with the settings as last saved."
             : "Enter the IP address, API username and password to test."}
         </p>
       </div>

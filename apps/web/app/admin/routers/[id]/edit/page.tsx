@@ -1,5 +1,6 @@
 "use client";
 
+import type { RouterRecord, RouterResponse, VenueList, VenueRecord } from "@hashifi/types";
 import {
   AlertCircle,
   ArrowLeft,
@@ -32,11 +33,9 @@ import {
 } from "@/components/ui/select";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { ApiRequestError, api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
-import type { Venue } from "@/lib/types";
 import { hotspotRangeClashesWithIp } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface FormData {
   venueId: string;
@@ -74,7 +73,8 @@ export default function EditRouterPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const [venues, setVenues] = useState<Venue[]>([]);
+  const [venues, setVenues] = useState<VenueRecord[]>([]);
+  const [record, setRecord] = useState<RouterRecord | null>(null);
 
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [savedFormData, setSavedFormData] = useState<FormData>(EMPTY_FORM);
@@ -95,26 +95,22 @@ export default function EditRouterPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [routerRes, venuesRes] = await Promise.all([
-          fetch(`${API_URL}/api/routers/${id}`, { credentials: "include" }),
-          fetch(`${API_URL}/api/venues`, { credentials: "include" }),
+        const [{ router: r }, { venues: v }] = await Promise.all([
+          api.get<RouterResponse>(`/api/routers/${id}`),
+          api.get<VenueList>("/api/venues"),
         ]);
 
-        if (routerRes.status === 404) {
-          setNotFound(true);
-          return;
-        }
-        if (!routerRes.ok) throw new Error("Failed to fetch router");
-
-        const { router: r } = await routerRes.json();
-        const { venues: v } = venuesRes.ok ? await venuesRes.json() : { venues: [] };
-
         setVenues(v);
+        setRecord(r);
+        // Sent here straight after saving a new router.
+        if (new URLSearchParams(window.location.search).get("bootstrap") === "1") {
+          setBootstrapOpen(true);
+        }
 
         const loaded: FormData = {
-          venueId: r.venueId ?? "",
-          name: r.name ?? "",
-          ipAddress: r.ipAddress ?? "",
+          venueId: r.venueId,
+          name: r.name,
+          ipAddress: r.ipAddress,
           hotspotInterface: r.hotspotInterface ?? "",
           ssid: r.ssid ?? "",
           networkRange: r.networkRange ?? "",
@@ -126,8 +122,9 @@ export default function EditRouterPage() {
         };
         setFormData(loaded);
         setSavedFormData(loaded);
-      } catch {
-        toast.error("Failed to load router");
+      } catch (err) {
+        if (err instanceof ApiRequestError && err.status === 404) setNotFound(true);
+        else toast.error("Failed to load router");
       } finally {
         setIsLoading(false);
       }
@@ -145,33 +142,25 @@ export default function EditRouterPage() {
     let submitSuccess = false;
 
     try {
-      const body: Record<string, unknown> = {
-        venueId: formData.venueId,
+      if (!record) return;
+      // The whole router: fields this form does not show keep their saved values. An empty
+      // Hotspot Interface means "auto-detect the radio", and an empty password keeps the stored one.
+      await api.put(`/api/routers/${id}`, {
+        venueId: record.venueId,
         name: formData.name,
         ipAddress: formData.ipAddress,
-        // Sent as null when cleared — an empty Hotspot Interface means "auto-detect the
-        // radio", so blanking the field has to actually reach the database.
+        model: formData.model || null,
+        macAddress: record.macAddress,
+        apiUsername: formData.apiUsername || null,
+        apiPassword: formData.apiPassword || null,
+        enableHotspot: record.enableHotspot,
         hotspotInterface: formData.hotspotInterface.trim() || null,
         ssid: formData.ssid.trim() || null,
         networkRange: formData.networkRange.trim() || null,
         hotspotGatewayIp: formData.hotspotGatewayIp || null,
         hotspotName: formData.hotspotName.trim() || null,
-      };
-      if (formData.model) body.model = formData.model;
-      if (formData.apiUsername) body.apiUsername = formData.apiUsername;
-      if (formData.apiPassword) body.apiPassword = formData.apiPassword;
-
-      const res = await fetch(`${API_URL}/api/routers/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
+        provisioningCommand: record.provisioningCommand,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update router");
-      }
 
       const next = { ...formData, apiPassword: "" };
       setFormData(next);
@@ -515,17 +504,19 @@ export default function EditRouterPage() {
       <RouterBootstrapDialog
         open={bootstrapOpen}
         onOpenChange={setBootstrapOpen}
+        routerId={id}
         defaults={{
           routerName: formData.name,
           ipAddress: formData.ipAddress,
           apiUsername: formData.apiUsername,
-          apiPassword: formData.apiPassword,
           // Customers see the SSID, so the venue name is the sensible default.
           ssid:
             formData.ssid || venues.find((v) => v.id === formData.venueId)?.name || formData.name,
         }}
-        onPasswordGenerated={(pw) => handleInputChange("apiPassword", pw)}
-        onSsidChosen={(ssid) => handleInputChange("ssid", ssid)}
+        onSsidChosen={(ssid) => {
+          handleInputChange("ssid", ssid);
+          setSavedFormData((previous) => ({ ...previous, ssid }));
+        }}
       />
 
       <UnsavedChangesDialog open={showDialog} onLeave={confirmLeave} onStay={cancelLeave} />
