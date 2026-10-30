@@ -69,7 +69,6 @@ export function VoucherPreview({
                 <img src={LOGO_SRC} alt="HashiFi" className="size-12 shrink-0" />
                 <div className="min-w-0">
                   <p className="truncate text-base font-semibold">{portal.brandName}</p>
-                  <p className="truncate text-xs text-white/70">{portal.venueName}</p>
                 </div>
               </div>
               <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/10">

@@ -14,13 +14,13 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import type { VoucherPackageSummary } from "@/components/printable-voucher";
 import { PrintableVoucher } from "@/components/printable-voucher";
 import { Button } from "@/components/ui/button";
+import { API_URL, api } from "@/lib/api";
 import { initialPortalSettings } from "@/lib/portal-defaults";
 
 interface PrintRow extends PrintableVoucherRecord {
   pkg: VoucherPackageSummary;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 // The URL customers reach from the WiFi network — set NEXT_PUBLIC_PORTAL_URL in .env.local
 // to the backend's LAN address (e.g. http://192.168.1.15:8080).
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || API_URL;
@@ -36,16 +36,11 @@ function PrintVouchersContent() {
   // guest's credential and a URL ends up in history and logs.
   const fetchVouchers = useCallback(async (batch: string | null, ids: string | null) => {
     try {
-      const res = batch
-        ? await fetch(`${API_URL}/api/vouchers/batches/${batch}`, { credentials: "include" })
-        : await fetch(`${API_URL}/api/vouchers/print`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ ids: (ids ?? "").split(",").filter(Boolean) }),
+      const data = batch
+        ? await api.get<VoucherBatchDetail>(`/api/vouchers/batches/${batch}`)
+        : await api.post<PrintableVouchersResponse>("/api/vouchers/print", {
+            ids: (ids ?? "").split(",").filter(Boolean),
           });
-      if (!res.ok) throw new Error("Failed to fetch vouchers");
-      const data: VoucherBatchDetail | PrintableVouchersResponse = await res.json();
       setVouchers(
         data.vouchers.map((v) => ({
           ...v,
@@ -65,11 +60,8 @@ function PrintVouchersContent() {
 
   const fetchPortalSettings = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/portal`, { credentials: "include" });
-      if (res.ok) {
-        const data: PortalSettingsResponse = await res.json();
-        setPortalSettings(data.settings);
-      }
+      const data = await api.get<PortalSettingsResponse>("/api/portal");
+      setPortalSettings(data.settings);
     } catch {
       // Fall through: vouchers print with the default portal settings.
     }

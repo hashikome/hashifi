@@ -1,6 +1,6 @@
 "use client";
 
-import type { PackageList } from "@hashifi/types";
+import type { PackageList, PortalSettingsResponse } from "@hashifi/types";
 import {
   AlertCircle,
   Check,
@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { LOGO_SRC } from "@/lib/brand";
 import {
@@ -48,12 +49,23 @@ import {
   formatDuration,
 } from "@/lib/duration";
 import { errorMessage } from "@/lib/errors";
-import type { Package } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const PORTAL_LOGIN_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login";
 const BRAND_PLACEHOLDER = "Your brand name";
+
+/** A package as this page's previews draw it. */
+type Package = {
+  id: string;
+  name: string;
+  speed: number;
+  dataLimit: number;
+  duration: number;
+  price: number;
+  description: string;
+  features: string[];
+  isActive: boolean;
+};
 
 type PortalForm = {
   brandName: string;
@@ -119,14 +131,12 @@ export default function PortalPage() {
     async function load() {
       setIsLoading(true);
       try {
-        const [portalRes, pkgRes] = await Promise.all([
-          fetch(`${API_URL}/api/portal`, { credentials: "include" }),
-          fetch(`${API_URL}/api/packages`, { credentials: "include" }),
+        const [{ settings: s }, data] = await Promise.all([
+          api.get<PortalSettingsResponse>("/api/portal"),
+          api.get<PackageList>("/api/packages"),
         ]);
 
-        if (!cancelled && portalRes.ok) {
-          const data = await portalRes.json();
-          const s = data.settings;
+        if (!cancelled) {
           const loaded: PortalForm = {
             brandName: s.brandName,
             headline: s.headline,
@@ -146,10 +156,8 @@ export default function PortalPage() {
           setPortal(loaded);
           setSavedPortal(loaded);
         }
-        // 404 → no settings yet, use DEFAULT_FORM
 
-        if (!cancelled && pkgRes.ok) {
-          const data: PackageList = await pkgRes.json();
+        if (!cancelled) {
           const mapped: Package[] = data.packages
             .filter((p) => p.isActive)
             .map((p) => ({
@@ -199,16 +207,7 @@ export default function PortalPage() {
 
     setIsSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/portal`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(portal),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Failed to save");
-      }
+      await api.put("/api/portal", portal);
       setSavedPortal(portal);
       toast.success("Portal settings saved");
     } catch (err) {

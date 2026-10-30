@@ -1,6 +1,13 @@
 "use client";
 
-import type { PackageList, PackageRecord, VoucherBatchDetail } from "@hashifi/types";
+import type {
+  PackageRecord,
+  PortalSettingsResponse,
+  VenueList,
+  VenuePackages,
+  VenueRecord,
+  VoucherBatchDetail,
+} from "@hashifi/types";
 import {
   AlertCircle,
   ArrowLeft,
@@ -37,10 +44,10 @@ import {
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import { VoucherPreview } from "@/components/voucher-preview";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatDuration } from "@/lib/duration";
 import { errorMessage } from "@/lib/errors";
-import type { Venue } from "@/lib/types";
 
 /** An active package offered for a voucher batch. */
 interface PackageOption extends PackageRecord {
@@ -48,8 +55,6 @@ interface PackageOption extends PackageRecord {
   duration: number;
   dataLimit: number;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 const FORM_DEFAULTS = {
   venueId: "",
@@ -78,67 +83,47 @@ export default function CreateVoucherPage() {
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [packages, setPackages] = useState<PackageOption[]>([]);
-  const [venues, setVenues] = useState<Venue[]>([]);
+  const [venues, setVenues] = useState<VenueRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadPackages = useCallback(
-    async (venueId?: string) => {
-      const url =
-        venueId && user?.role === "manager"
-          ? `${API_URL}/api/packages?venueId=${venueId}`
-          : `${API_URL}/api/packages`;
-      const pkgRes = await fetch(url, { credentials: "include" });
-      if (!pkgRes.ok) throw new Error("Failed to fetch packages");
-      const data: PackageList = await pkgRes.json();
-      setPackages(
-        data.packages
-          .filter((pkg) => pkg.isActive)
-          .map((p) => ({
-            ...p,
-            price: p.priceTsh,
-            duration: p.durationMinutes,
-            dataLimit: p.dataLimitGb ?? -1,
-          })),
-      );
-    },
-    [user?.role],
-  );
+  // What the chosen venue sells: the API's rule, and the only packages a batch can use.
+  const loadPackages = useCallback(async (venueId: string | null) => {
+    if (venueId === null) {
+      setPackages([]);
+      return;
+    }
+    const data = await api.get<VenuePackages>(`/api/venues/${venueId}/packages`);
+    setPackages(
+      data.packages.map((p) => ({
+        ...p,
+        price: p.priceTsh,
+        duration: p.durationMinutes,
+        dataLimit: p.dataLimitGb ?? -1,
+      })),
+    );
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [portalRes, venuesRes] = await Promise.all([
-          fetch(`${API_URL}/api/portal`, { credentials: "include" }),
-          fetch(`${API_URL}/api/venues`, { credentials: "include" }),
+        const [{ settings }, { venues: allVenues }] = await Promise.all([
+          api.get<PortalSettingsResponse>("/api/portal"),
+          api.get<VenueList>("/api/venues"),
         ]);
 
-        let prefix = FORM_DEFAULTS.prefix;
-        if (portalRes.ok) {
-          const portalData = await portalRes.json();
-          if (portalData.settings?.voucherPrefix) {
-            prefix = portalData.settings.voucherPrefix;
-          }
-        }
-
-        const loaded = { ...FORM_DEFAULTS, prefix };
+        const loaded = { ...FORM_DEFAULTS, prefix: settings.voucherPrefix };
         setFormData(loaded);
         setBaseline(loaded);
 
-        let loadedVenues: Venue[] = [];
-        if (venuesRes.ok) {
-          const venuesData = await venuesRes.json();
-          loadedVenues = venuesData.venues.filter((v: Venue) => v.status === "active");
-          setVenues(loadedVenues);
-        }
+        const loadedVenues = allVenues.filter((v) => v.status === "active");
+        setVenues(loadedVenues);
 
         // For managers with exactly one venue, auto-select it and load its packages immediately
-        if (user?.role === "manager" && loadedVenues.length === 1) {
-          const autoVenueId = loadedVenues[0].id;
-          setFormData((prev) => ({ ...prev, venueId: autoVenueId }));
-          setBaseline((prev) => ({ ...prev, venueId: autoVenueId }));
-          await loadPackages(autoVenueId);
-        } else {
-          await loadPackages();
+        const onlyVenue = loadedVenues.length === 1 ? (loadedVenues[0] ?? null) : null;
+        if (user?.role === "manager" && onlyVenue !== null) {
+          setFormData((prev) => ({ ...prev, venueId: onlyVenue.id }));
+          setBaseline((prev) => ({ ...prev, venueId: onlyVenue.id }));
+          await loadPackages(onlyVenue.id);
         }
       } catch (err) {
         console.error(err);
@@ -194,25 +179,13 @@ export default function CreateVoucherPage() {
 
     setIsGenerating(true);
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/batches`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          packageId: formData.packageId,
-          quantity: parseInt(formData.quantity, 10),
-          prefix: formData.prefix.trim().toUpperCase() || FORM_DEFAULTS.prefix,
-          expiryDays: parseInt(formData.expiryDays, 10) || null,
-          venueId: formData.venueId,
-        }),
+      const data = await api.post<VoucherBatchDetail>("/api/vouchers/batches", {
+        packageId: formData.packageId,
+        quantity: parseInt(formData.quantity, 10),
+        prefix: formData.prefix.trim().toUpperCase() || null,
+        expiryDays: parseInt(formData.expiryDays, 10) || null,
+        venueId: formData.venueId,
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to generate vouchers");
-      }
-
-      const data: VoucherBatchDetail = await res.json();
       setGeneratedCodes(data.vouchers.map((v) => v.code));
       setBatchId(data.batch.id);
       const next = { ...FORM_DEFAULTS, prefix: data.batch.prefix };
@@ -334,11 +307,9 @@ export default function CreateVoucherPage() {
                         value={formData.venueId}
                         onValueChange={async (v) => {
                           handleInputChange("venueId", v);
-                          // Reset package selection and reload packages scoped to the new venue for managers
+                          // A batch can only use what this venue sells.
                           handleInputChange("packageId", "");
-                          if (user?.role === "manager") {
-                            await loadPackages(v);
-                          }
+                          await loadPackages(v);
                         }}
                         required
                       >

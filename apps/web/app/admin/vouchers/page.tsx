@@ -50,6 +50,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { API_URL, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatDuration } from "@/lib/duration";
 import { statusPill } from "@/lib/status-pill";
@@ -63,7 +64,6 @@ interface VoucherRow extends VoucherListItem {
   dataUsed: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 // NEXT_PUBLIC_PORTAL_URL must be set to the IP/hostname users reach from the WiFi
 // network (e.g. http://192.168.1.15:8080). QR codes encode this URL so scanning
 // them opens the portal login with the voucher code pre-filled.
@@ -131,11 +131,7 @@ export default function VouchersPage() {
   const fetchVouchers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/vouchers`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch vouchers");
-      const data: VoucherList = await res.json();
+      const data = await api.get<VoucherList>("/api/vouchers");
       setVouchers(
         data.vouchers.map((v) => ({
           ...v,
@@ -214,14 +210,7 @@ export default function VouchersPage() {
     setIsDeleting(true);
     const ids = deleteId ? [deleteId] : selectedIds;
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/revoke`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to revoke vouchers");
-      const { revoked }: RevokeResult = await res.json();
+      const { revoked } = await api.post<RevokeResult>("/api/vouchers/revoke", { ids });
       if (revoked < ids.length) {
         toast.info(`${revoked} revoked. Only unused vouchers can be revoked.`);
       } else {
