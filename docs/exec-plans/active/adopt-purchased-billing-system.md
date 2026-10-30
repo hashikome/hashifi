@@ -77,7 +77,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     helpers (`src/analytics/`); an idempotent invented seed.
   - The purchased Express app is removed; M4 ports each route from the import commit
     (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
-- [ ] M4 NestJS API.
+- [x] (2026-10-30) M4 NestJS API, with the admin web on it.
   - [x] (2026-10-29) Schema: Better Auth's tables, `staff` sharing the user's id, `devices`
     (`2602b08`); a per-person sign-in code budget table.
   - [x] (2026-10-29) Sign-in (ADR-0007), `src/auth/`: Better Auth 1.7.14 mounted at
@@ -258,24 +258,20 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     `twoFactorEnrollmentRequired`. `PUT /api/me` changes one's own name. Checked in headless
     Chrome: an admin held at setup, enrolled, reaching `/admin`; a second browser asked for both
     codes; no API errors but the 401 from `/api/me` before signing in.
-  - [ ] Still in M4: the rest of the web pass (one client module on
-    `@hashifi/types`, sign-in on Better Auth, and every page on the routes above). Notes for
-    what remains:
-    - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
-      their own checks; the router sim's guest test runs once they are ported.
-    - The live-view gateway authenticates the upgrade request itself (session cookie, active
-      staff); guards do not run on connect, and the global guard must branch on
-      `context.getType()` if it runs on gateway messages.
-    - The web reads sign-in state from `/api/me`, not `get-session` (which still answers for
-      someone suspended after signing in). The Team page deletes a suspended person's
-      sessions, and resets a lost authenticator with a server-side admin action.
-    - Uploads, and the web's client module on `@hashifi/types`. The web then follows the API:
-      errors are `message` (not `error`), updates are `PUT`, and router onboarding saves the
-      router before showing its bootstrap script (the create form opens the dialog first
-      today). The provisioning report types move into `@hashifi/types` with it.
-    - Not yet: refusing a second setup while one runs needs a staleness rule, since a crash
-      would otherwise leave a router `provisioning` for good.
-- [ ] M5 Captive portal in the web, and the security pass.
+  - [x] (2026-10-30) Web pass, the rest: every admin page reads `@hashifi/types` through
+    `lib/api.ts`, and the hand-written `lib/types.ts` is gone. Saving a router now comes before
+    its script; a venue save leaves its operator alone; package and router edits send the
+    whole record, keeping what the form does not show; Payments is removed until M6 gives it an
+    API. Checked in headless Chrome against the real API and database: all sixteen admin pages
+    load with no API or console errors; a router saved and its script generated; a batch of
+    three made and printed by batch id; the portal saved; a manager added, signing in, seeing
+    their venue and sent away from Team.
+    Left for later, in `docs/backlog/technical-debt.md`: the provisioning report types are still
+    copied in `provision-dialog.tsx`; a second setup on a busy router is not refused.
+- [ ] M5 Captive portal in the web, and the security pass. Carried from M4: endpoints the
+  router or a guest calls are `@Public()` with their own checks, and the sim's guest test runs
+  on them; the portal refuses a blocked device; printed QR codes carry the voucher code in
+  a URL (`?code=`), which the portal must take without logging or keeping it.
 - [ ] M6 Mobile-money payments (Snippe) and customers.
 - [ ] M7 Release pipeline and deployment.
 - [ ] M8 Live acceptance on a physical router: a mobile-money purchase and a printed voucher.

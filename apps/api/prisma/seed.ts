@@ -28,7 +28,7 @@ const venue =
   }));
 
 const PACKAGES = [
-  { name: "1 Hour", durationMinutes: 60, downloadSpeedMbps: 5, priceTsh: "500" },
+  { name: "1 Hour", durationMinutes: 60, downloadSpeedMbps: 5, priceTsh: "1000" },
   { name: "1 Day", durationMinutes: 1440, downloadSpeedMbps: 10, priceTsh: "1500" },
   {
     name: "1 Week",

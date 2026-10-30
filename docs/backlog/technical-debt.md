@@ -4,6 +4,5 @@ Accepted compromises: what was accepted, why, and what would retire it.
 
 | Item | Why accepted | Retired by |
 | --- | --- | --- |
-| `apps/web/lib/types.ts` is a hand-written, partly stale copy of API shapes (`Venue`, `Router`, `WifiUser`, `ActiveSession`) | The real contract is defined with the NestJS DTOs | M4: `@hashifi/types` covers every response; the file is deleted |
-| Each admin page calls `fetch` with its own URL fallback | Replaced with the contract | M4: one API client module |
-| The web is not served against the new API | The API's HTTP surface is the health endpoints until M4 | M4 |
+| The provisioning reports (`SetupReport`, `ProvisionReport`, readiness) are copied by hand in `provision-dialog.tsx`, `readiness-checklist.tsx` and `router-connection-test.tsx` | They are large internal shapes that change with provisioning | Moving them into `@hashifi/types` |
+| A second setup or provision on a router already running one is not refused | Claiming the `provisioning` status needs a staleness rule, or a crash leaves the router stuck | A run lease with an expiry |

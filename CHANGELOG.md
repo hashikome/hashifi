@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The admin web runs on the new API: staff sign in with an email code and, for admins, an
+  authenticator app set up on a new page. Adding a router now saves it first, then gives its
+  script. Payments is removed from the admin until payments arrive (M6).
+- Fixed: saving a venue could have unassigned its manager, and editing a package would have
+  reactivated it and reset its device limit.
+
 - The live view through the NestJS API: routers' connected guests and provisioning transcripts
   pushed to signed-in staff, each manager seeing their own venues.
 - Fixed: the live socket accepted anyone and sent them every venue's guests and every

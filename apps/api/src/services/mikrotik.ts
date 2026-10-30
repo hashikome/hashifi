@@ -1,6 +1,9 @@
+import { getLogger } from "@logtape/logtape";
 import { RouterOSAPI } from "routeros";
 import { minutesToRosUptime } from "../utils/duration.js";
 import { toRows } from "./router-provision/ros-client.js";
+
+const logger = getLogger(["hashifi", "router"]);
 
 export type MikroTikConn = RouterOSAPI;
 
@@ -264,10 +267,9 @@ export async function createHotspotUser(
     const optional = params.filter((p) => OPTIONAL_PARAM_PREFIXES.some((x) => p.startsWith(x)));
 
     if (msg.includes("unknown parameter") && optional.length > 0) {
-      console.warn(
-        `[MikroTik] Router rejected ${optional.map((p) => p.split("=")[1]).join(", ")} — ` +
-          `retrying without. Probe this router to avoid the extra round-trip.`,
-      );
+      logger.warn("Router rejected {fields}; retrying without them", {
+        fields: optional.map((p) => p.split("=")[1]).join(", "),
+      });
       await conn.write(
         "/ip/hotspot/user/add",
         params.filter((p) => !OPTIONAL_PARAM_PREFIXES.some((x) => p.startsWith(x))),
