@@ -89,6 +89,9 @@ function simDatabaseUrl(): string {
     : `postgresql://hashifi:hashifi@127.0.0.1:5437/${SIM_DATABASE}`;
 }
 const API_PORT = 8728;
+/** The guest VM, fixed by a static lease while the demo runs. */
+const GUEST_MAC = "52:54:00:4A:00:10";
+const GUEST_IP = "10.5.50.254";
 
 /**
  * The management tunnel. The hub container stands in for the platform: the router dials it at
@@ -890,24 +893,39 @@ async function demo(): Promise<void> {
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 
-  // The router forgets a host idle for 5 minutes, and a real phone is never that quiet.
-  const shell = await GuestShell.open();
-  await shell.run("ip link set eth0 up; udhcpc -i eth0 -n -q -t 4 -T 2 2>&1 | tail -1", 30_000);
-  await shell.run(
-    "(while :; do wget -q -T 5 -O /dev/null http://example.com/; sleep 60; done) >/dev/null 2>&1 & true",
-  );
-  shell.close();
-  await Bun.sleep(3_000);
-
+  // The guest link names the device, so its address must not move while the demo runs.
   const creds = services.access.credentials(services.router);
   if (!creds) throw new Error("The sim router has no usable credentials");
   const conn = await connectToRouter(creds);
-  const [host] = toRows(await conn.write("/ip/hotspot/host/print"));
+  const leases = "/ip/dhcp-server/lease";
+  for (const lease of toRows(await conn.write(`${leases}/print`, [`?mac-address=${GUEST_MAC}`]))) {
+    await conn.write(`${leases}/remove`, [`=.id=${lease.get(".id") ?? ""}`]);
+  }
+  await conn.write(`${leases}/add`, [
+    `=mac-address=${GUEST_MAC}`,
+    `=address=${GUEST_IP}`,
+    "=server=wbs-hs-dhcp",
+  ]);
+
+  // The router forgets a host idle for 5 minutes, and a real phone is never that quiet.
+  const shell = await GuestShell.open();
+  await shell.run(
+    "ip link set eth0 up; ip addr flush dev eth0; udhcpc -i eth0 -n -q -t 4 -T 2 2>&1 | tail -1",
+    30_000,
+  );
+  await shell.run(
+    "kill $(cat /tmp/keepalive 2>/dev/null) 2>/dev/null; " +
+      "(while :; do wget -q -T 5 -O /dev/null http://example.com/; sleep 60; done) >/dev/null 2>&1 & " +
+      "echo $! > /tmp/keepalive",
+  );
+  shell.close();
+  await Bun.sleep(3_000);
   await closeConnection(conn);
+
   const fragment = new URLSearchParams({
     router: services.router.id,
-    mac: host?.get("mac-address") ?? "",
-    ip: host?.get("address") ?? "",
+    mac: GUEST_MAC,
+    ip: GUEST_IP,
     "link-orig": "https://example.com/",
   });
   console.log(`
