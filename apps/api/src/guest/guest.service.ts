@@ -9,12 +9,12 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type { z } from "zod";
+import { BrandService } from "../brand/brand.service.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { Router, Voucher } from "../generated/prisma/client.js";
 import { apiError } from "../http/error-envelope.js";
 import { enrichWideEvent } from "../observability/wide-event.js";
 import { PackagesService } from "../packages/packages.service.js";
-import { PortalService } from "../portal/portal.service.js";
 import { bytes } from "../serializers/records.js";
 import { describeFailures, outcomeOk, RouterSync } from "../services/router-sync.js";
 import { countFailure, isLimited } from "./attempts.js";
@@ -51,14 +51,14 @@ export class GuestService {
   constructor(
     private readonly db: PrismaService,
     private readonly sync: RouterSync,
-    private readonly portal: PortalService,
+    private readonly brand: BrandService,
     private readonly packages: PackagesService,
   ) {}
 
   async context(input: z.infer<typeof contextInput>): Promise<GuestContext> {
     const router = await this.routerOf(input.router);
     const [settings, sold, venue] = await Promise.all([
-      this.portal.get(),
+      this.brand.resolve(router.venueId),
       this.packages.onSaleAt(router.venueId),
       this.db.venue.findUniqueOrThrow({ where: { id: router.venueId } }),
     ]);
@@ -71,11 +71,12 @@ export class GuestService {
         primaryColor: settings.primaryColor,
         accentColor: settings.accentColor,
         backgroundColor: settings.backgroundColor,
-        backgroundStyle: settings.backgroundStyle,
         radius: settings.radius,
         voucherLabel: settings.voucherLabel,
         voucherHelp: settings.voucherHelp,
         requireTerms: settings.requireTerms,
+        logoUrl: settings.logoUrl,
+        backgroundUrl: settings.backgroundUrl,
       },
       packages: sold.map((p) => ({
         id: p.id,
@@ -154,6 +155,11 @@ export class GuestService {
     });
     const { expiresAt } = await this.db.voucher.findUniqueOrThrow({ where: { id: voucher.id } });
     return { dst: safeDestination(input.linkOrig), expiresAt: expiresAt?.toISOString() ?? null };
+  }
+
+  /** An uploaded image, for the portal page. Null when there is none by that name. */
+  image(venueId: string, file: string): Promise<Uint8Array | null> {
+    return this.brand.image(venueId, file);
   }
 
   /**

@@ -19,8 +19,6 @@ export type VoucherStatus =
 
 export type PackageType = "hotspot" | "home" | "business" | "premium";
 
-export type PortalBackgroundStyle = "solid" | "soft" | "split";
-
 export interface PackageRecord {
   id: string;
   name: string;
@@ -129,7 +127,6 @@ export interface PortalSettingsRecord {
   primaryColor: string;
   accentColor: string;
   backgroundColor: string;
-  backgroundStyle: PortalBackgroundStyle;
   radius: number;
   voucherLabel: string;
   voucherPrefix: string;
@@ -140,6 +137,20 @@ export interface PortalSettingsRecord {
   isActive: boolean;
   /** When an admin last saved it; null while the defaults apply. */
   updatedAt: Timestamp | null;
+}
+
+/** What a venue shows: its own branding, or the HashiFi default. */
+export interface BrandRecord extends PortalSettingsRecord {
+  /** Served from the portal's own origin; null shows HashiFi's logo. */
+  logoUrl: string | null;
+  backgroundUrl: string | null;
+}
+
+/** `GET`, `PUT` and `DELETE /api/venues/:id/brand`. */
+export interface VenueBrandResponse {
+  brand: BrandRecord;
+  /** False while the venue shows the HashiFi default. */
+  isCustom: boolean;
 }
 
 /** `POST /api/vouchers/print`: chosen vouchers with what their cards show. */
@@ -592,18 +603,19 @@ export type LiveMessage =
 export interface GuestContext {
   venueName: string;
   settings: Pick<
-    PortalSettingsRecord,
+    BrandRecord,
     | "brandName"
     | "headline"
     | "message"
     | "primaryColor"
     | "accentColor"
     | "backgroundColor"
-    | "backgroundStyle"
     | "radius"
     | "voucherLabel"
     | "voucherHelp"
     | "requireTerms"
+    | "logoUrl"
+    | "backgroundUrl"
   >;
   /** What this venue sells, for reading; buying arrives with payments. */
   packages: {
@@ -614,7 +626,6 @@ export interface GuestContext {
     downloadSpeedMbps: number;
     dataLimitGb: number | null;
   }[];
-  /** The router's own login page, checked against this router. */
 }
 
 /** `POST /api/guest/redeem`: the router reports the device online on this voucher. */

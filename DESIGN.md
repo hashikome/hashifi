@@ -40,8 +40,9 @@ Role names are the shadcn tokens the components use.
 Status pills are a pale wash with dark text of the same hue (`lib/status-pill.ts`): teal, amber, red
 and neutral grey. Amber and red are the only other hues; neither is decoration.
 
-The guest portal's colours are venue settings, with defaults of `#0F766E` on a `#134E4A` field. Its
-text colours are computed from them, so any choice stays readable.
+Each venue can set its own colours, logo and background (ADR-0009), with HashiFi's defaults of
+`#0F766E` on a `#134E4A` field. Text colours are computed from them, so any choice stays readable,
+and a background photo sits under a 55% black scrim.
 
 ## Typography
 

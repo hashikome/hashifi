@@ -3,6 +3,7 @@ import { ConflictException, Injectable, NotFoundException } from "@nestjs/common
 import { AuditLog } from "../audit/audit-log.js";
 import type { StaffPrincipal } from "../auth/staff-guard.js";
 import { venueScope } from "../auth/venue-scope.js";
+import { BrandService } from "../brand/brand.service.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { apiError } from "../http/error-envelope.js";
 import { venueRecord } from "../serializers/records.js";
@@ -22,6 +23,7 @@ export class VenuesService {
   constructor(
     private readonly db: PrismaService,
     private readonly audit: AuditLog,
+    private readonly brand: BrandService,
   ) {}
 
   /** Newest first, each with its number of routers. */
@@ -80,6 +82,7 @@ export class VenuesService {
         apiError("VENUE_HAS_ROUTERS", "Remove this venue's routers before deleting it."),
       );
     }
+    await this.brand.forget(id);
     await this.db.venue.delete({ where: { id } });
     await this.record(staff, "venue_deleted", id, venue.name, origin);
   }

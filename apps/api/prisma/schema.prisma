@@ -105,14 +105,6 @@ enum PaymentProvider {
   @@map("payment_provider")
 }
 
-enum PortalBackgroundStyle {
-  solid
-  soft
-  split
-
-  @@map("portal_background_style")
-}
-
 enum ThemePreference {
   light
   dark
@@ -300,6 +292,7 @@ model Venue {
   operator       Staff?           @relation(fields: [operatorId], references: [id], onDelete: SetNull)
   routers        Router[]
   packages       VenuePackage[]
+  brand          VenueBrand?
   voucherBatches VoucherBatch[]
   vouchers       Voucher[]
   payments       Payment[]
@@ -610,7 +603,6 @@ model PortalSetting {
   primaryColor    String                @map("primary_color") @db.VarChar(16)
   accentColor     String                @map("accent_color") @db.VarChar(16)
   backgroundColor String                @map("background_color") @db.VarChar(16)
-  backgroundStyle PortalBackgroundStyle @default(soft) @map("background_style")
   radius          Int                   @default(18)
   voucherLabel    String                @map("voucher_label") @db.VarChar(100)
   /// Upper-case (CHECK), as voucher codes are.
@@ -624,6 +616,33 @@ model PortalSetting {
   updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("portal_settings")
+}
+
+/// A venue's own branding. No row means the HashiFi default (`portal_settings`).
+model VenueBrand {
+  venueId         String   @id @map("venue_id") @db.Uuid
+  brandName       String   @map("brand_name") @db.VarChar(160)
+  headline        String   @db.VarChar(180)
+  message         String
+  primaryColor    String   @map("primary_color") @db.VarChar(16)
+  accentColor     String   @map("accent_color") @db.VarChar(16)
+  backgroundColor String   @map("background_color") @db.VarChar(16)
+  radius          Int      @default(18)
+  voucherLabel    String   @map("voucher_label") @db.VarChar(100)
+  voucherPrefix   String   @map("voucher_prefix") @db.VarChar(12)
+  voucherHelp     String   @map("voucher_help")
+  ticketTitle     String   @map("ticket_title") @db.VarChar(160)
+  ticketFooter    String   @map("ticket_footer") @db.VarChar(255)
+  requireTerms    Boolean  @default(true) @map("require_terms")
+  /// Keys in the brand store; the files themselves never enter this database.
+  logoKey         String?  @map("logo_key") @db.VarChar(120)
+  backgroundKey   String?  @map("background_key") @db.VarChar(120)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@map("venue_brands")
 }
 
 model DailyUsageStat {

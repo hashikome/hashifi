@@ -10,6 +10,7 @@ import type { z } from "zod";
 import { AuditLog } from "../audit/audit-log.js";
 import type { StaffPrincipal } from "../auth/staff-guard.js";
 import { venueScope } from "../auth/venue-scope.js";
+import { BrandService } from "../brand/brand.service.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { Prisma, type Voucher } from "../generated/prisma/client.js";
 import type { VoucherWhereInput } from "../generated/prisma/models.js";
@@ -49,6 +50,7 @@ export class VouchersService {
     private readonly audit: AuditLog,
     private readonly sync: RouterSync,
     private readonly packages: PackagesService,
+    private readonly brand: BrandService,
   ) {}
 
   async list(staff: StaffPrincipal, query: z.infer<typeof listQuery>): Promise<VoucherList> {
@@ -134,7 +136,7 @@ export class VouchersService {
         }),
       );
     }
-    const prefix = input.prefix ?? (await this.portalPrefix());
+    const prefix = input.prefix ?? (await this.brand.resolve(input.venueId)).voucherPrefix;
     const expiresAt =
       input.expiryDays === null ? null : new Date(Date.now() + input.expiryDays * DAY_MS);
 
@@ -245,12 +247,6 @@ export class VouchersService {
       }
     }
     throw new Error("Could not insert a voucher batch with unique codes");
-  }
-
-  /** The default prefix for new batches: the portal's, as its preview shows. */
-  private async portalPrefix(): Promise<string> {
-    const settings = await this.db.portalSetting.findFirst({ select: { voucherPrefix: true } });
-    return settings?.voucherPrefix ?? "WIFI";
   }
 
   private async batchRecord(row: BatchRow): Promise<VoucherBatchRecord> {

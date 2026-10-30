@@ -279,6 +279,11 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   `router-sim guest-test` 14/14 through the real API, sign-in back 48 s after an unblock; the page
   in headless Chrome at phone width, wrong code, handoff to the router page and its POST,
   a scanned card going round, a hostile `link-orig` inert, nothing fetched from another host.
+- [x] (2026-10-31) Venue branding, ahead of M6 (ADR-0009): `venue_brands`, images in R2 or on disk
+  in development, served from the portal's origin, the real portal as the Portal Pages preview,
+  and printed cards and prefixes by venue. `backgroundStyle` is dropped.
+  Acceptance: `brand.integration.test.ts`, `brand-store.test.ts`, and a browser walk of upload,
+  preview, guest page and printed card. Not done: nothing has run against real R2 (no key yet).
 - [x] (2026-10-30) Sign-in moved to the API, closing M5's open findings. The hotspot is
   `login-by=mac-cookie` alone, and `/ip hotspot active login` is probed and required. No response
   or router page holds a code; `link-login`, the router's login form and `alogin.html` are gone.
@@ -489,6 +494,10 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Date/Author: 2026-10-28 / Paul
 - Decision: the repository goes public when HashiFi is ready to deploy, not when M5 lands.
   Date/Author: 2026-10-30 / Paul
+- Decision: venues brand themselves, with images in R2 (ADR-0009). This supersedes "no uploaded
+  branding" below: Paul reversed it on seeing Portal Pages, because a guest should see the venue,
+  not HashiFi. No logo or background returns to PostgreSQL.
+  Date/Author: 2026-10-31 / Paul, Claude
 - Decision: the API alone signs devices in, and the router accepts no login from the network,
   instead of adding CHAP to the router's login. CHAP would leave the router taking guesses, and a
   captured exchange could be brute forced offline; this closes both open findings

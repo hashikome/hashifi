@@ -1,6 +1,7 @@
 import { type DynamicModule, Module } from "@nestjs/common";
 import { AnalyticsModule } from "./analytics/analytics.module.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { BrandModule } from "./brand/brand.module.js";
 import type { AppConfig } from "./config/config.js";
 import { configModule } from "./config/config.module.js";
 import { DatabaseModule } from "./database/database.module.js";
@@ -32,6 +33,7 @@ export function appModule(config: AppConfig, email: EmailSender | null): Dynamic
       SessionsModule,
       AnalyticsModule,
       PortalModule,
+      BrandModule,
       TeamModule,
       GuestModule,
     ],

@@ -1,5 +1,11 @@
 import { type DynamicModule, Global, Module } from "@nestjs/common";
 import {
+  BRAND_STORE,
+  type BrandStore,
+  DiskBrandStore,
+  R2BrandStore,
+} from "../brand/brand-store.js";
+import {
   EMAIL_SENDER,
   type EmailSender,
   OutboxEmailSender,
@@ -20,9 +26,15 @@ export function configModule(config: AppConfig, email: EmailSender | null): Dyna
     providers: [
       { provide: APP_CONFIG, useValue: config },
       { provide: EMAIL_SENDER, useValue: email ?? emailSenderFor(config) },
+      { provide: BRAND_STORE, useValue: brandStoreFor(config) },
     ],
-    exports: [APP_CONFIG, EMAIL_SENDER],
+    exports: [APP_CONFIG, EMAIL_SENDER, BRAND_STORE],
   };
+}
+
+function brandStoreFor(config: AppConfig): BrandStore {
+  const { r2, storeDir } = config.brand;
+  return r2 === null ? new DiskBrandStore(storeDir) : new R2BrandStore(r2);
 }
 
 function emailSenderFor(config: AppConfig): EmailSender {

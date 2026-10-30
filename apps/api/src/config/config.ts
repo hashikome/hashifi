@@ -31,6 +31,11 @@ export interface AppConfig {
     from: string;
     outboxDir: string;
   };
+  brand: {
+    /** Cloudflare R2; required in production. Unset elsewhere, images go to `storeDir`. */
+    r2: { endpoint: string; bucket: string; accessKeyId: string; secretAccessKey: string } | null;
+    storeDir: string;
+  };
   mikrotik: {
     apiPort: number;
     connectTimeoutSeconds: number;
@@ -63,6 +68,7 @@ const url = z.url({ protocol: /^https?$/ });
 
 /** `data/email/` at the repository root (git-ignored), wherever the API is started from. */
 const DEFAULT_OUTBOX_DIR = fileURLToPath(new URL("../../../../data/email/", import.meta.url));
+const DEFAULT_BRAND_DIR = fileURLToPath(new URL("../../../../data/brand/", import.meta.url));
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -78,6 +84,11 @@ const schema = z.object({
   RESEND_API_KEY: z.string().min(1).nullable().default(null),
   EMAIL_FROM: z.string().min(3).default("HashiFi <no-reply@hashikome.com>"),
   EMAIL_OUTBOX_DIR: z.string().min(1).default(DEFAULT_OUTBOX_DIR),
+  R2_ENDPOINT: url.nullable().default(null),
+  R2_BUCKET: z.string().min(1).nullable().default(null),
+  R2_ACCESS_KEY_ID: z.string().min(1).nullable().default(null),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).nullable().default(null),
+  BRAND_STORE_DIR: z.string().min(1).default(DEFAULT_BRAND_DIR),
   MIKROTIK_API_PORT: z.coerce.number().int().min(1).max(65535).default(8728),
   MIKROTIK_CONNECT_TIMEOUT: z.coerce.number().int().min(1).max(120).default(10),
   MIKROTIK_TARGET_OVERRIDE: z
@@ -113,6 +124,8 @@ const SECRETS = [
   "ENCRYPTION_KEY",
   "BETTER_AUTH_SECRET",
   "RESEND_API_KEY",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
   "SENTRY_DSN",
 ] as const;
 
@@ -139,6 +152,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (c.NODE_ENV === "production") {
     const missing = [
       c.RESEND_API_KEY === null ? "RESEND_API_KEY" : null,
+      c.R2_ENDPOINT === null ? "R2_ENDPOINT" : null,
+      c.R2_BUCKET === null ? "R2_BUCKET" : null,
+      c.R2_ACCESS_KEY_ID === null ? "R2_ACCESS_KEY_ID" : null,
+      c.R2_SECRET_ACCESS_KEY === null ? "R2_SECRET_ACCESS_KEY" : null,
       trustedProxies.length === 0 ? "TRUSTED_PROXIES" : null,
     ].filter((name) => name !== null);
     if (missing.length > 0) {
@@ -158,6 +175,21 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     appUrl: c.APP_URL,
     auth: { secret: c.BETTER_AUTH_SECRET, trustedProxies },
     email: { resendApiKey: c.RESEND_API_KEY, from: c.EMAIL_FROM, outboxDir: c.EMAIL_OUTBOX_DIR },
+    brand: {
+      r2:
+        c.R2_ENDPOINT !== null &&
+        c.R2_BUCKET !== null &&
+        c.R2_ACCESS_KEY_ID !== null &&
+        c.R2_SECRET_ACCESS_KEY !== null
+          ? {
+              endpoint: c.R2_ENDPOINT,
+              bucket: c.R2_BUCKET,
+              accessKeyId: c.R2_ACCESS_KEY_ID,
+              secretAccessKey: c.R2_SECRET_ACCESS_KEY,
+            }
+          : null,
+      storeDir: c.BRAND_STORE_DIR,
+    },
     mikrotik: {
       apiPort: c.MIKROTIK_API_PORT,
       connectTimeoutSeconds: c.MIKROTIK_CONNECT_TIMEOUT,

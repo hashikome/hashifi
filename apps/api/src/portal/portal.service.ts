@@ -8,8 +8,8 @@ import type { RequestOrigin } from "../venues/venues.service.js";
 import { DEFAULT_PORTAL_SETTINGS, type PortalInput } from "./portal-input.js";
 
 /**
- * The portal's wording, colours and voucher defaults. HashiFi is used as it is, so there is
- * no uploaded branding: its logo and images ship with the web (`apps/web/public/`).
+ * The HashiFi default: what a guest sees at a venue with no branding of its own (`BrandService`).
+ * Its logo is HashiFi's, and ships with the web.
  */
 @Injectable()
 export class PortalService {

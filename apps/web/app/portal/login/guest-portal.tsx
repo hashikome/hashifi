@@ -1,9 +1,8 @@
 "use client";
 
 import type { ApiError, GuestContext, RedeemResult } from "@hashifi/types";
-import { type CSSProperties, type FormEvent, useEffect, useState } from "react";
-import { LOGO_SRC } from "@/lib/brand";
-import { formatDuration } from "@/lib/duration";
+import { type FormEvent, useEffect, useState } from "react";
+import { PortalView, themeOf } from "@/components/portal-view";
 import { formatDate } from "@/lib/utils";
 
 /** Any plain http address: the router intercepts it and sends the guest back here, with context. */
@@ -74,28 +73,6 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   }
   return data as T;
 }
-
-/** Staff choose the colours, so the text on them is worked out, not assumed. */
-function inkOn(hex: string): string {
-  const channel = (at: number) => {
-    const value = Number.parseInt(hex.slice(at, at + 2), 16) / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  };
-  const luminance = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
-  return 1.05 / (luminance + 0.05) >= (luminance + 0.05) / 0.05 ? "#ffffff" : "#18181b";
-}
-
-function themeOf({ settings }: GuestContext) {
-  return {
-    "--portal-ground": settings.backgroundColor,
-    "--portal-ink": inkOn(settings.backgroundColor),
-    "--portal-action": settings.primaryColor,
-    "--portal-action-ink": inkOn(settings.primaryColor),
-    "--portal-radius": `${settings.radius}px`,
-  } as CSSProperties;
-}
-
-const priceOf = (tsh: string) => `TSh ${Number(tsh).toLocaleString("en-US")}`;
 
 export function GuestPortal() {
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
@@ -202,85 +179,15 @@ export function GuestPortal() {
     );
   }
 
-  const { context } = screen;
-  const { settings } = context;
   return (
-    <main className="min-h-svh bg-(--portal-ground) text-(--portal-ink)" style={themeOf(context)}>
-      <div className="mx-auto w-full max-w-md px-4 pt-6 pb-10">
-        <header className="flex items-center gap-3">
-          {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
-          <img src={LOGO_SRC} alt="" className="size-10 shrink-0" />
-          <div className="min-w-0">
-            <p className="truncate font-semibold">{settings.brandName}</p>
-            <p className="truncate text-sm text-(--portal-ink)/80">{context.venueName}</p>
-          </div>
-        </header>
-
-        <h1 className="mt-8 text-2xl leading-tight font-bold tracking-tight">
-          {settings.headline}
-        </h1>
-        <p className="mt-3 text-base leading-relaxed text-(--portal-ink)/90">{settings.message}</p>
-
-        <form
-          onSubmit={submit}
-          className="mt-6 rounded-(--portal-radius) bg-white p-5 text-zinc-900"
-        >
-          <label htmlFor="code" className="block font-semibold">
-            {settings.voucherLabel}
-          </label>
-          <input
-            id="code"
-            value={code}
-            onChange={(event) => setCode(event.target.value.toUpperCase())}
-            autoCapitalize="characters"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            required
-            aria-invalid={error !== null}
-            aria-describedby={error ? "code-error" : undefined}
-            className="mt-2 h-14 w-full rounded-lg border-2 border-zinc-500 bg-white px-4 text-xl font-semibold tracking-wide outline-offset-2 focus:outline-2 focus:outline-(--portal-action)"
-          />
-          {error && (
-            <p id="code-error" role="alert" className="mt-2 text-sm font-medium text-red-700">
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="mt-4 h-14 w-full rounded-lg bg-(--portal-action) text-lg font-semibold text-(--portal-action-ink) transition-opacity active:opacity-80 disabled:opacity-50"
-          >
-            {isSubmitting ? "Connecting…" : "Connect"}
-          </button>
-          <p className="mt-3 text-sm leading-relaxed text-zinc-600">{settings.voucherHelp}</p>
-          {settings.requireTerms && (
-            <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-              By connecting you agree to use this network fairly and lawfully.
-            </p>
-          )}
-        </form>
-
-        {context.packages.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-lg font-semibold">Vouchers sold here</h2>
-            <ul className="mt-3 space-y-3">
-              {context.packages.map((pkg) => (
-                <li key={pkg.id} className="flex items-baseline justify-between gap-4">
-                  <span className="min-w-0">
-                    <span className="block font-medium">{pkg.name}</span>
-                    <span className="block text-sm text-(--portal-ink)/80">
-                      {formatDuration(pkg.durationMinutes)} at {pkg.downloadSpeedMbps} Mbps
-                      {pkg.dataLimitGb === null ? "" : `, ${pkg.dataLimitGb} GB`}
-                    </span>
-                  </span>
-                  <span className="shrink-0 font-semibold">{priceOf(pkg.priceTsh)}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </div>
-    </main>
+    <PortalView
+      context={screen.context}
+      code={code}
+      error={error}
+      isSubmitting={isSubmitting}
+      onCodeChange={setCode}
+      onSubmit={submit}
+      fit="screen"
+    />
   );
 }

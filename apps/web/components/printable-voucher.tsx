@@ -1,4 +1,4 @@
-import type { PortalSettingsRecord } from "@hashifi/types";
+import type { BrandRecord } from "@hashifi/types";
 import { QRCodeSVG } from "qrcode.react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -7,8 +7,9 @@ import { formatDuration } from "@/lib/duration";
 
 /** The portal settings a printed voucher is drawn with. */
 export type VoucherTicketSettings = Pick<
-  PortalSettingsRecord,
+  BrandRecord,
   | "backgroundColor"
+  | "logoUrl"
   | "brandName"
   | "primaryColor"
   | "radius"
@@ -57,7 +58,11 @@ export function PrintableVoucher({
       >
         <div className="flex items-center gap-3">
           {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
-          <img src={LOGO_SRC} alt="HashiFi" className="size-10 shrink-0" />
+          <img
+            src={settings.logoUrl ?? LOGO_SRC}
+            alt={settings.brandName}
+            className="size-10 shrink-0 object-contain"
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{settings.brandName}</p>
             {venueName && <p className="truncate text-[10px] text-white/70">{venueName}</p>}

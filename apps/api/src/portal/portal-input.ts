@@ -1,7 +1,7 @@
 import type { PortalSettingsRecord } from "@hashifi/types";
 import { z } from "zod";
 
-/** The settings the portal uses until an admin saves their own. */
+/** The HashiFi default, until an admin saves another; a venue may set its own. */
 export const DEFAULT_PORTAL_SETTINGS: PortalSettingsRecord = {
   brandName: "HashiFi",
   headline: "Welcome to fast WiFi",
@@ -9,7 +9,6 @@ export const DEFAULT_PORTAL_SETTINGS: PortalSettingsRecord = {
   primaryColor: "#0F766E",
   accentColor: "#134E4A",
   backgroundColor: "#134E4A",
-  backgroundStyle: "soft",
   radius: 18,
   voucherLabel: "Voucher code",
   voucherPrefix: "WIFI",
@@ -50,7 +49,6 @@ export const portalInput = z.object({
   primaryColor: colour,
   accentColor: colour,
   backgroundColor: colour,
-  backgroundStyle: z.enum(["solid", "soft", "split"]),
   radius: z.number().int("must be a whole number").min(0).max(32),
   voucherLabel: line(100).min(1, "is required"),
   voucherPrefix: z
@@ -66,3 +64,8 @@ export const portalInput = z.object({
 });
 
 export type PortalInput = z.infer<typeof portalInput>;
+
+/** What a venue sets for itself. */
+export const brandInput = portalInput.omit({ isActive: true });
+
+export type BrandInput = z.infer<typeof brandInput>;

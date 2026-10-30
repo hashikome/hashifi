@@ -1,17 +1,16 @@
-import type { PortalSettingsRecord } from "@hashifi/types";
+import type { BrandRecord } from "@hashifi/types";
 
 /**
  * Settings to draw a voucher with before the real ones load, or if they cannot. The API's own
  * defaults (`GET /api/portal`) apply everywhere else.
  */
-export const initialPortalSettings: PortalSettingsRecord = {
+export const initialPortalSettings: BrandRecord = {
   brandName: "HashiFi",
   headline: "Welcome to fast WiFi",
   message: "Buy time with mobile money, or enter the voucher you were given.",
   primaryColor: "#0F766E",
   accentColor: "#134E4A",
   backgroundColor: "#134E4A",
-  backgroundStyle: "soft",
   radius: 18,
   voucherLabel: "Voucher code",
   voucherPrefix: "WIFI",
@@ -21,4 +20,6 @@ export const initialPortalSettings: PortalSettingsRecord = {
   requireTerms: true,
   isActive: true,
   updatedAt: null,
+  logoUrl: null,
+  backgroundUrl: null,
 };

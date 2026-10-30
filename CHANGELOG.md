@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Each venue has its own brand: name, logo, background, colours and wording, on its portal and
+  printed vouchers, with HashiFi as the default. Images live in Cloudflare R2, and on disk in
+  development. Portal Pages previews the real guest page.
 - `bun run router-sim demo` runs the whole system to use in a browser.
 - Design foundations in `DESIGN.md`: one provisional teal ladder, self-hosted Figtree on every page, flat surfaces and a
   sidebar on the page ground, across the admin, the guest portal and the router's pages.

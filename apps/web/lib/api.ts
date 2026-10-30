@@ -38,10 +38,25 @@ async function request<T>(method: string, path: string, body: unknown): Promise<
   return parsed as T;
 }
 
+/** Sends a file as the request's body: the API reads it as it arrives, up to its limit. */
+async function upload<T>(path: string, file: File): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/octet-stream" },
+    body: file,
+  });
+  const text = await response.text();
+  const parsed: unknown = text === "" ? null : JSON.parse(text);
+  if (!response.ok) throw errorFrom(response.status, parsed);
+  return parsed as T;
+}
+
 /** The one way the web reaches the API. Response types come from `@hashifi/types`. */
 export const api = {
   get: <T>(path: string) => request<T>("GET", path, null),
   post: <T>(path: string, body: unknown = {}) => request<T>("POST", path, body),
   put: <T>(path: string, body: unknown = {}) => request<T>("PUT", path, body),
   delete: <T = null>(path: string) => request<T>("DELETE", path, null),
+  upload,
 };

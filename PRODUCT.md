@@ -73,6 +73,10 @@ without re-entering the code, without the code ever being exposed.
 Acceptance: a phone on a HashiFi hotspot reaches the portal, redeems a voucher and browses;
 the voucher's limits and expiry are enforced by the router.
 
+Branding is per venue: its name, logo, background, colours and wording, shown on its portal and
+printed vouchers. A venue that has set none shows the HashiFi default. Admins edit the default,
+and managers brand their own venues.
+
 ### 4.5 Sessions and figures
 
 Live sessions per venue and router, automatic expiry, usage analytics and revenue,

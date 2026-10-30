@@ -1,8 +1,10 @@
 "use client";
 
 import type {
+  BrandRecord,
   PackageRecord,
   PortalSettingsResponse,
+  VenueBrandResponse,
   VenueList,
   VenuePackages,
   VenueRecord,
@@ -48,6 +50,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatDuration } from "@/lib/duration";
 import { errorMessage } from "@/lib/errors";
+import { initialPortalSettings } from "@/lib/portal-defaults";
 
 /** An active package offered for a voucher batch. */
 interface PackageOption extends PackageRecord {
@@ -87,6 +90,16 @@ export default function CreateVoucherPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // What the chosen venue sells: the API's rule, and the only packages a batch can use.
+  const [brand, setBrand] = useState<BrandRecord>(initialPortalSettings);
+
+  /** The prefix and the preview follow the venue's brand. */
+  const loadBrand = useCallback(async (venueId: string) => {
+    const { brand: chosen } = await api.get<VenueBrandResponse>(`/api/venues/${venueId}/brand`);
+    setBrand(chosen);
+    setFormData((prev) => ({ ...prev, prefix: chosen.voucherPrefix }));
+    setBaseline((prev) => ({ ...prev, prefix: chosen.voucherPrefix }));
+  }, []);
+
   const loadPackages = useCallback(async (venueId: string | null) => {
     if (venueId === null) {
       setPackages([]);
@@ -111,6 +124,7 @@ export default function CreateVoucherPage() {
           api.get<VenueList>("/api/venues"),
         ]);
 
+        setBrand({ ...initialPortalSettings, ...settings });
         const loaded = { ...FORM_DEFAULTS, prefix: settings.voucherPrefix };
         setFormData(loaded);
         setBaseline(loaded);
@@ -123,7 +137,7 @@ export default function CreateVoucherPage() {
         if (onlyVenue !== null) {
           setFormData((prev) => ({ ...prev, venueId: onlyVenue.id }));
           setBaseline((prev) => ({ ...prev, venueId: onlyVenue.id }));
-          await loadPackages(onlyVenue.id);
+          await Promise.all([loadPackages(onlyVenue.id), loadBrand(onlyVenue.id)]);
         }
       } catch (err) {
         console.error(err);
@@ -133,7 +147,7 @@ export default function CreateVoucherPage() {
       }
     };
     fetchData();
-  }, [loadPackages]);
+  }, [loadPackages, loadBrand]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -285,14 +299,14 @@ export default function CreateVoucherPage() {
                         maxLength={24}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Shared with voucher designs on{" "}
+                        From this venue&apos;s brand on{" "}
                         <Link
                           href="/admin/portal"
                           className="text-primary underline-offset-4 hover:underline"
                         >
-                          Portal Pages → Voucher
+                          Portal Pages
                         </Link>
-                        . Saved when you generate.
+                        . Change it here for this batch.
                       </p>
                     </div>
                   </div>
@@ -309,7 +323,7 @@ export default function CreateVoucherPage() {
                           handleInputChange("venueId", v);
                           // A batch can only use what this venue sells.
                           handleInputChange("packageId", "");
-                          await loadPackages(v);
+                          await Promise.all([loadPackages(v), loadBrand(v)]);
                         }}
                         required
                       >
@@ -490,6 +504,7 @@ export default function CreateVoucherPage() {
           {/* Preview Column */}
           <div className="lg:sticky lg:top-6 lg:self-start">
             <VoucherPreview
+              brand={brand}
               prefix={formData.prefix}
               packageName={selectedPackageData?.name ?? null}
               downloadSpeed={selectedPackageData?.downloadSpeedMbps ?? null}

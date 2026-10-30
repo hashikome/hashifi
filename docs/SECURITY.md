@@ -46,6 +46,7 @@ Reviewed 30 October 2026. Everything else requires a staff session.
 | `POST /api/guest/context` | The portal page | Registered router; read-only wording and prices |
 | `POST /api/guest/redeem` | Taking a voucher into use | Attempt limits, a lock on the voucher, its venue, blocked devices, the router seeing the device |
 | `POST /api/guest/session` | The router's status pages | Time and data only, never a code; any origin, no cookies |
+| `GET /api/guest/brand/:venueId/:file` | A venue's logo before login | Only names the API makes; re-encoded images, `nosniff`, no listing |
 | `GET /portal/hotspot-files/:routerId/:name` | Routers pull them while provisioned | Named files only; the portal's address and router id, no secret |
 | `/ws/live` | Not public: listed because guards do not cover it | Its upgrade signs in as a route would, and checks the origin |
 

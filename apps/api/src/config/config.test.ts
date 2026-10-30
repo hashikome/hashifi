@@ -30,6 +30,10 @@ describe("loadConfig", () => {
     const config = loadConfig({
       ...production,
       RESEND_API_KEY: "re_test",
+      R2_ENDPOINT: "https://account.r2.cloudflarestorage.com",
+      R2_BUCKET: "hashifi",
+      R2_ACCESS_KEY_ID: "key",
+      R2_SECRET_ACCESS_KEY: "secret",
       TRUSTED_PROXIES: "10.0.1.0/24, 10.0.2.5",
     });
     expect(config.auth.trustedProxies).toEqual(["10.0.1.0/24", "10.0.2.5"]);

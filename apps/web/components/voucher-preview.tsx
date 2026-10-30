@@ -1,5 +1,6 @@
 "use client";
 
+import type { BrandRecord } from "@hashifi/types";
 import { Loader, Ticket } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
@@ -8,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { LOGO_SRC } from "@/lib/brand";
 import { formatDuration } from "@/lib/duration";
-import { initialPortalSettings } from "@/lib/portal-defaults";
 
 /** The selected package's details, or null for each while none is selected. */
 interface VoucherPreviewProps {
@@ -22,6 +22,8 @@ interface VoucherPreviewProps {
   durationMinutes: number | null;
   /** TSH, as the API serialises decimals. */
   priceTsh: string | null;
+  /** The chosen venue's brand. */
+  brand: BrandRecord;
 }
 
 export function VoucherPreview({
@@ -31,8 +33,8 @@ export function VoucherPreview({
   dataLimitGb,
   durationMinutes,
   priceTsh,
+  brand: portal,
 }: VoucherPreviewProps) {
-  const portal = initialPortalSettings;
   const [isGenerating, setIsGenerating] = useState(false);
 
   const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login";
@@ -66,7 +68,7 @@ export function VoucherPreview({
             <div className="flex items-start justify-between gap-4 p-5">
               <div className="flex min-w-0 items-center gap-3">
                 {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
-                <img src={LOGO_SRC} alt="HashiFi" className="size-12 shrink-0" />
+                <img src={portal.logoUrl ?? LOGO_SRC} alt="HashiFi" className="size-12 shrink-0" />
                 <div className="min-w-0">
                   <p className="truncate text-base font-semibold">{portal.brandName}</p>
                 </div>

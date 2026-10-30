@@ -1,10 +1,10 @@
 "use client";
 
 import type {
-  PortalSettingsRecord,
-  PortalSettingsResponse,
+  BrandRecord,
   PrintableVoucher as PrintableVoucherRecord,
   PrintableVouchersResponse,
+  VenueBrandResponse,
   VoucherBatchDetail,
 } from "@hashifi/types";
 import { ArrowLeft, Loader, Printer, TriangleAlert } from "lucide-react";
@@ -29,7 +29,7 @@ const PORTAL_URL_IS_LOCAL = PORTAL_URL.includes("localhost") || PORTAL_URL.inclu
 function PrintVouchersContent() {
   const searchParams = useSearchParams();
   const [vouchers, setVouchers] = useState<PrintRow[]>([]);
-  const [portalSettings, setPortalSettings] = useState<PortalSettingsRecord | null>(null);
+  const [brands, setBrands] = useState<Map<string, BrandRecord>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
   // A whole batch by its id, or chosen vouchers by theirs: never by code, since a code is the
@@ -58,23 +58,28 @@ function PrintVouchersContent() {
     }
   }, []);
 
-  const fetchPortalSettings = useCallback(async () => {
-    try {
-      const data = await api.get<PortalSettingsResponse>("/api/portal");
-      setPortalSettings(data.settings);
-    } catch {
-      // Fall through: vouchers print with the default portal settings.
-    }
-  }, []);
+  // One print run can cover several venues, and each card carries its own.
+  useEffect(() => {
+    const ids = [...new Set(vouchers.map((v) => v.venueId))].filter((id) => id !== null);
+    Promise.all(
+      ids.map(async (id) => {
+        const { brand } = await api.get<VenueBrandResponse>(`/api/venues/${id}/brand`);
+        return [id, brand] as const;
+      }),
+    )
+      .then((pairs) => setBrands(new Map(pairs)))
+      .catch(() => {
+        // Fall through: the cards print with the default brand.
+      });
+  }, [vouchers]);
 
   useEffect(() => {
     const batch = searchParams.get("batch");
     const ids = searchParams.get("ids");
-    Promise.all([
-      batch || ids ? fetchVouchers(batch, ids) : Promise.resolve(),
-      fetchPortalSettings(),
-    ]).finally(() => setIsLoading(false));
-  }, [searchParams, fetchVouchers, fetchPortalSettings]);
+    (batch || ids ? fetchVouchers(batch, ids) : Promise.resolve()).finally(() =>
+      setIsLoading(false),
+    );
+  }, [searchParams, fetchVouchers]);
 
   const handlePrint = () => {
     window.print();
@@ -151,7 +156,7 @@ function PrintVouchersContent() {
               key={voucher.id}
               code={voucher.code}
               pkg={voucher.pkg}
-              settings={portalSettings ?? initialPortalSettings}
+              settings={brands.get(voucher.venueId ?? "") ?? initialPortalSettings}
               venueName={voucher.venueName}
               portalUrl={PORTAL_URL}
             />

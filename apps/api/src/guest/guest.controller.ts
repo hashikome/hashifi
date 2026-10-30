@@ -57,6 +57,31 @@ export class GuestController {
   }
 }
 
+/** Brand images. On this path because it is the one a phone can reach before it is online. */
+@Public()
+@Controller("api/guest/brand")
+export class GuestBrandController {
+  constructor(private readonly guest: GuestService) {}
+
+  @Get(":venueId/:file")
+  async image(
+    @Param("venueId", idParam()) venueId: string,
+    @Param("file") file: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    const bytes = await this.guest.image(venueId, file);
+    if (bytes === null)
+      throw new NotFoundException(apiError("NOT_FOUND", "There is no such image."));
+    response
+      .set({
+        "Content-Type": "image/webp",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+      })
+      .end(Buffer.from(bytes));
+  }
+}
+
 /** The pages a router pulls while it is provisioned, before any session exists. */
 @Public()
 @Controller("portal/hotspot-files")
