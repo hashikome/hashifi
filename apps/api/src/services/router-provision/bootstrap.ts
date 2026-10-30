@@ -2,7 +2,7 @@
  * Generate the manual bootstrap script — the four things provisioning cannot do for itself.
  *
  * Provisioning connects *through* the LAN address, the API service, the bridge and the radio,
- * so those must exist first. Until now that meant hand-typing ROUTER_ONBOARDING.md Step 2,
+ * so those must exist first. Until now that meant hand-typing docs/runbooks/router-onboarding.md Step 2,
  * whose radio line (`/interface wireless set wlan1 …`) is correct on legacy boards, wrong on
  * wifiwave2 and meaningless on a hEX — and the probe that could have told you which you have
  * cannot run until the API user it creates exists. This module removes that decision: the

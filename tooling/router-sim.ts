@@ -323,7 +323,7 @@ class SerialConsole {
   }
 }
 
-// ── Onboarding (docs: apps/api/mikrotik-knowledge-files/ROUTER_ONBOARDING.md) ─────────────────
+// ── Onboarding (docs/runbooks/router-onboarding.md) ─────────────────
 
 async function bootstrap(): Promise<void> {
   const state = readState();

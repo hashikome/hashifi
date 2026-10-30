@@ -19,6 +19,7 @@ import {
   type RouterCredentials,
 } from "../mikrotik.js";
 import { RouterLogger } from "../router-log.js";
+import { toRows } from "./ros-client.js";
 
 export interface RosVersion {
   major: number;
@@ -108,24 +109,20 @@ export interface RouterProfile {
   probedAt: string;
 }
 
-type RosRow = Record<string, string | undefined>;
+const rows = toRows;
 
-function rows(result: unknown): RosRow[] {
-  return Array.isArray(result) ? (result as RosRow[]) : [];
-}
-
-function num(value: string | undefined): number {
+function num(value: string | null): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-function bool(value: string | undefined): boolean {
+function bool(value: string | null): boolean {
   return value === "true" || value === "yes";
 }
 
 const MIB = 1024 * 1024;
 
-export function parseRosVersion(raw: string | undefined): RosVersion {
+export function parseRosVersion(raw: string | null): RosVersion {
   const text = raw ?? "";
   // "7.23.2 (stable)" / "6.49.8 (long-term)" → 7.23.2 / 6.49.8
   const match = /(\d+)\.(\d+)(?:\.(\d+))?/.exec(text);
@@ -324,26 +321,26 @@ export async function probeRouter(
         c.write("/system/package/print"),
       ),
     ).map((p) => ({
-      name: p.name ?? "unknown",
-      version: p.version ?? "",
-      disabled: bool(p.disabled),
+      name: p.get("name") ?? "unknown",
+      version: p.get("version") ?? "",
+      disabled: bool(p.get("disabled")),
     }));
 
     const interfaces: RouterInterface[] = rows(
       await logger.run({ host, command: "/interface/print" }, () => c.write("/interface/print")),
     ).map((i) => ({
-      name: i.name ?? "unknown",
-      type: i.type ?? "unknown",
-      running: bool(i.running),
-      disabled: bool(i.disabled),
+      name: i.get("name") ?? "unknown",
+      type: i.get("type") ?? "unknown",
+      running: bool(i.get("running")),
+      disabled: bool(i.get("disabled")),
     }));
 
     const addresses: RouterAddress[] = rows(
       await logger.run({ host, command: "/ip/address/print" }, () => c.write("/ip/address/print")),
     ).map((a) => ({
-      address: a.address ?? "",
-      interface: a.interface ?? "",
-      disabled: bool(a.disabled),
+      address: a.get("address") ?? "",
+      interface: a.get("interface") ?? "",
+      disabled: bool(a.get("disabled")),
     }));
 
     // The capability questions. `probe()` returns null instead of throwing when the
@@ -357,11 +354,12 @@ export async function probeRouter(
 
     const deviceMode: DeviceMode | null = deviceModeRow
       ? {
-          mode: deviceModeRow.mode ?? "unknown",
+          mode: deviceModeRow.get("mode") ?? "unknown",
           // Absent field means the build doesn't gate hotspot — treat as allowed rather
           // than blaming device-mode for something it isn't doing.
-          hotspotAllowed: deviceModeRow.hotspot === undefined || bool(deviceModeRow.hotspot),
-          allowedVersions: deviceModeRow["allowed-versions"] ?? null,
+          hotspotAllowed:
+            deviceModeRow.get("hotspot") === null || bool(deviceModeRow.get("hotspot")),
+          allowedVersions: deviceModeRow.get("allowed-versions") ?? null,
         }
       : null;
 
@@ -383,25 +381,25 @@ export async function probeRouter(
     const wirelessStack: WirelessStack =
       wifiMenu !== null ? "wifi" : wirelessMenu !== null ? "wireless" : "none";
 
-    const rosVersion = parseRosVersion(resource?.version);
+    const rosVersion = parseRosVersion(resource?.get("version"));
     const capabilities = deriveCapabilities(rosVersion, packages, hotspotMenu !== null);
 
     const partial: Omit<RouterProfile, "compatibility"> = {
       host,
-      identity: identityRow?.name ?? null,
-      boardName: resource?.["board-name"] ?? null,
-      architecture: resource?.["architecture-name"] ?? null,
-      platform: resource?.platform ?? null,
+      identity: identityRow?.get("name") ?? null,
+      boardName: resource?.get("board-name") ?? null,
+      architecture: resource?.get("architecture-name") ?? null,
+      platform: resource?.get("platform") ?? null,
       rosVersion,
-      factorySoftware: resource?.["factory-software"] ?? null,
-      uptime: resource?.uptime ?? null,
+      factorySoftware: resource?.get("factory-software") ?? null,
+      uptime: resource?.get("uptime") ?? null,
       memory: {
-        freeBytes: num(resource?.["free-memory"]),
-        totalBytes: num(resource?.["total-memory"]),
+        freeBytes: num(resource?.get("free-memory")),
+        totalBytes: num(resource?.get("total-memory")),
       },
       storage: {
-        freeBytes: num(resource?.["free-hdd-space"]),
-        totalBytes: num(resource?.["total-hdd-space"]),
+        freeBytes: num(resource?.get("free-hdd-space")),
+        totalBytes: num(resource?.get("total-hdd-space")),
       },
       packages,
       interfaces,
@@ -409,10 +407,10 @@ export async function probeRouter(
       wirelessStack,
       deviceMode,
       hotspotServers: rows(hotspotMenu).map((h) => ({
-        name: h.name ?? "",
-        interface: h.interface ?? "",
-        profile: h.profile ?? "",
-        disabled: bool(h.disabled),
+        name: h.get("name") ?? "",
+        interface: h.get("interface") ?? "",
+        profile: h.get("profile") ?? "",
+        disabled: bool(h.get("disabled")),
       })),
       capabilities,
       probedAt: new Date().toISOString(),

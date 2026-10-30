@@ -9,17 +9,31 @@
 import type { MikroTikConn } from "../mikrotik.js";
 import type { RouterLogger } from "../router-log.js";
 
-export type RosRow = Record<string, string | undefined>;
+/** One row from the RouterOS API. A field the router did not send is null. */
+export class RosRow {
+  constructor(private readonly fields: Readonly<Record<string, unknown>>) {}
+
+  get(field: string): string | null {
+    const value = this.fields[field];
+    return typeof value === "string" ? value : null;
+  }
+}
 
 /** A row's RouterOS `.id`. Every row the router returns carries one; a row without it is a protocol fault. */
 export function rowId(row: RosRow): string {
-  const id = row[".id"];
+  const id = row.get(".id");
   if (!id) throw new Error("RouterOS returned a row without an .id");
   return id;
 }
 
-function toRows(result: unknown): RosRow[] {
-  return Array.isArray(result) ? (result as RosRow[]) : [];
+/** The API's reply as rows. Anything that is not an object carries no fields. */
+export function toRows(result: unknown): RosRow[] {
+  if (!Array.isArray(result)) return [];
+  return result.map((row: unknown) =>
+    typeof row === "object" && row !== null
+      ? new RosRow(row as Record<string, unknown>)
+      : new RosRow({}),
+  );
 }
 
 /** Objects this system owns are tagged so we never touch hand-made rules. */
@@ -60,7 +74,7 @@ export class RosClient {
       this.conn.write(command, params),
     );
     const rows = toRows(result);
-    return rows[0]?.ret ?? rows[0]?.[".id"] ?? null;
+    return rows[0]?.get("ret") ?? rows[0]?.get(".id") ?? null;
   }
 
   async set(menu: string, id: string, params: string[]): Promise<void> {

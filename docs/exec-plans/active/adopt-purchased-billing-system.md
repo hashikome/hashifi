@@ -243,8 +243,16 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     refused; a manager gets one of two venues' updates and no transcript, an admin all three;
     a suspended manager is closed at the next check); the origin test fails with the check
     removed.
-  - [ ] Still in M4: `RosRow` as a `null`-returning accessor; the
-    vendor's knowledge files into `docs/runbooks/`; the web pass (one client module on
+  - [x] (2026-10-30) `RosRow` is a class at the RouterOS boundary: `get(field)` returns
+    `string | null`, and `toRows` builds every reply, including `mikrotik.ts`. Absence checks
+    moved from `undefined` to `null`; the one read that relied on `Number(undefined)` being
+    `NaN` (`pingTotals`, where `Number(null)` is `0`) has a test. Router sim after the change:
+    setup and verify on a fresh CHR, guest test 6/6 twice. One earlier run on a router not
+    reset first failed 2 of 6 guest checks with the serial console's echo in the output; it
+    did not repeat, and the cause is not known.
+  - [x] (2026-10-30) The vendor's guides are `docs/runbooks/router-onboarding.md` and
+    `mikrotik-hotspot-reference.md`, with a note on what changed since they were written.
+  - [ ] Still in M4: the web pass (one client module on
     `@hashifi/types`, sign-in on Better Auth, and every page on the routes above). Notes for
     what remains:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with

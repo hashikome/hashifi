@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ProvisionContext } from "./context.js";
-import type { RosClient } from "./ros-client.js";
+import { type RosClient, RosRow, toRows } from "./ros-client.js";
 import {
   addRuleFirst,
   moveRuleAheadOfHotspotRules,
@@ -23,7 +23,7 @@ import {
 function fakeRos(rows: Record<string, string>[]) {
   const added: string[][] = [];
   const ros = {
-    print: async () => rows,
+    print: async () => toRows(rows),
     add: async (_menu: string, params: string[]) => {
       added.push(params);
       return null;
@@ -87,7 +87,9 @@ describe("ruleAheadOfHotspotRules", () => {
     ) as Record<string, string>[];
 
   const ros = (rows: Record<string, string>[]) =>
-    ({ print: async () => rows }) as unknown as Parameters<typeof ruleAheadOfHotspotRules>[0];
+    ({ print: async () => toRows(rows) }) as unknown as Parameters<
+      typeof ruleAheadOfHotspotRules
+    >[0];
 
   test("true when our rule is above the dynamic rules", async () => {
     const rows = rowsFor(["wbs:firewall-forward-backend", "dyn", "dyn"]);
@@ -170,7 +172,7 @@ describe("moveRuleAheadOfHotspotRules", () => {
     const ros = {
       print: async () => {
         prints += 1;
-        return prints <= emptyPrints ? [ours] : [dynamicRule, placeholder, ours];
+        return toRows(prints <= emptyPrints ? [ours] : [dynamicRule, placeholder, ours]);
       },
       exec: async (_command: string, params: string[]) => {
         moves.push(params);
@@ -215,8 +217,8 @@ describe("changing the portal origin", () => {
     let current = tagged;
     const ros = {
       print: async (_menu: string, filters: string[] = []) =>
-        filters.some((f) => f.startsWith("?comment=")) && current ? [current] : [],
-      findByTag: async () => current,
+        toRows(filters.some((f) => f.startsWith("?comment=")) && current ? [current] : []),
+      findByTag: async () => (current ? new RosRow(current) : null),
       remove: async (menu: string, id: string) => {
         calls.push(`remove ${menu} ${id}`);
         current = null;

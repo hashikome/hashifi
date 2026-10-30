@@ -47,7 +47,7 @@ export interface ProvisionStep {
   apply(scope: StepScope): Promise<void>;
 }
 
-const yes = (v: string | undefined) => v === "true" || v === "yes";
+const yes = (v: string | null) => v === "true" || v === "yes";
 
 /** Ensure a comment-tagged rule exists in a list menu, creating it if missing. */
 async function ensureTaggedRule(
@@ -58,7 +58,7 @@ async function ensureTaggedRule(
 ): Promise<void> {
   const existing = await ros.findByTag(menu, stepId);
   const withTag = [...params, `=comment=${tagFor(stepId)}`];
-  if (existing?.[".id"]) {
+  if (existing?.get(".id")) {
     await ros.set(menu, rowId(existing), params);
     return;
   }
@@ -90,8 +90,8 @@ export async function addRuleFirst(
   const tagged = [...params, `=comment=${tagFor(stepId)}`];
   const [first] = await ros.print(menu);
 
-  if (first?.[".id"]) {
-    await ros.add(menu, [...tagged, `=place-before=${first[".id"]}`]);
+  if (first?.get(".id")) {
+    await ros.add(menu, [...tagged, `=place-before=${first.get(".id")}`]);
     return;
   }
 
@@ -132,7 +132,7 @@ export async function addRuleFirst(
 const HOTSPOT_PLACEHOLDER = "place hotspot rules here";
 
 function dynamicIndex(rows: RosRow[]): number {
-  const i = rows.findIndex((r) => yes(r.dynamic));
+  const i = rows.findIndex((r) => yes(r.get("dynamic")));
   return i === -1 ? rows.length : i;
 }
 
@@ -142,9 +142,9 @@ export async function ruleAheadOfHotspotRules(
   stepId: string,
 ): Promise<boolean> {
   const rows = await ros.print(menu);
-  const mine = rows.findIndex((r) => r.comment === tagFor(stepId));
+  const mine = rows.findIndex((r) => r.get("comment") === tagFor(stepId));
   if (mine === -1) return false;
-  const placeholder = rows.findIndex((r) => r.comment === HOTSPOT_PLACEHOLDER);
+  const placeholder = rows.findIndex((r) => r.get("comment") === HOTSPOT_PLACEHOLDER);
   return mine < dynamicIndex(rows) || (placeholder !== -1 && mine < placeholder);
 }
 
@@ -164,7 +164,9 @@ async function hotspotRulesPresent(
   const deadline = Date.now() + waitMs;
   for (;;) {
     const rows = await ros.print(menu);
-    const present = rows.some((r) => yes(r.dynamic) || r.comment === HOTSPOT_PLACEHOLDER);
+    const present = rows.some(
+      (r) => yes(r.get("dynamic")) || r.get("comment") === HOTSPOT_PLACEHOLDER,
+    );
     if (present || Date.now() >= deadline) return rows;
     await new Promise((done) => setTimeout(done, 250));
   }
@@ -179,16 +181,17 @@ export async function moveRuleAheadOfHotspotRules(
 ): Promise<void> {
   const rows = await hotspotRulesPresent(ros, menu, waitMs);
   if (await ruleAheadOfHotspotRules(ros, menu, stepId)) return;
-  const mine = rows.find((r) => r.comment === tagFor(stepId));
-  const target = rows.find((r) => r.comment === HOTSPOT_PLACEHOLDER) ?? rows[dynamicIndex(rows)];
-  if (!mine || !target?.[".id"]) return;
+  const mine = rows.find((r) => r.get("comment") === tagFor(stepId));
+  const target =
+    rows.find((r) => r.get("comment") === HOTSPOT_PLACEHOLDER) ?? rows[dynamicIndex(rows)];
+  if (!mine || !target?.get(".id")) return;
   await ros.exec(`${menu}/move`, [`=numbers=${rowId(mine)}`, `=destination=${rowId(target)}`]);
 }
 
 /** Compare a row's fields against what we want; missing/differing → needs apply. */
 function matches(row: RosRow | null, expected: Record<string, string>): boolean {
   if (!row) return false;
-  return Object.entries(expected).every(([key, value]) => row[key] === value);
+  return Object.entries(expected).every(([key, value]) => row.get(key) === value);
 }
 
 // ── Steps ───────────────────────────────────────────────────────────────────
@@ -200,7 +203,7 @@ const identity: ProvisionStep = {
   appliesTo: () => true,
   async check({ ros, ctx }) {
     const [row] = await ros.print("/system/identity");
-    return row?.name === ctx.router.name;
+    return row?.get("name") === ctx.router.name;
   },
   async apply({ ros, ctx }) {
     await ros.setSingleton("/system/identity", [`=name=${ctx.router.name}`]);
@@ -214,7 +217,7 @@ const dns: ProvisionStep = {
   appliesTo: () => true,
   async check({ ros, ctx }) {
     const [row] = await ros.print("/ip/dns");
-    return row?.servers === ctx.hotspot.dnsServers && yes(row?.["allow-remote-requests"]);
+    return row?.get("servers") === ctx.hotspot.dnsServers && yes(row?.get("allow-remote-requests"));
   },
   async apply({ ros, ctx }) {
     await ros.setSingleton("/ip/dns", [
@@ -254,9 +257,9 @@ const hotspotInterfaceUnbridged: ProvisionStep = {
       `?interface=${ctx.hotspot.interface}`,
     ]);
     for (const port of ports) {
-      if (!port[".id"]) continue;
+      if (!port.get(".id")) continue;
       ros.logger.warn(
-        `Removing "${ctx.hotspot.interface}" from bridge "${port.bridge ?? "?"}" — the ` +
+        `Removing "${ctx.hotspot.interface}" from bridge "${port.get("bridge") ?? "?"}" — the ` +
           `hotspot assigns ${ctx.hotspot.gatewayCidr} directly to it, and a bridged ` +
           `interface makes that addressing collide.`,
       );
@@ -282,12 +285,12 @@ const hotspotRadioEnabled: ProvisionStep = {
   async check({ ros, ctx }) {
     const menu = radioOf(ctx).menu;
     const row = await ros.findByName(menu, ctx.hotspot.interface);
-    return row !== null && !yes(row.disabled);
+    return row !== null && !yes(row.get("disabled"));
   },
   async apply({ ros, ctx }) {
     const { menu, modeField, modeValue } = radioOf(ctx);
     const row = await ros.findByName(menu, ctx.hotspot.interface);
-    if (!row?.[".id"]) {
+    if (!row?.get(".id")) {
       throw new Error(
         `Radio "${ctx.hotspot.interface}" is not present in ${menu}. The board reports it as ` +
           `type "${ctx.hotspot.interfaceType}" but ${menu} does not list it — the wireless ` +
@@ -318,13 +321,13 @@ const hotspotRadioSsid: ProvisionStep = {
     const row = await ros.findByName(menu, ctx.hotspot.interface);
     if (!row) return false;
     // Some builds report the flattened key, others the bare one — accept either.
-    const current = row[ssidField] ?? row.ssid;
+    const current = row.get(ssidField) ?? row.get("ssid");
     return current === ctx.hotspot.ssid;
   },
   async apply({ ros, ctx }) {
     const { menu, ssidField } = radioOf(ctx);
     const row = await ros.findByName(menu, ctx.hotspot.interface);
-    if (!row?.[".id"]) return;
+    if (!row?.get(".id")) return;
     await ros.set(menu, rowId(row), [`=${ssidField}=${ctx.hotspot.ssid}`]);
   },
 };
@@ -356,12 +359,12 @@ const hotspotRadioRunningCheck: ProvisionStep = {
   async check({ ros, ctx }) {
     const { menu } = radioOf(ctx);
     const row = await ros.findByName(menu, ctx.hotspot.interface);
-    return row !== null && yes(row[runningCheckFieldOf(ctx)]);
+    return row !== null && yes(row.get(runningCheckFieldOf(ctx)));
   },
   async apply({ ros, ctx }) {
     const { menu } = radioOf(ctx);
     const row = await ros.findByName(menu, ctx.hotspot.interface);
-    if (!row?.[".id"]) return;
+    if (!row?.get(".id")) return;
     await ros.set(menu, rowId(row), [`=${runningCheckFieldOf(ctx)}=yes`]);
   },
 };
@@ -377,7 +380,7 @@ const hotspotPool: ProvisionStep = {
   },
   async apply({ ros, ctx }) {
     const row = await ros.findByName("/ip/pool", ctx.hotspot.poolName);
-    if (row?.[".id"]) {
+    if (row?.get(".id")) {
       await ros.set("/ip/pool", rowId(row), [`=ranges=${ctx.hotspot.poolRange}`]);
       return;
     }
@@ -397,7 +400,7 @@ const hotspotGatewayAddress: ProvisionStep = {
   appliesTo: (ctx) => ctx.profile.capabilities.hotspot,
   async check({ ros, ctx }) {
     const rows = await ros.print("/ip/address", [`?interface=${ctx.hotspot.interface}`]);
-    return rows.some((r) => r.address === ctx.hotspot.gatewayCidr);
+    return rows.some((r) => r.get("address") === ctx.hotspot.gatewayCidr);
   },
   async apply({ ros, ctx }) {
     await ensureTaggedRule(ros, "/ip/address", "hotspot-gateway-address", [
@@ -418,7 +421,7 @@ const dhcpServer: ProvisionStep = {
       matches(row, {
         interface: ctx.hotspot.interface,
         "address-pool": ctx.hotspot.poolName,
-      }) && !yes(row?.disabled)
+      }) && !yes(row?.get("disabled") ?? null)
     );
   },
   async apply({ ros, ctx }) {
@@ -429,7 +432,7 @@ const dhcpServer: ProvisionStep = {
       "=disabled=no",
     ];
     const row = await ros.findByName("/ip/dhcp-server", "wbs-hs-dhcp");
-    if (row?.[".id"]) {
+    if (row?.get(".id")) {
       await ros.set("/ip/dhcp-server", rowId(row), params);
       return;
     }
@@ -480,7 +483,7 @@ const hotspotProfile: ProvisionStep = {
       "=use-radius=no",
     ];
     const row = await ros.findByName("/ip/hotspot/profile", ctx.hotspot.profileName);
-    if (row?.[".id"]) {
+    if (row?.get(".id")) {
       await ros.set("/ip/hotspot/profile", rowId(row), params);
       return;
     }
@@ -517,7 +520,7 @@ const hotspotServer: ProvisionStep = {
         interface: ctx.hotspot.interface,
         profile: ctx.hotspot.profileName,
         "address-pool": ctx.hotspot.poolName,
-      }) && !yes(row?.disabled)
+      }) && !yes(row?.get("disabled") ?? null)
     );
   },
   async apply({ ros, ctx }) {
@@ -528,7 +531,7 @@ const hotspotServer: ProvisionStep = {
       "=disabled=no",
     ];
     const row = await ros.findByName("/ip/hotspot", ctx.hotspot.serverName);
-    if (row?.[".id"]) {
+    if (row?.get(".id")) {
       await ros.set("/ip/hotspot", rowId(row), params);
       return;
     }
@@ -559,7 +562,7 @@ const walledGarden: ProvisionStep = {
     // dst-address, not both"), so an entry of the other kind is replaced rather than set.
     const existing = await ros.findByTag("/ip/hotspot/walled-garden/ip", "walled-garden-backend");
     const otherField = walledGardenField(ctx) === "dst-host" ? "dst-address" : "dst-host";
-    if (existing?.[".id"] && existing[otherField]) {
+    if (existing?.get(".id") && existing.get(otherField)) {
       await ros.remove("/ip/hotspot/walled-garden/ip", rowId(existing));
     }
     await ensureTaggedRule(ros, "/ip/hotspot/walled-garden/ip", "walled-garden-backend", [
@@ -594,7 +597,7 @@ const firewallForward: ProvisionStep = {
   async apply({ ros, ctx }) {
     const existing = await ros.findByTag("/ip/firewall/filter", "firewall-forward-backend");
     if (!ctx.endpoints.portal.hostIsIp) {
-      if (existing?.[".id"]) await ros.remove("/ip/firewall/filter", rowId(existing));
+      if (existing?.get(".id")) await ros.remove("/ip/firewall/filter", rowId(existing));
       return;
     }
     const params = [
@@ -605,7 +608,7 @@ const firewallForward: ProvisionStep = {
     ];
     // Must precede the hotspot's own reject rules, or hotspot clients never reach the backend
     // and the portal cannot load at all.
-    if (existing?.[".id"]) {
+    if (existing?.get(".id")) {
       await ros.set("/ip/firewall/filter", rowId(existing), params);
       await moveRuleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-forward-backend");
       return;
@@ -639,7 +642,7 @@ const firewallInput: ProvisionStep = {
       `=src-address=${ctx.endpoints.management.ip}`,
       "=action=accept",
     ];
-    if (existing?.[".id"]) {
+    if (existing?.get(".id")) {
       await ros.set("/ip/firewall/filter", rowId(existing), params);
       await moveRuleAheadOfHotspotRules(ros, "/ip/firewall/filter", "firewall-input-backend");
       return;
@@ -658,7 +661,7 @@ const natMasquerade: ProvisionStep = {
     const rows = await ros.print("/ip/firewall/nat", ["?action=masquerade"]);
     // Accept a pre-existing hand-made masquerade for this subnet — §6 says not to duplicate.
     return rows.some(
-      (r) => r["src-address"] === ctx.hotspot.network || r["src-address"] === undefined,
+      (r) => r.get("src-address") === ctx.hotspot.network || r.get("src-address") === null,
     );
   },
   async apply({ ros, ctx }) {
@@ -698,7 +701,7 @@ const portalFiles: ProvisionStep = {
       const [row] = await ros.print("/file", [`?name=${path}`]);
       if (!row) return false;
       const rendered = await renderPortalFile(name, ctx.endpoints.portal.origin);
-      if (Number(row.size ?? 0) !== Buffer.byteLength(rendered, "utf8")) return false;
+      if (Number(row.get("size") ?? 0) !== Buffer.byteLength(rendered, "utf8")) return false;
     }
     return true;
   },
@@ -712,7 +715,7 @@ const portalFiles: ProvisionStep = {
         // Last-resort path only — `contents=` silently truncates multi-byte UTF-8.
         // See the comment in dialect.ts; nothing selects this by default.
         try {
-          if (existing?.[".id"]) {
+          if (existing?.get(".id")) {
             await ros.set("/file", rowId(existing), [`=contents=${contents}`]);
           } else {
             await ros.add("/file", [`=name=${path}`, `=contents=${contents}`]);

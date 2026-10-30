@@ -67,7 +67,8 @@ const PING_COUNT = 2;
 
 function isTagged(row: RosRow): boolean {
   return (
-    (row.comment ?? "").startsWith(`${WBS_TAG}:`) || (row.name ?? "").startsWith(`${WBS_TAG}-`)
+    (row.get("comment") ?? "").startsWith(`${WBS_TAG}:`) ||
+    (row.get("name") ?? "").startsWith(`${WBS_TAG}-`)
   );
 }
 
@@ -75,15 +76,18 @@ function isTagged(row: RosRow): boolean {
  * `/ping` streams one `!re` per reply and carries running totals on each. Read the totals off
  * the last row where possible, and fall back to counting rows that came back with a time.
  */
-function pingTotals(rows: RosRow[]): { sent: number; received: number } {
-  const last = rows[rows.length - 1];
-  const sentRaw = Number(last?.sent);
-  const receivedRaw = Number(last?.received);
+export function pingTotals(rows: RosRow[]): { sent: number; received: number } {
+  const last = rows[rows.length - 1] ?? null;
+  const total = (field: string): number | null => {
+    const raw = last?.get(field) ?? null;
+    if (raw === null) return null;
+    const count = Number(raw);
+    return Number.isFinite(count) ? count : null;
+  };
+  const sent = total("sent");
   return {
-    sent: Number.isFinite(sentRaw) && sentRaw > 0 ? sentRaw : rows.length,
-    received: Number.isFinite(receivedRaw)
-      ? receivedRaw
-      : rows.filter((r) => r.time !== undefined).length,
+    sent: sent !== null && sent > 0 ? sent : rows.length,
+    received: total("received") ?? rows.filter((r) => r.get("time") !== null).length,
   };
 }
 
@@ -218,7 +222,7 @@ async function hotspotInterfaceCheck(
 
   const ports = await ros.print("/interface/bridge/port", [`?interface=${plan.interface}`]);
   if (ports.length > 0) {
-    const bridge = ports[0]?.bridge ?? "a bridge";
+    const bridge = ports[0]?.get("bridge") ?? "a bridge";
     return {
       ...base,
       status: "warn",
@@ -256,7 +260,7 @@ async function fastTrackCheck(ros: RosClient): Promise<ReadinessCheck> {
     return { ...base, status: "skipped", detail: "Could not read /ip/firewall/filter." };
   }
 
-  const active = rows.filter((r) => r.disabled !== "true" && r.disabled !== "yes");
+  const active = rows.filter((r) => r.get("disabled") !== "true" && r.get("disabled") !== "yes");
   if (active.length === 0) {
     return { ...base, status: "pass", detail: "No enabled FastTrack rule." };
   }
@@ -300,8 +304,11 @@ async function untaggedConfigCheck(ros: RosClient): Promise<ReadinessCheck> {
     readable = true;
     for (const row of rows) {
       if (isTagged(row)) continue;
-      if (row.name && builtIn.has(row.name)) continue;
-      found.push(`${label} "${row.name ?? row["dst-address"] ?? row.address ?? row[".id"]}"`);
+      const name = row.get("name");
+      if (name && builtIn.has(name)) continue;
+      found.push(
+        `${label} "${name ?? row.get("dst-address") ?? row.get("address") ?? row.get(".id")}"`,
+      );
     }
   }
 
@@ -325,7 +332,7 @@ async function untaggedConfigCheck(ros: RosClient): Promise<ReadinessCheck> {
       "Provisioning will not touch or adopt these — it creates its own wbs- objects beside " +
       "them, which is why a dry run reports so much to create. Two of them serving the same " +
       "interface will conflict. On a router that was set up by hand, prefer resetting it " +
-      "(ROUTER_ONBOARDING.md Step 1) so provisioning owns the whole configuration.",
+      "(docs/runbooks/router-onboarding.md Step 1) so provisioning owns the whole configuration.",
   };
 }
 

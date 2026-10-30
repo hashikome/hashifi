@@ -6,7 +6,7 @@
  * prove the run was idempotent. That is a state machine being executed by a person, and the
  * failure mode is skipping a step — most damagingly pressing Provision on a router that cannot
  * reach the backend, because `portal-files` is critical and runs last, so fourteen writes land
- * before anything complains. This is that sequence as code; ROUTER_ONBOARDING.md Step 4 is now
+ * before anything complains. This is that sequence as code; docs/runbooks/router-onboarding.md Step 4 is now
  * just "press Set up router".
  *
  * This runs the same sequence and stops at the first thing that would make the result wrong,

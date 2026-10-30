@@ -3,10 +3,8 @@
 The HashiFi API: venues, routers, packages, vouchers, sessions, analytics and the captive
 portal, plus the MikroTik provisioning that makes them real on a router.
 
-> **Status:** this is the purchased Express, Drizzle and MySQL backend, being ported to NestJS
-> on Bun with Prisma and PostgreSQL by the
-> [adoption plan](../../docs/exec-plans/active/adopt-purchased-billing-system.md). Until M3,
-> running it locally needs MySQL 8 (`DATABASE_URL` in `.env`).
+NestJS on Bun with Prisma and PostgreSQL 18; the
+[adoption plan](../../docs/exec-plans/active/adopt-purchased-billing-system.md) tracks the port.
 
 ## Commands
 
@@ -14,31 +12,36 @@ From the repository root (`bun run verify` runs everything CI runs), or here:
 
 | Command | What it does |
 | --- | --- |
-| `bun run dev` | Watch mode on `src/server.ts` (port 8080) |
+| `bun run dev` | Watch mode on `src/entrypoint.ts` (port 8080) |
 | `bun run typecheck` | `tsc --noEmit` |
-| `bun run test` | `bun test`: the `*.test.ts` files beside the code |
-| `bun run db:migrate` | The only way to apply a migration |
-| `bun run seed` | Seed invented admin users |
+| `bun run test` | The `*.test.ts` files beside the code |
+| `bun run test:integration` | Over HTTP against PostgreSQL (`test/integration/`) |
+| `bun run db:migrate` | Creates and applies a migration |
+| `bun run db:seed` | Seeds invented staff, a venue and packages |
+| `bun run staff:add` | Adds a person who can sign in; the first admin is made this way |
 
-Copy `.env.example` to `.env` and fill it in. `ENCRYPTION_KEY` is required: it encrypts router
-API passwords at rest, and changing it makes stored credentials unreadable.
+Copy `.env.example` to `.env` and set `ENCRYPTION_KEY` and `BETTER_AUTH_SECRET`.
+`ENCRYPTION_KEY` seals router credentials at rest: changing it makes them unreadable.
 
 ## Layout
 
 ```
 src/
-  server.ts              Express app, auth endpoints, /ws/live, background jobs
-  routes/                one file per resource; also captive-portal
+  entrypoint.ts, main.ts   telemetry, then the Nest application and its middleware
+  auth/                    Better Auth, the staff guard, venue scope
+  venues/ routers/ packages/ vouchers/ sessions/ devices/
+  analytics/ portal/ team/ audit/
+  live/                    the /ws/live hub
+  http/                    error shape, wide events, origin check, validation
   services/
-    mikrotik.ts          RouterOS API calls (hotspot users, live sessions)
-    router-provision/    everything that configures a router
-    router-sync.ts       pushes vouchers to a venue's routers
-    reconcile-daemon.ts  retries anything the router never confirmed
-    expiry-daemon.ts     expires vouchers and sessions on schedule
-  db/                    Drizzle schema and migration runner (replaced by Prisma in M3)
-mikrotik-files/          login.html, alogin.html and status.html uploaded to routers
-mikrotik-knowledge-files/ router onboarding procedure and the hotspot reference
+    mikrotik.ts            RouterOS API calls (hotspot users, live sessions)
+    router-provision/      everything that configures a router
+    router-sync.ts         pushes vouchers to a venue's routers
+    live-monitor.ts        polls routers for live clients and applies throttling
+mikrotik-files/            login.html, alogin.html and status.html uploaded to routers
 ```
+
+Router procedures are in [docs/runbooks](../../docs/runbooks/README.md).
 
 The tests pin the code where expensive bugs have lived: the generated bootstrap script (every
 statement at most 512 characters and self-contained), hotspot interface resolution, per-board

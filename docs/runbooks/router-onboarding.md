@@ -5,13 +5,19 @@ model; the system detects the board and adapts.
 
 ```
 1. Reset the router
-2. Add Router form → Bootstrap script → paste it into the router
-3. Test connection → Save
+2. Add the router in HashiFi and save it
+3. Open its bootstrap script → paste it into the router
 4. Set up router
 5. Check a phone
 ```
 
-`MIKROTIK_HOTSPOT_SETUP.md` is the *reference* — why each setting exists, and the manual
+> Written for the purchased system, and still the reference for steps on the router. Two things
+> changed: the bootstrap script is generated for a saved router, because it carries that
+> router's management tunnel ([ADR-0006](../engineering-decisions/0006-router-management-tunnel.md));
+> and "test connection" only reaches a router the API shares a network with, so a router behind
+> the tunnel is tested by its probe, after the script is pasted.
+
+[mikrotik-hotspot-reference.md](mikrotik-hotspot-reference.md) is the *reference* — why each setting exists, and the manual
 equivalent of every provisioning step. This file is the *procedure*. Do not follow the
 reference's manual steps on a new router: it produces untagged config the provisioner cannot
 manage.
@@ -204,9 +210,9 @@ Most failures now name their own fix in the dialog. These are the ones it cannot
 
 ## Related
 
-- **`MIKROTIK_HOTSPOT_SETUP.md`** — the reference: why each setting exists, every error we hit,
+- **[mikrotik-hotspot-reference.md](mikrotik-hotspot-reference.md)** — the reference: why each setting exists, every error we hit,
   and the manual equivalent of every provisioning step
 - **`../../TEST.md`** — full test matrix
-- **`../src/services/router-provision/`** — the implementation. `bootstrap.ts` generates Step 2;
+- **`apps/api/src/services/router-provision/`** — the implementation. `bootstrap.ts` generates Step 2;
   `probe.ts` + `readiness.ts` are phases 1–2; `steps.ts` is the ordered registry phases 3–5 run;
   `verify.ts` is phase 6; `setup.ts` orchestrates all of it

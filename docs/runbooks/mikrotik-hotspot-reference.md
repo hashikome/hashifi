@@ -1,6 +1,6 @@
 # MikroTik Hotspot — Complete Setup & Operations Guide
 
-> ## 👉 Setting up a router right now? Start with [`ROUTER_ONBOARDING.md`](./ROUTER_ONBOARDING.md)
+> ## 👉 Setting up a router right now? Start with [router-onboarding.md](router-onboarding.md)
 >
 > That file is the **step-by-step procedure**: reset → paste the generated **Bootstrap script**
 > → **Test connection** and save → **Set up router** → check a phone. Almost everything done by

@@ -56,7 +56,7 @@ export interface VerifyInput {
   includeWriteTest?: boolean;
 }
 
-const yes = (v: string | undefined) => v === "true" || v === "yes";
+const yes = (v: string | null) => v === "true" || v === "yes";
 
 const MANUAL_CHECKS = [
   "Connect a phone to the SSID and confirm it gets an address in the hotspot range.",
@@ -79,7 +79,7 @@ async function hotspotServerCheck(ros: RosClient, plan: HotspotPlan): Promise<Re
       fix: "Run Set up again — the hotspot-server step did not take effect.",
     };
   }
-  if (yes(row.disabled)) {
+  if (yes(row.get("disabled"))) {
     return {
       ...base,
       status: "fail",
@@ -89,7 +89,7 @@ async function hotspotServerCheck(ros: RosClient, plan: HotspotPlan): Promise<Re
   }
   // RouterOS flags a server whose profile, pool or interface does not resolve. It looks
   // configured and serves nobody.
-  if (yes(row.invalid)) {
+  if (yes(row.get("invalid"))) {
     return {
       ...base,
       status: "fail",
@@ -100,7 +100,7 @@ async function hotspotServerCheck(ros: RosClient, plan: HotspotPlan): Promise<Re
   return {
     ...base,
     status: "pass",
-    detail: `"${plan.serverName}" is enabled on ${row.interface ?? plan.interface}.`,
+    detail: `"${plan.serverName}" is enabled on ${row.get("interface") ?? plan.interface}.`,
   };
 }
 
@@ -139,7 +139,7 @@ async function dhcpServerCheck(
       fix: "Run Set up again — the dhcp-server step did not take effect.",
     };
   }
-  if (yes(row.disabled)) {
+  if (yes(row.get("disabled"))) {
     return {
       ...base,
       status: "fail",
@@ -147,8 +147,8 @@ async function dhcpServerCheck(
       fix: "Without it a phone associates to the SSID and never gets an address. Run Set up again.",
     };
   }
-  if (yes(row.invalid)) {
-    const about = row[".about"] ?? "";
+  if (yes(row.get("invalid"))) {
+    const about = row.get(".about") ?? "";
     const idleRadio =
       /not running/i.test(about) &&
       plan.interfaceIsRadio &&
@@ -188,7 +188,7 @@ async function radioIsOnAir(ros: RosClient, dialect: Dialect, plan: HotspotPlan)
     `=numbers=${plan.interface}`,
     "=once=",
   ]);
-  return rows?.some((r) => /running/i.test(r.status ?? "")) ?? false;
+  return rows?.some((r) => /running/i.test(r.get("status") ?? "")) ?? false;
 }
 
 async function radioBroadcastingCheck(
@@ -214,7 +214,7 @@ async function radioBroadcastingCheck(
       detail: `"${plan.interface}" not listed in ${dialect.radio.menu}.`,
     };
   }
-  if (yes(row.disabled)) {
+  if (yes(row.get("disabled"))) {
     return {
       ...base,
       status: "fail",
@@ -227,11 +227,11 @@ async function radioBroadcastingCheck(
   // currently associated, not whether the radio is transmitting — an idle hotspot with nobody
   // connected reports running=false, which is normal. Verified on an hAP lite in ap-bridge mode
   // with 0 clients. Treating it as a fault would warn on every quiet router.
-  const ssid = row[dialect.radio.ssidField] ?? row.ssid;
-  const mode = row[dialect.radio.modeField] ?? row.mode;
+  const ssid = row.get(dialect.radio.ssidField) ?? row.get("ssid");
+  const mode = row.get(dialect.radio.modeField) ?? row.get("mode");
   const associated = await ros.tryPrint(`${dialect.radio.menu}/registration-table`);
 
-  const wrongMode = mode !== undefined && mode !== dialect.radio.modeValue;
+  const wrongMode = mode !== null && mode !== dialect.radio.modeValue;
   if (wrongMode) {
     return {
       ...base,
@@ -258,7 +258,7 @@ async function loginModeCheck(ros: RosClient, plan: HotspotPlan): Promise<Readin
   if (!row) {
     return { ...base, status: "fail", detail: `Hotspot profile "${plan.profileName}" is missing.` };
   }
-  const loginBy = row["login-by"] ?? "";
+  const loginBy = row.get("login-by") ?? "";
   if (!loginBy.includes("http-pap")) {
     return {
       ...base,
@@ -284,7 +284,7 @@ async function portalFilesCheck(ros: RosClient, portalOrigin: string): Promise<R
       continue;
     }
     const expected = Buffer.byteLength(await renderPortalFile(name, portalOrigin), "utf8");
-    const actual = Number(row.size ?? 0);
+    const actual = Number(row.get("size") ?? 0);
     if (actual !== expected) wrong.push(`${name} is ${actual} bytes, expected ${expected}`);
   }
 
@@ -316,7 +316,7 @@ async function walledGardenCheck(
   const rows = await ros.print("/ip/hotspot/walled-garden/ip", [`?${field}=${portal.host}`]);
   // RouterOS marks a host-name entry invalid when the name does not resolve.
   const accepting = rows.filter(
-    (r) => r.action === "accept" && !yes(r.disabled) && !yes(r.invalid),
+    (r) => r.get("action") === "accept" && !yes(r.get("disabled")) && !yes(r.get("invalid")),
   );
 
   if (accepting.length === 0) {
@@ -480,12 +480,12 @@ async function voucherRoundTripCheck(
      * Is a speed cap actually IN FORCE on that user? Two ways it can be, and it must be one of
      * them — otherwise the voucher works and the customer gets the whole uplink.
      */
-    const userRateLimit = readBack["rate-limit"]?.trim() || null;
-    const onProfile = readBack.profile?.trim() || null;
+    const userRateLimit = readBack.get("rate-limit")?.trim() || null;
+    const onProfile = readBack.get("profile")?.trim() || null;
     const profileRow = onProfile
       ? await ros.findByName("/ip/hotspot/user/profile", onProfile)
       : null;
-    const profileRateLimit = profileRow?.["rate-limit"]?.trim() || null;
+    const profileRateLimit = profileRow?.get("rate-limit")?.trim() || null;
     const capInForce = userRateLimit ?? profileRateLimit;
 
     // Clean up before reporting, so a failure verdict does not also leave litter behind.
@@ -595,9 +595,9 @@ async function voucherRoundTripCheck(
      */
     if (profileCreated) {
       const row = await ros.findByName("/ip/hotspot/user/profile", testProfile);
-      if (row?.[".id"]) {
+      if (row) {
         try {
-          await ros.remove("/ip/hotspot/user/profile", row[".id"]);
+          await ros.remove("/ip/hotspot/user/profile", rowId(row));
         } catch {
           /* leave it; the verdict matters more */
         }

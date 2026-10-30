@@ -1,5 +1,6 @@
 import { RouterOSAPI } from "routeros";
 import { minutesToRosUptime } from "../utils/duration.js";
+import { toRows } from "./router-provision/ros-client.js";
 
 export type MikroTikConn = RouterOSAPI;
 
@@ -97,12 +98,13 @@ export async function ensureHotspotUserProfile(
   const params = [`=shared-users=${Math.max(1, opts.sharedUsers)}`];
   if (opts.rateLimit) params.push(`=rate-limit=${opts.rateLimit}`);
 
-  const existing = (await conn.write("/ip/hotspot/user/profile/print", [
-    `?name=${opts.name}`,
-  ])) as Record<string, string>[];
+  const existing = toRows(
+    await conn.write("/ip/hotspot/user/profile/print", [`?name=${opts.name}`]),
+  );
+  const existingId = existing[0]?.get(".id") ?? null;
 
-  if (existing[0]?.[".id"]) {
-    await conn.write("/ip/hotspot/user/profile/set", [`=.id=${existing[0][".id"]}`, ...params]);
+  if (existingId !== null) {
+    await conn.write("/ip/hotspot/user/profile/set", [`=.id=${existingId}`, ...params]);
   } else {
     await conn.write("/ip/hotspot/user/profile/add", [`=name=${opts.name}`, ...params]);
   }
@@ -110,9 +112,9 @@ export async function ensureHotspotUserProfile(
   // Read back. `add`/`set` returning without error is not proof, and a voucher pointing at a
   // profile that does not exist is rejected by the router — so this failing loudly here is much
   // better than every voucher push failing afterwards.
-  const readBack = (await conn.write("/ip/hotspot/user/profile/print", [
-    `?name=${opts.name}`,
-  ])) as Record<string, string>[];
+  const readBack = toRows(
+    await conn.write("/ip/hotspot/user/profile/print", [`?name=${opts.name}`]),
+  );
   if (!readBack[0]) {
     throw new Error(
       `Hotspot user profile "${opts.name}" was accepted by the router but is not present in ` +
@@ -304,12 +306,12 @@ export async function ensureHotspotUserProfileAssigned(
    */
   alsoAcceptable: readonly string[] = [],
 ): Promise<boolean> {
-  const result = await conn.write("/ip/hotspot/user/print", [`?name=${code}`]);
-  if (!Array.isArray(result) || result.length === 0) return false;
-  const row = result[0] as Record<string, string>;
-  if (!row[".id"]) return false;
-  if (row.profile === profileName || alsoAcceptable.includes(row.profile ?? "")) return false;
-  await conn.write("/ip/hotspot/user/set", [`=.id=${row[".id"]}`, `=profile=${profileName}`]);
+  const [row] = toRows(await conn.write("/ip/hotspot/user/print", [`?name=${code}`]));
+  const id = row?.get(".id") ?? null;
+  if (!row || id === null) return false;
+  const profile = row.get("profile");
+  if (profile === profileName || alsoAcceptable.includes(profile ?? "")) return false;
+  await conn.write("/ip/hotspot/user/set", [`=.id=${id}`, `=profile=${profileName}`]);
   return true;
 }
 
@@ -326,24 +328,22 @@ export async function ensureHotspotUserProfileAssigned(
  */
 
 export async function kickHotspotSession(conn: MikroTikConn, code: string): Promise<void> {
-  const result = await conn.write("/ip/hotspot/active/print", [`?user=${code}`]);
-  if (!Array.isArray(result) || result.length === 0) return;
-  const id: string | undefined = result[0][".id"];
-  if (!id) return;
+  const [row] = toRows(await conn.write("/ip/hotspot/active/print", [`?user=${code}`]));
+  const id = row?.get(".id") ?? null;
+  if (id === null) return;
   await conn.write("/ip/hotspot/active/remove", [`=.id=${id}`]);
 }
 
 export async function removeHotspotUser(conn: MikroTikConn, code: string): Promise<void> {
-  const result = await conn.write("/ip/hotspot/user/print", [`?name=${code}`]);
-  if (!Array.isArray(result) || result.length === 0) return;
-  const rosId: string | undefined = result[0][".id"];
-  if (!rosId) return;
+  const [row] = toRows(await conn.write("/ip/hotspot/user/print", [`?name=${code}`]));
+  const rosId = row?.get(".id") ?? null;
+  if (rosId === null) return;
   await conn.write("/ip/hotspot/user/remove", [`=.id=${rosId}`]);
 }
 
 export async function getSystemUptimeSeconds(conn: MikroTikConn): Promise<number> {
-  const result = await conn.write("/system/resource/print");
-  const raw: string = Array.isArray(result) && result[0] ? String(result[0].uptime ?? "") : "";
+  const [row] = toRows(await conn.write("/system/resource/print"));
+  const raw = row?.get("uptime") ?? "";
   if (!raw) return 0;
   let s = 0;
   const w = raw.match(/(\d+)w/);
@@ -360,16 +360,14 @@ export async function getSystemUptimeSeconds(conn: MikroTikConn): Promise<number
 }
 
 export async function getActiveClients(conn: MikroTikConn): Promise<MikroTikActiveClient[]> {
-  const result = await conn.write("/ip/hotspot/active/print");
-  if (!Array.isArray(result)) return [];
-  return result.map((r) => ({
-    id: String(r[".id"] ?? ""),
-    user: String(r.user ?? ""),
-    mac: String(r["mac-address"] ?? ""),
-    ip: String(r.address ?? ""),
-    uptime: String(r.uptime ?? "0s"),
-    idleTime: String(r["idle-time"] ?? "0s"),
-    bytesIn: Number(r["bytes-in"] ?? 0),
-    bytesOut: Number(r["bytes-out"] ?? 0),
+  return toRows(await conn.write("/ip/hotspot/active/print")).map((r) => ({
+    id: r.get(".id") ?? "",
+    user: r.get("user") ?? "",
+    mac: r.get("mac-address") ?? "",
+    ip: r.get("address") ?? "",
+    uptime: r.get("uptime") ?? "0s",
+    idleTime: r.get("idle-time") ?? "0s",
+    bytesIn: Number(r.get("bytes-in") ?? 0),
+    bytesOut: Number(r.get("bytes-out") ?? 0),
   }));
 }
