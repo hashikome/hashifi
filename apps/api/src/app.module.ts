@@ -10,6 +10,7 @@ import { PackagesModule } from "./packages/packages.module.js";
 import { PortalModule } from "./portal/portal.module.js";
 import { RoutersModule } from "./routers/routers.module.js";
 import { SessionsModule } from "./sessions/sessions.module.js";
+import { TeamModule } from "./team/team.module.js";
 import { VenuesModule } from "./venues/venues.module.js";
 import { VouchersModule } from "./vouchers/vouchers.module.js";
 
@@ -30,6 +31,7 @@ export function appModule(config: AppConfig, email: EmailSender | null): Dynamic
       SessionsModule,
       AnalyticsModule,
       PortalModule,
+      TeamModule,
     ],
     controllers: [HealthController],
   };

@@ -503,3 +503,52 @@ export interface RevenueTransactions {
     occurredAt: Timestamp;
   }[];
 }
+
+export type StaffStatus = "active" | "inactive" | "suspended";
+
+/** A person on the Team page (admins only). */
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  /** E.164, such as +255712345678. */
+  phone: string | null;
+  role: StaffRole;
+  status: StaffStatus;
+  twoFactorEnabled: boolean;
+  lastLoginAt: Timestamp | null;
+  createdAt: Timestamp;
+  /** The venues a manager operates; empty for an admin. */
+  venues: { id: string; name: string }[];
+}
+
+/** `GET /api/team`. */
+export interface TeamList {
+  members: TeamMember[];
+}
+
+/** Every `/api/team/:id` route that changes a member answers with it. */
+export interface TeamMemberResponse {
+  member: TeamMember;
+}
+
+/** One entry of the audit trail (admins only): who did what to which record. */
+export interface AuditEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  entityName: string | null;
+  /** The staff member who acted; null for the system or someone since removed. */
+  staffId: string | null;
+  actorName: string;
+  ipAddress: string | null;
+  details: Record<string, string | number | boolean | null>;
+  createdAt: Timestamp;
+}
+
+/** `GET /api/audit`: newest first, a page at a time. */
+export interface AuditList {
+  entries: AuditEntry[];
+  nextBefore: string | null;
+}

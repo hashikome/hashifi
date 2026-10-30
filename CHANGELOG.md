@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Team and audit through the NestJS API: admins add, change, suspend and remove staff and reset
+  a lost authenticator app; managers may run several venues; HashiFi always keeps an active
+  admin, even when two admins act on each other at once; everyone affected is emailed.
+
 - Portal settings through the NestJS API: one branding with the API's defaults until saved,
   validated field by field. Logo and background images are stored in PostgreSQL, re-encoded
   without their metadata, and the portal shows only images uploaded to HashiFi.

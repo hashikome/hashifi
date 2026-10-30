@@ -218,8 +218,28 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     `portal.integration.test.ts` (defaults, one row, audit, manager read-only; five refused
     fields; upload, public JPEG, slot and existence checks; non-image, SVG, unknown kind and
     11 MB refused; unused images deleted, recent uploads kept).
-  - [ ] The remaining routes, each through `venueScope` and the guard: analytics, revenue, portal settings, team, audit.
-    Still to apply as they land:
+  - [x] (2026-10-30) Team and audit (`src/team/`, `src/audit/audit.controller.ts`), admins
+    only. Adding someone creates their Better Auth user and staff record in one transaction
+    (`createStaffRows`, shared with `bun run staff:add`); a manager may operate several venues
+    (`venueIds`; the purchased page assumed one), an admin none. Name, email, phone and venues
+    are replaced with `PUT`; a changed email is told at its old address. Role and status have
+    their own routes; promoting frees the venues and the staff guard then requires an
+    authenticator; suspending deletes the person's sessions; another admin resets a lost
+    authenticator (removes it, signs the person out). Nobody changes their own role, status or
+    authenticator, or removes themselves (409 `NOT_ON_YOURSELF`); HashiFi keeps an active admin
+    (409 `LAST_ADMIN`), checked under a lock on every admin row taken in one order, because
+    through the API it can only be broken by two admins acting on each other at once. Each
+    change is audited and the person emailed (`team-emails.ts`, plain text, no sign-in links).
+    `GET /api/audit` pages the trail with filters by record and actor.
+    Acceptance: `team.integration.test.ts` (add a manager with two venues, who is told and
+    sees them; taken email, admin with venues and bad phone refused; email change; suspend
+    and reactivate; four self-actions refused; two mutual demotions and two mutual suspensions
+    at once leave one admin, the first seen to fail without the lock; promotion and reset;
+    removal frees venues and stays in the audit trail).
+  - [ ] Still in M4: the live-view gateway; `RosRow` as a `null`-returning accessor; the
+    vendor's knowledge files into `docs/runbooks/`; the web pass (one client module on
+    `@hashifi/types`, sign-in on Better Auth, and every page on the routes above). Notes for
+    what remains:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
       their own checks; the router sim's guest test runs once they are ported.
     - The live-view gateway authenticates the upgrade request itself (session cookie, active
