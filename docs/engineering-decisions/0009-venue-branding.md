@@ -36,12 +36,13 @@ transparency kept and metadata gone, replacement, refused uploads, manager scope
 names, prefix and guest context. `brand-store.test.ts` checks the R2 store's signed requests
 against a local S3-style server. Walked in a browser: upload, preview, guest page, printed card.
 
-Against the real `hashifi` bucket on 31 October: an upload through the API, served back from
-`/api/guest/brand/`, then removed, leaving the bucket empty.
+Against the real `hashifi` bucket on 31 October, with a key limited to it: an upload through the
+API, served back from `/api/guest/brand/`, replaced, then removed, leaving the bucket empty. The same
+key is refused at the backups bucket.
 
 ## What remains open
 
-- **The key:** that test used the shared account key. Production should have a key limited to
-  this bucket, as a Docker secret.
+- **Production secrets:** the key reaches a deployment as Docker secrets (`R2_ACCESS_KEY_ID_FILE`,
+  `R2_SECRET_ACCESS_KEY_FILE`) when HashiFi is deployed (M8).
 - **Speed on a first load:** the API fetches each file from R2, about 800 ms from a laptop. Phones
   cache it for good afterwards; if venues feel the first load, a cache in front of the route fits.

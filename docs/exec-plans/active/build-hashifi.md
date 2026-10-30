@@ -284,7 +284,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   and printed cards and prefixes by venue. `backgroundStyle` is dropped.
   Acceptance: `brand.integration.test.ts`, `brand-store.test.ts`, and a browser walk of upload,
   preview, guest page and printed card; upload, serve and removal against the real `hashifi`
-  bucket. Not done: a key limited to this bucket for production.
+  bucket, with a key limited to it and refused at the backups bucket.
 - [x] (2026-10-30) Sign-in moved to the API, closing M5's open findings. The hotspot is
   `login-by=mac-cookie` alone, and `/ip hotspot active login` is probed and required. No response
   or router page holds a code; `link-login`, the router's login form and `alogin.html` are gone.
