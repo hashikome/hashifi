@@ -1,5 +1,6 @@
 "use client";
 
+import type { DeviceList, DeviceRecord, DeviceResponse } from "@hashifi/types";
 import {
   Calendar,
   Cpu,
@@ -7,9 +8,7 @@ import {
   Globe,
   Laptop,
   Loader,
-  Mail,
   Monitor,
-  Phone,
   RefreshCw,
   Search,
   ShieldX,
@@ -50,13 +49,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { errorMessage } from "@/lib/errors";
 import { statusPill } from "@/lib/status-pill";
-import type { WifiUser } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -64,13 +61,6 @@ function formatBytes(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
-}
-
-interface CustomerStats {
-  total: number;
-  online: number;
-  offline: number;
-  blocked: number;
 }
 
 /** How often the list re-checks who is still connected, in ms. */
@@ -96,7 +86,7 @@ function getDeviceIcon(deviceType: string | null) {
  * every customer the portal ever created and never means "connected". A blocked account
  * outranks both, since that is the fact an admin needs to see first.
  */
-function getConnection(customer: WifiUser) {
+function getConnection(customer: DeviceRecord) {
   if (customer.status === "blocked") {
     return { label: "blocked", className: statusPill.danger, live: false };
   }
@@ -109,8 +99,8 @@ function getConnection(customer: WifiUser) {
 export default function UsersPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [customers, setCustomers] = useState<WifiUser[]>([]);
-  const [stats, setStats] = useState<CustomerStats>({
+  const [customers, setCustomers] = useState<DeviceRecord[]>([]);
+  const [stats, setStats] = useState<DeviceList["stats"]>({
     total: 0,
     online: 0,
     offline: 0,
@@ -120,7 +110,7 @@ export default function UsersPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedUser, setSelectedUser] = useState<WifiUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<DeviceRecord | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -137,10 +127,8 @@ export default function UsersPage() {
         if (searchQuery) params.set("search", searchQuery);
         if (statusFilter !== "all") params.set("status", statusFilter);
 
-        const res = await fetch(`${API_URL}/api/customers?${params}`, { credentials: "include" });
-        if (!res.ok) throw new Error("Failed to fetch customers");
-        const data = await res.json();
-        setCustomers(data.customers);
+        const data = await api.get<DeviceList>(`/api/devices?${params}`);
+        setCustomers(data.devices);
         setStats(data.stats);
       } catch {
         // A failed background poll leaves the last good list on screen rather than
@@ -172,22 +160,32 @@ export default function UsersPage() {
     if (!customerToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${API_URL}/api/customers/${customerToDelete}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete user");
-      }
+      await api.delete(`/api/devices/${customerToDelete}`);
       setCustomers((prev) => prev.filter((c) => c.id !== customerToDelete));
       setStats((prev) => ({ ...prev, total: prev.total - 1 }));
-      toast.success("User deleted successfully");
+      toast.success("Device forgotten");
     } catch (err) {
-      toast.error(errorMessage(err, "Failed to delete user"));
+      toast.error(errorMessage(err, "Failed to forget the device"));
     } finally {
       setIsDeleting(false);
       setCustomerToDelete(null);
+    }
+  };
+
+  const handleBlock = async (device: DeviceRecord) => {
+    const status = device.status === "blocked" ? "active" : "blocked";
+    try {
+      const { device: updated } = await api.put<DeviceResponse>(
+        `/api/devices/${device.id}/status`,
+        {
+          status,
+        },
+      );
+      setCustomers((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setSelectedUser(updated);
+      toast.success(status === "blocked" ? "Device blocked" : "Device unblocked");
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to update the device"));
     }
   };
 
@@ -360,9 +358,7 @@ export default function UsersPage() {
                         {customer.lastIpAddress || "—"}
                       </TableCell>
                       <TableCell className="text-center text-xs text-muted-foreground">
-                        {formatBytes(
-                          (customer.totalDownloadBytes ?? 0) + (customer.totalUploadBytes ?? 0),
-                        )}
+                        {formatBytes(customer.downloadBytes + customer.uploadBytes)}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="secondary" className={connection.className}>
@@ -378,7 +374,7 @@ export default function UsersPage() {
                           : "—"}
                       </TableCell>
                       <TableCell className="text-center whitespace-nowrap">
-                        {formatDate(customer.joinedAt, "shortDate")}
+                        {formatDate(customer.firstSeenAt, "shortDate")}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -426,7 +422,7 @@ export default function UsersPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-lg font-semibold truncate">
-                        {selectedUser.deviceName || selectedUser.username || "Unknown Device"}
+                        {selectedUser.deviceName || "Unknown Device"}
                       </p>
                       {selectedUser.deviceType && (
                         <p className="text-sm text-muted-foreground capitalize">
@@ -441,39 +437,6 @@ export default function UsersPage() {
                       </Badge>
                     </div>
                   </div>
-
-                  {/* Contact info — only shown if present */}
-                  {(selectedUser.email || selectedUser.phone || selectedUser.username) && (
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      {selectedUser.username && (
-                        <div className="flex items-start gap-2">
-                          <Users className="size-4 text-muted-foreground mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-muted-foreground text-xs">Username</p>
-                            <p className="font-medium">{selectedUser.username}</p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.email && (
-                        <div className="flex items-start gap-2">
-                          <Mail className="size-4 text-muted-foreground mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-muted-foreground text-xs">Email</p>
-                            <p className="font-medium truncate">{selectedUser.email}</p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.phone && (
-                        <div className="flex items-start gap-2">
-                          <Phone className="size-4 text-muted-foreground mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-muted-foreground text-xs">Phone</p>
-                            <p className="font-medium">{selectedUser.phone}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* Network card */}
                   <Card>
@@ -507,7 +470,7 @@ export default function UsersPage() {
                       <div>
                         <p className="text-muted-foreground text-xs">Joined</p>
                         <p className="font-medium">
-                          {formatDate(selectedUser.joinedAt, "longDate")}
+                          {formatDate(selectedUser.firstSeenAt, "longDate")}
                         </p>
                       </div>
                     </div>
@@ -524,7 +487,15 @@ export default function UsersPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    {user?.role === "admin" && (
+                      <Button
+                        variant={selectedUser.status === "blocked" ? "outline" : "destructive"}
+                        onClick={() => handleBlock(selectedUser)}
+                      >
+                        {selectedUser.status === "blocked" ? "Unblock" : "Block"}
+                      </Button>
+                    )}
                     <Button variant="outline" onClick={() => setSelectedUser(null)}>
                       Close
                     </Button>
@@ -539,18 +510,18 @@ export default function UsersPage() {
         isOpen={!!customerToDelete}
         onClose={() => setCustomerToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        title="Delete User?"
+        title="Forget this device?"
         description={
           <>
-            This will permanently delete{" "}
+            This removes{" "}
             <span className="font-semibold text-foreground">
-              "{customers.find((c) => c.id === customerToDelete)?.username || "this user"}"
-            </span>{" "}
-            and all their session history.
+              "{customers.find((c) => c.id === customerToDelete)?.deviceName || "this device"}"
+            </span>
+            . Its past sessions stay on record, no longer linked to it.
           </>
         }
         variant="destructive"
-        confirmText="Delete User"
+        confirmText="Forget device"
         cancelText="Cancel"
         isLoading={isDeleting}
       />

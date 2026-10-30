@@ -1,14 +1,15 @@
 "use client";
 
+import type { RouterList } from "@hashifi/types";
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const POLL_INTERVAL_MS = 30_000;
 
 // The live-sessions WebSocket only reflects whether the browser has an open
 // connection to OUR backend — it says nothing about whether the backend can
 // actually reach a MikroTik router. The backend only broadcasts hotspot_update
-// for routers with status "online" (see backend/src/services/live-monitor.ts),
+// for routers with status "online" (see services/live-monitor.ts),
 // so if every router is offline/error, no update ever arrives and a "Live"/
 // spinner UI driven only by the WS connection spins forever. This hook checks
 // actual router status so pages can show a clear disconnected state instead.
@@ -22,10 +23,8 @@ export function useRoutersStatus() {
 
     const check = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/routers`, { credentials: "include" });
-        if (!res.ok || !mounted) return;
-        const data = await res.json();
-        const routers: { status: string }[] = data.routers ?? [];
+        const { routers } = await api.get<RouterList>("/api/routers");
+        if (!mounted) return;
         setTotalCount(routers.length);
         setOnlineCount(routers.filter((r) => r.status === "online").length);
         setLoaded(true);

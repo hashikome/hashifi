@@ -1,5 +1,6 @@
 "use client";
 
+import type { SessionList, SessionRecord, VenueList, VenueRecord } from "@hashifi/types";
 import {
   Clock,
   Download,
@@ -53,19 +54,10 @@ import {
 } from "@/components/ui/table";
 import { useLiveSessions } from "@/hooks/use-live-sessions";
 import { useRoutersStatus } from "@/hooks/use-routers-status";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { statusPill } from "@/lib/status-pill";
-import type { ActiveSession, Venue } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-interface SessionStats {
-  total: number;
-  connected: number;
-  totalUploadBytes: number;
-  totalDownloadBytes: number;
-}
 
 function getDeviceIcon(deviceType: string | null) {
   switch (deviceType?.toLowerCase()) {
@@ -119,7 +111,7 @@ function getSignalInfo(dbm: number | null) {
   return { label: "Weak", color: "text-destructive", bars: 1 };
 }
 
-function getStatusColor(status: ActiveSession["status"]) {
+function getStatusColor(status: SessionRecord["status"]) {
   switch (status) {
     case "connected":
       return statusPill.success;
@@ -143,20 +135,20 @@ export default function SessionsPage() {
   } = useLiveSessions();
   const { hasOnlineRouter, isPartiallyOnline, onlineCount, totalCount } = useRoutersStatus();
 
-  const [sessions, setSessions] = useState<ActiveSession[]>([]);
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [stats, setStats] = useState<SessionStats>({
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [venues, setVenues] = useState<VenueRecord[]>([]);
+  const [stats, setStats] = useState<SessionList["stats"]>({
     total: 0,
     connected: 0,
-    totalUploadBytes: 0,
-    totalDownloadBytes: 0,
+    uploadBytes: 0,
+    downloadBytes: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [venueFilter, setVenueFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("connected");
-  const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
+  const [selectedSession, setSelectedSession] = useState<SessionRecord | null>(null);
   const [sessionToTerminate, setSessionToTerminate] = useState<string | null>(null);
   const [isTerminating, setIsTerminating] = useState(false);
 
@@ -169,9 +161,7 @@ export default function SessionsPage() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (venueFilter !== "all") params.set("venueId", venueFilter);
 
-      const res = await fetch(`${API_URL}/api/sessions?${params}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch sessions");
-      const data = await res.json();
+      const data = await api.get<SessionList>(`/api/sessions?${params}`);
       setSessions(data.sessions);
       setStats(data.stats);
     } catch {
@@ -192,9 +182,7 @@ export default function SessionsPage() {
   useEffect(() => {
     const fetchVenues = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await api.get<VenueList>("/api/venues");
         setVenues(data.venues);
       } catch {}
     };
@@ -205,14 +193,7 @@ export default function SessionsPage() {
     if (!sessionToTerminate) return;
     setIsTerminating(true);
     try {
-      const res = await fetch(`${API_URL}/api/sessions/${sessionToTerminate}/terminate`, {
-        method: "PATCH",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to terminate session");
-      }
+      await api.post(`/api/sessions/${sessionToTerminate}/terminate`);
       setSessions((prev) =>
         prev.map((s) =>
           s.id === sessionToTerminate ? { ...s, status: "terminated" as const } : s,
@@ -230,7 +211,7 @@ export default function SessionsPage() {
 
   // Deduplicate: keep only the latest session per MAC address
   const dedupedSessions = useMemo(() => {
-    const seen = new Map<string, ActiveSession>();
+    const seen = new Map<string, SessionRecord>();
     for (const s of sessions) {
       const key = s.macAddress ?? s.id;
       const existing = seen.get(key);
@@ -289,7 +270,7 @@ export default function SessionsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Upload</p>
-                <p className="text-2xl font-bold">{formatBytes(stats.totalUploadBytes)}</p>
+                <p className="text-2xl font-bold">{formatBytes(stats.uploadBytes)}</p>
               </div>
               <div className="size-10 rounded-full bg-chart-2/20 flex items-center justify-center">
                 <Upload className="size-5 text-chart-2" />
@@ -302,7 +283,7 @@ export default function SessionsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Download</p>
-                <p className="text-2xl font-bold">{formatBytes(stats.totalDownloadBytes)}</p>
+                <p className="text-2xl font-bold">{formatBytes(stats.downloadBytes)}</p>
               </div>
               <div className="size-10 rounded-full bg-chart-1/20 flex items-center justify-center">
                 <Download className="size-5 text-chart-1" />
@@ -661,9 +642,7 @@ export default function SessionsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="text-lg font-semibold">
-                          {selectedSession.customerUsername ||
-                            selectedSession.customerPhone ||
-                            "Unknown Customer"}
+                          {selectedSession.deviceName || "Unknown device"}
                         </p>
                         {liveClient && (
                           <span
