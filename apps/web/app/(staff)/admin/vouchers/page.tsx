@@ -629,7 +629,7 @@ export default function VouchersPage() {
       {/* Batch Action Bar */}
       {selectedIds.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="flex items-center gap-4 bg-[#1f1611] text-white px-6 py-4 rounded-2xl shadow-2xl border border-white/5 backdrop-blur-md">
+          <div className="flex items-center gap-4 bg-[#1f1611] text-white px-6 py-4 rounded-2xl shadow-2xl border border-white/5">
             <div className="flex items-center gap-2 border-r border-white/10 pr-4">
               <Badge
                 variant="secondary"

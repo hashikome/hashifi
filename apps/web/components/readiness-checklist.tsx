@@ -18,35 +18,29 @@ export interface ReadinessReport {
   summary: { pass: number; warn: number; fail: number; skipped: number };
 }
 
-const STYLES: Record<
-  ReadinessStatus,
-  { icon: typeof CheckCircle2; text: string; border: string; label: string }
-> = {
-  pass: {
-    icon: CheckCircle2,
-    text: "text-teal-700 dark:text-teal-400",
-    border: "border-l-teal-500",
-    label: "Ready",
-  },
-  warn: {
-    icon: AlertTriangle,
-    text: "text-amber-800 dark:text-amber-400",
-    border: "border-l-amber-500",
-    label: "Heads-up",
-  },
-  fail: {
-    icon: XCircle,
-    text: "text-destructive",
-    border: "border-l-destructive",
-    label: "Blocking",
-  },
-  skipped: {
-    icon: CircleSlash,
-    text: "text-muted-foreground",
-    border: "border-l-muted",
-    label: "Not checked",
-  },
-};
+const STYLES: Record<ReadinessStatus, { icon: typeof CheckCircle2; text: string; label: string }> =
+  {
+    pass: {
+      icon: CheckCircle2,
+      text: "text-teal-700 dark:text-teal-400",
+      label: "Ready",
+    },
+    warn: {
+      icon: AlertTriangle,
+      text: "text-amber-800 dark:text-amber-400",
+      label: "Heads-up",
+    },
+    fail: {
+      icon: XCircle,
+      text: "text-destructive",
+      label: "Blocking",
+    },
+    skipped: {
+      icon: CircleSlash,
+      text: "text-muted-foreground",
+      label: "Not checked",
+    },
+  };
 
 const ORDER: ReadinessStatus[] = ["fail", "warn", "skipped", "pass"];
 
@@ -85,7 +79,7 @@ export function ReadinessChecklist({ report }: { report: ReadinessReport }) {
           const s = STYLES[c.status];
           const Icon = s.icon;
           return (
-            <li key={c.id} className={`rounded-r-md border-l-2 bg-muted/30 px-3 py-2 ${s.border}`}>
+            <li key={c.id} className="rounded-md bg-muted/30 px-3 py-2">
               <div className="flex items-start gap-2">
                 <Icon className={`mt-0.5 size-4 shrink-0 ${s.text}`} />
                 <div className="min-w-0 space-y-1">

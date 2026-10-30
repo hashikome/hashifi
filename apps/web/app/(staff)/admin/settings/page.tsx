@@ -57,7 +57,7 @@ export default function SettingsPage() {
       {/* Profile section */}
       <div className="rounded-xl border bg-card overflow-hidden">
         {/* Avatar banner */}
-        <div className="bg-linear-to-r from-primary/10 to-primary/5 px-6 py-5 flex items-center gap-4 border-b">
+        <div className="bg-muted px-6 py-5 flex items-center gap-4 border-b">
           <div className="size-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-lg font-bold shadow-sm select-none shrink-0">
             {user?.name ? getInitials(user.name) : <User className="size-6" />}
           </div>
@@ -78,10 +78,7 @@ export default function SettingsPage() {
           <p className="text-sm font-medium">Profile Information</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label
-                htmlFor="name"
-                className="text-xs text-muted-foreground uppercase tracking-wide"
-              >
+              <Label htmlFor="name" className="text-xs text-muted-foreground">
                 Full Name
               </Label>
               <Input
@@ -92,10 +89,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label
-                htmlFor="email"
-                className="text-xs text-muted-foreground uppercase tracking-wide"
-              >
+              <Label htmlFor="email" className="text-xs text-muted-foreground">
                 Email Address
               </Label>
               <Input
@@ -179,10 +173,10 @@ export default function SettingsPage() {
             onClick={() => setTheme("system")}
             className={`relative rounded-xl border-2 overflow-hidden transition-all ${theme === "system" ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground/40"}`}
           >
-            <div className="bg-linear-to-r from-[#f8f8f8] to-[#1c1c1e] p-3 space-y-1.5">
-              <div className="h-2 w-3/4 rounded bg-linear-to-r from-[#e0e0e0] to-[#3a3a3c]" />
-              <div className="h-2 w-1/2 rounded bg-linear-to-r from-[#e8e8e8] to-[#2c2c2e]" />
-              <div className="h-5 w-full rounded bg-linear-to-r from-white to-[#2c2c2e] border border-[#e0e0e0]" />
+            <div className="bg-muted p-3 space-y-1.5">
+              <div className="h-2 w-3/4 rounded bg-muted" />
+              <div className="h-2 w-1/2 rounded bg-muted" />
+              <div className="h-5 w-full rounded bg-muted border border-[#e0e0e0]" />
             </div>
             <div
               className={`py-2 text-xs font-medium flex items-center justify-center gap-1.5 ${theme === "system" ? "text-primary" : "text-muted-foreground"}`}

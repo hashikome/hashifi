@@ -122,7 +122,7 @@ function PrintVouchersContent() {
       )}
 
       {/* Control Panel - Hidden when printing */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b p-4 print:hidden">
+      <div className="sticky top-0 z-10 bg-background/80 border-b p-4 print:hidden">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button asChild variant="ghost" size="sm">

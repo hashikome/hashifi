@@ -185,14 +185,7 @@ export default function PortalPage() {
     };
   }, []);
 
-  // ── Computed preview background ───────────────────────────────────────────
-  const previewBackground = useMemo(() => {
-    if (portal.backgroundStyle === "solid") return portal.backgroundColor;
-    if (portal.backgroundStyle === "split") {
-      return `linear-gradient(150deg, ${portal.backgroundColor} 0%, ${portal.backgroundColor} 52%, ${portal.primaryColor} 52%, ${portal.accentColor} 100%)`;
-    }
-    return `radial-gradient(circle at top left, ${portal.primaryColor}55, transparent 35%), radial-gradient(circle at bottom right, ${portal.accentColor}55, transparent 38%), ${portal.backgroundColor}`;
-  }, [portal.accentColor, portal.backgroundColor, portal.backgroundStyle, portal.primaryColor]);
+  const previewBackground = portal.backgroundColor;
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const updatePortal = <K extends keyof PortalForm>(key: K, value: PortalForm[K]) =>
@@ -466,24 +459,6 @@ export default function PortalPage() {
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Background style</Label>
-                        <Select
-                          value={portal.backgroundStyle}
-                          onValueChange={(v) =>
-                            updatePortal("backgroundStyle", v as PortalForm["backgroundStyle"])
-                          }
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="soft">Soft light spots</SelectItem>
-                            <SelectItem value="solid">Solid color</SelectItem>
-                            <SelectItem value="split">Split brand panel</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <Label>Corner radius</Label>
