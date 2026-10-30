@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Analytics and revenue through the NestJS API, with one definition of revenue and every
+  figure by the Dar es Salaam business day and month. Managers see their venues' usage only.
+- Fixed: revenue counted vouchers that never worked, months followed the server's clock,
+  revenue on days without sessions was dropped, and managers saw every venue's package and
+  device shares.
+
 - Devices and sessions through the NestJS API: managers see guests' devices and sessions only
   as their venues saw them; admins block, unblock and forget devices; managers end sessions at
   their venues. Blocking ends a device's sessions everywhere.

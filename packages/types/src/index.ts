@@ -387,3 +387,108 @@ export interface SessionList {
 export interface SessionResponse {
   session: SessionRecord;
 }
+
+/** A business month in Africa/Dar_es_Salaam, as YYYY-MM. */
+export type BusinessMonth = string;
+/** A business day in Africa/Dar_es_Salaam, as YYYY-MM-DD. */
+export type BusinessDay = string;
+
+/**
+ * How money came in: mobile money, a card payment, or cash (a staff-recorded cash sale, or a
+ * printed voucher sold for cash, counted when the router confirms it).
+ */
+export type RevenueSource = "mobile_money" | "card" | "cash";
+
+/** `GET /api/analytics/summary`, over the caller's venues. */
+export interface AnalyticsSummary {
+  activeSessions: number;
+  totalSessions: number;
+  devices: number;
+  weeklyUploadBytes: number;
+  weeklyDownloadBytes: number;
+  allTimeUploadBytes: number;
+  allTimeDownloadBytes: number;
+  /** This business month's revenue; null for managers, who are not shown revenue. */
+  revenueThisMonthTsh: DecimalString | null;
+}
+
+/** `GET /api/analytics/daily-usage`: every business day in the range, including empty ones. */
+export interface DailyUsage {
+  days: {
+    date: BusinessDay;
+    uploadBytes: number;
+    downloadBytes: number;
+    /** Null for managers. */
+    revenueTsh: DecimalString | null;
+  }[];
+}
+
+/** `GET /api/analytics/monthly` (admins): the last six business months, oldest first. */
+export interface MonthlyTrend {
+  months: { month: BusinessMonth; revenueTsh: DecimalString; newDevices: number }[];
+}
+
+export interface Share {
+  count: number;
+  /** Whole percent of the total. */
+  percentage: number;
+}
+
+/** `GET /api/analytics/packages`: active vouchers by package, in the caller's venues. */
+export interface PackageShares {
+  packages: (Share & { packageId: string | null; packageName: string | null })[];
+}
+
+/** `GET /api/analytics/devices`: devices by the type they reported, in the caller's venues. */
+export interface DeviceTypeShares {
+  types: (Share & { type: string })[];
+}
+
+/** `GET /api/analytics/venues` (admins): the ten venues with the most revenue. */
+export interface TopVenues {
+  venues: { venueId: string; venueName: string; devices: number; revenueTsh: DecimalString }[];
+}
+
+/** `GET /api/revenue/summary` (admins). Revenue is paid payments plus confirmed cash vouchers. */
+export interface RevenueSummary {
+  month: BusinessMonth;
+  today: DecimalString;
+  thisMonth: DecimalString;
+  lastMonth: DecimalString;
+  allTime: DecimalString;
+  /** Whole percent against the month before, or null when that month had none. */
+  monthGrowthPct: number | null;
+  bySource: Record<RevenueSource, { allTime: DecimalString; month: DecimalString }>;
+}
+
+/** `GET /api/revenue/by-package` (admins). */
+export interface RevenueByPackage {
+  month: BusinessMonth;
+  packages: {
+    packageId: string | null;
+    packageName: string | null;
+    revenueTsh: DecimalString;
+    sales: number;
+  }[];
+}
+
+/** `GET /api/revenue/by-venue` (admins). */
+export interface RevenueByVenue {
+  month: BusinessMonth;
+  venues: { venueId: string | null; venueName: string | null; revenueTsh: DecimalString }[];
+}
+
+/** `GET /api/revenue/transactions` (admins): the month's latest 50. */
+export interface RevenueTransactions {
+  month: BusinessMonth;
+  transactions: {
+    id: string;
+    source: RevenueSource;
+    amountTsh: DecimalString;
+    packageName: string | null;
+    venueName: string | null;
+    /** The provider's reference for a payment, the batch prefix for a card. Never a phone. */
+    reference: string | null;
+    occurredAt: Timestamp;
+  }[];
+}

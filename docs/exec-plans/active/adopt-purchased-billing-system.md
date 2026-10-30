@@ -185,6 +185,24 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     sees 1 GB and offline, the admin 5 GB and online; filters and paging; blocking ends the
     remote session and changes the counts; unblock and delete, audited without the MAC; scoped
     session list and totals; terminate within scope, once).
+  - [x] (2026-10-30) Analytics and revenue (`src/analytics/`). Revenue has one definition,
+    a SQL CTE (`REVENUE_EVENTS`): paid payments when paid, by provider (a staff-recorded
+    payment is cash), and printed vouchers with no paid payment, at their price, once the
+    router confirmed them (`active` or `used`). The purchased code repeated the rule in four
+    places, counted vouchers that lapsed while pending, and cut months and days by the
+    server's clock; every figure now groups by the Africa/Dar_es_Salaam business day or month
+    (`businessDaySql`). Daily usage returns every day in the range, so revenue on a day with no
+    sessions is no longer dropped. Managers get usage over their venues (package and device-type
+    shares included, which the purchased code reported for everyone) and no revenue; the
+    monthly trend, top venues and `/api/revenue/*` are admin-only. Money is two-decimal text;
+    the transaction list carries the payment's provider reference or the card's batch prefix,
+    never a phone number. Shapes are new (`@hashifi/types`); the web's dashboard, analytics
+    and revenue pages follow in the web pass.
+    Acceptance: `analytics.integration.test.ts` (an October across two venues: four kinds that
+    count and four that must not; a card redeemed at 21:30 UTC on 30 September counts in
+    October; growth against September; by venue, by package, transactions without phones;
+    31 days including empty ones; six months; a manager's scoped usage, null revenue, and 403
+    on the six admin reports).
   - [ ] The remaining routes, each through `venueScope` and the guard: analytics, revenue, portal settings, team, audit.
     Still to apply as they land:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with

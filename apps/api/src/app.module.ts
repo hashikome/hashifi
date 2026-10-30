@@ -1,4 +1,5 @@
 import { type DynamicModule, Module } from "@nestjs/common";
+import { AnalyticsModule } from "./analytics/analytics.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import type { AppConfig } from "./config/config.js";
 import { configModule } from "./config/config.module.js";
@@ -26,6 +27,7 @@ export function appModule(config: AppConfig, email: EmailSender | null): Dynamic
       PackagesModule,
       VouchersModule,
       SessionsModule,
+      AnalyticsModule,
     ],
     controllers: [HealthController],
   };
