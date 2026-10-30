@@ -864,7 +864,7 @@ async function demo(): Promise<void> {
   const shell = await GuestShell.open();
   await shell.run("ip link set eth0 up; udhcpc -i eth0 -n -q -t 4 -T 2 2>&1 | tail -1", 30_000);
   await shell.run(
-    "(while :; do wget -q -T 5 -O /dev/null http://example.com/; sleep 60; done) >/dev/null 2>&1 &",
+    "(while :; do wget -q -T 5 -O /dev/null http://example.com/; sleep 60; done) >/dev/null 2>&1 & true",
   );
   shell.close();
   await Bun.sleep(3_000);
