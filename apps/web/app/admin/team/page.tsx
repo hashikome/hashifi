@@ -1,5 +1,6 @@
 "use client";
 
+import type { AuditEntry, AuditList, TeamList, TeamMember, VenueList } from "@hashifi/types";
 import { formatDistanceToNow } from "date-fns";
 import {
   ArrowDownCircle,
@@ -13,6 +14,7 @@ import {
   Pencil,
   Plus,
   ShieldCheck,
+  ShieldOff,
   Ticket,
   Trash2,
   UserCheck,
@@ -69,28 +71,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { errorMessage } from "@/lib/errors";
 import { statusPill } from "@/lib/status-pill";
 import { formatDate } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-interface AssignedVenue {
-  id: string;
-  name: string;
-}
-
-interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  role: "admin" | "manager";
-  status: "active" | "inactive" | "suspended";
-  lastLoginAt: string | null;
-  createdAt: string;
-  assignedVenue: AssignedVenue | null;
-}
 
 interface VenueSummary {
   id: string;
@@ -102,7 +87,7 @@ const emptyForm = {
   email: "",
   phone: "",
   role: "manager" as "admin" | "manager",
-  venueId: "none",
+  venueIds: [] as string[],
 };
 
 function getInitials(name: string) {
@@ -128,28 +113,9 @@ function StatusBadge({ status }: { status: TeamMember["status"] }) {
   return <Badge className={statusPill.neutral}>Inactive</Badge>;
 }
 
-interface AuditLogEntry {
-  id: string;
-  adminUserId: string | null;
-  action: string;
-  entityType: string;
-  entityId: string | null;
-  ipAddress: string | null;
-  metadata: {
-    actorName?: string;
-    entityName?: string;
-    quantity?: number;
-    packageName?: string;
-    role?: string;
-    email?: string;
-    venueName?: string | null;
-  } | null;
-  createdAt: string;
-}
-
-function actionLabel(log: AuditLogEntry): string {
-  const entity = log.metadata?.entityName ?? "Unknown";
-  const role = log.metadata?.role;
+function actionLabel(log: AuditEntry): string {
+  const entity = log.entityName ?? "Unknown";
+  const role = log.details.role;
   switch (log.action) {
     case "member_created":
       return `Added ${role === "admin" ? "admin" : "manager"} "${entity}"`;
@@ -157,20 +123,17 @@ function actionLabel(log: AuditLogEntry): string {
       return `Updated profile of "${entity}"`;
     case "member_suspended":
       return `Suspended account of "${entity}"`;
-    case "member_activated":
+    case "member_reactivated":
       return `Reactivated account of "${entity}"`;
-    case "member_promoted":
-      return `Promoted "${entity}" to Admin`;
-    case "member_demoted": {
-      const venueName = log.metadata?.venueName;
-      return `Demoted "${entity}" to Manager${venueName ? ` — assigned to ${venueName}` : ""}`;
-    }
-    case "member_deleted":
+    case "member_role_changed":
+      return role === "admin" ? `Promoted "${entity}" to Admin` : `Demoted "${entity}" to Manager`;
+    case "member_authenticator_reset":
+      return `Reset the authenticator app of "${entity}"`;
+    case "member_removed":
       return `Removed account "${entity}"`;
     case "vouchers_generated": {
-      const qty = log.metadata?.quantity ?? 1;
-      const pkg = log.metadata?.packageName ?? entity;
-      return `Generated ${qty} voucher${qty !== 1 ? "s" : ""} — ${pkg}`;
+      const qty = Number(log.details.quantity ?? 1);
+      return `Generated ${qty} voucher${qty !== 1 ? "s" : ""} — ${entity}`;
     }
     case "venue_created":
       return `Created venue "${entity}"`;
@@ -190,13 +153,11 @@ function actionIcon(action: string) {
       return <Pencil className={cls} />;
     case "member_suspended":
       return <UserMinus className={cls} />;
-    case "member_activated":
+    case "member_reactivated":
       return <UserCheck className={cls} />;
-    case "member_promoted":
+    case "member_role_changed":
       return <ArrowUpCircle className={cls} />;
-    case "member_demoted":
-      return <ArrowDownCircle className={cls} />;
-    case "member_deleted":
+    case "member_removed":
       return <UserX className={cls} />;
     case "vouchers_generated":
       return <Ticket className={cls} />;
@@ -229,7 +190,7 @@ function actionColor(action: string): string {
   }
 }
 
-function ActivityLog({ logs, isLoading }: { logs: AuditLogEntry[]; isLoading: boolean }) {
+function ActivityLog({ logs, isLoading }: { logs: AuditEntry[]; isLoading: boolean }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -263,7 +224,7 @@ function ActivityLog({ logs, isLoading }: { logs: AuditLogEntry[]; isLoading: bo
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm">
-                      <span className="font-medium">{log.metadata?.actorName ?? "Unknown"}</span>
+                      <span className="font-medium">{log.actorName}</span>
                       <span className="text-muted-foreground"> · </span>
                       <span className="text-foreground/80">{actionLabel(log)}</span>
                     </p>
@@ -314,15 +275,13 @@ export default function TeamPage() {
   const [demoteTarget, setDemoteTarget] = useState<TeamMember | null>(null);
   const [demoteVenueId, setDemoteVenueId] = useState("none");
 
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
   const loadAuditLogs = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/audit`, { credentials: "include" });
-      if (!res.ok) return;
-      const data = await res.json();
-      setAuditLogs(data.logs);
+      const data = await api.get<AuditList>("/api/audit");
+      setAuditLogs(data.entries);
     } catch {
       // non-critical
     } finally {
@@ -332,9 +291,7 @@ export default function TeamPage() {
 
   const loadMembers = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/team`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load team");
-      const data = await res.json();
+      const data = await api.get<TeamList>("/api/team");
       setMembers(data.members);
     } catch {
       toast.error("Failed to load team members");
@@ -355,12 +312,8 @@ export default function TeamPage() {
 
   const loadVenues = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" });
-      if (!res.ok) return;
-      const data = await res.json();
-      setVenuesList(
-        data.venues.map((v: { id: string; name: string }) => ({ id: v.id, name: v.name })),
-      );
+      const data = await api.get<VenueList>("/api/venues");
+      setVenuesList(data.venues.map((v) => ({ id: v.id, name: v.name })));
     } catch {
       // venues load failure is non-critical
     }
@@ -387,7 +340,7 @@ export default function TeamPage() {
       email: member.email,
       phone: member.phone ?? "",
       role: member.role,
-      venueId: member.assignedVenue?.id ?? "none",
+      venueIds: member.venues.map((v) => v.id),
     });
     setDialogOpen(true);
   }
@@ -396,60 +349,38 @@ export default function TeamPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const payload: Record<string, unknown> = {
+      const payload = {
         name: form.name,
         email: form.email,
         phone: form.phone || null,
-        venueId: form.venueId !== "none" ? form.venueId : null,
+        venueIds: form.venueIds,
       };
 
       if (dialogMode === "create") {
-        payload.role = form.role;
-        const res = await fetch(`${API_URL}/api/team`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to create member");
+        await api.post("/api/team", { ...payload, role: form.role });
         toast.success("Team member created and welcome email sent");
       } else if (editTarget) {
-        const res = await fetch(`${API_URL}/api/team/${editTarget.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to update member");
+        await api.put(`/api/team/${editTarget.id}`, payload);
         toast.success("Team member updated");
       }
 
       setDialogOpen(false);
       await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred");
+      toast.error(errorMessage(err, "An error occurred"));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   async function handleStatusToggle(member: TeamMember) {
-    const action = member.status === "suspended" ? "activate" : "suspend";
+    const status = member.status === "suspended" ? "active" : "suspended";
     try {
-      const res = await fetch(`${API_URL}/api/team/${member.id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ action }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update status");
-      toast.success(action === "suspend" ? "Account suspended" : "Account reactivated");
+      await api.put(`/api/team/${member.id}/status`, { status });
+      toast.success(status === "suspended" ? "Account suspended" : "Account reactivated");
       await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred");
+      toast.error(errorMessage(err, "An error occurred"));
     }
   }
 
@@ -457,17 +388,12 @@ export default function TeamPage() {
     if (!promoteTarget) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/api/team/${promoteTarget.id}/promote`, {
-        method: "PATCH",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to promote member");
+      await api.put(`/api/team/${promoteTarget.id}/role`, { role: "admin" });
       toast.success(`${promoteTarget.name} has been promoted to Admin`);
       setPromoteTarget(null);
       await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred");
+      toast.error(errorMessage(err, "An error occurred"));
     } finally {
       setIsSubmitting(false);
     }
@@ -477,21 +403,27 @@ export default function TeamPage() {
     if (!demoteTarget) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/api/team/${demoteTarget.id}/demote`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ venueId: demoteVenueId !== "none" ? demoteVenueId : null }),
+      await api.put(`/api/team/${demoteTarget.id}/role`, {
+        role: "manager",
+        venueIds: demoteVenueId !== "none" ? [demoteVenueId] : [],
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to demote member");
       toast.success(`${demoteTarget.name} has been demoted to Manager`);
       setDemoteTarget(null);
       await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred");
+      toast.error(errorMessage(err, "An error occurred"));
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleResetAuthenticator(member: TeamMember) {
+    try {
+      await api.post(`/api/team/${member.id}/reset-authenticator`);
+      toast.success(`${member.name} will set up an authenticator app at their next sign-in`);
+      await Promise.all([loadMembers(), loadAuditLogs()]);
+    } catch (err) {
+      toast.error(errorMessage(err, "An error occurred"));
     }
   }
 
@@ -499,17 +431,12 @@ export default function TeamPage() {
     if (!deleteTarget) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/api/team/${deleteTarget.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete member");
+      await api.delete(`/api/team/${deleteTarget.id}`);
       toast.success(`${deleteTarget.name}'s account has been removed`);
       setDeleteTarget(null);
       await Promise.all([loadMembers(), loadAuditLogs()]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "An error occurred");
+      toast.error(errorMessage(err, "An error occurred"));
     } finally {
       setIsSubmitting(false);
     }
@@ -603,8 +530,8 @@ export default function TeamPage() {
                       <StatusBadge status={member.status} />
                     </TableCell>
                     <TableCell className="text-sm">
-                      {member.assignedVenue ? (
-                        member.assignedVenue.name
+                      {member.venues.length > 0 ? (
+                        member.venues.map((v) => v.name).join(", ")
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
@@ -657,6 +584,15 @@ export default function TeamPage() {
                             >
                               <ArrowDownCircle className="size-4 mr-2 text-amber-600 dark:text-amber-400" />
                               Demote to Manager
+                            </DropdownMenuItem>
+                          )}
+                          {member.twoFactorEnabled && (
+                            <DropdownMenuItem
+                              onClick={() => handleResetAuthenticator(member)}
+                              disabled={member.id === user?.id}
+                            >
+                              <ShieldOff className="size-4 mr-2" />
+                              Reset Authenticator
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
@@ -739,7 +675,7 @@ export default function TeamPage() {
                 <Select
                   value={form.role}
                   onValueChange={(v) =>
-                    setForm((f) => ({ ...f, role: v as "admin" | "manager", venueId: "none" }))
+                    setForm((f) => ({ ...f, role: v as "admin" | "manager", venueIds: [] }))
                   }
                 >
                   <SelectTrigger id="role">
@@ -756,23 +692,30 @@ export default function TeamPage() {
               ? form.role === "manager"
               : editTarget?.role === "manager") && (
               <div className="space-y-2">
-                <Label htmlFor="venue">Assign Venue</Label>
-                <Select
-                  value={form.venueId}
-                  onValueChange={(v) => setForm((f) => ({ ...f, venueId: v }))}
-                >
-                  <SelectTrigger id="venue">
-                    <SelectValue placeholder="No venue assigned" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No venue (assign later)</SelectItem>
+                <Label>Venues</Label>
+                {venuesList.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No venues yet.</p>
+                ) : (
+                  <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
                     {venuesList.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
+                      <label key={v.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.venueIds.includes(v.id)}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              venueIds: e.target.checked
+                                ? [...f.venueIds, v.id]
+                                : f.venueIds.filter((id) => id !== v.id),
+                            }))
+                          }
+                        />
                         {v.name}
-                      </SelectItem>
+                      </label>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
               </div>
             )}
             <DialogFooter className="pt-2">
