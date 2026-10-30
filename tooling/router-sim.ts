@@ -223,6 +223,20 @@ async function reset(): Promise<void> {
   await Bun.sleep(1000);
   rmSync(OVERLAY, { force: true });
   rmSync(STATE_FILE, { force: true });
+  // The database describes this router: a new one starts without the old one's venues.
+  if (!IN_HUB) {
+    Bun.spawnSync([
+      "docker",
+      "exec",
+      "hashifi-postgres",
+      "dropdb",
+      "-U",
+      "hashifi",
+      "--if-exists",
+      "--force",
+      SIM_DATABASE,
+    ]);
+  }
   await up();
 }
 
@@ -845,6 +859,22 @@ async function demo(): Promise<void> {
     cwd: ROOT,
   });
   const code = issued.stdout.toString().match(/VOUCHER=(\S+)/)?.[1] ?? "none";
+
+  // Test runs leave a package each; a guest should see what a venue would really sell.
+  await services.db.package.updateMany({
+    where: { name: { startsWith: "Sim " } },
+    data: { isActive: false },
+  });
+  const packages = [
+    { name: "1 Hour", durationMinutes: 60, downloadSpeedMbps: 5, priceTsh: "1000" },
+    { name: "1 Day", durationMinutes: 1440, downloadSpeedMbps: 10, priceTsh: "1500" },
+    { name: "1 Week", durationMinutes: 10080, downloadSpeedMbps: 10, priceTsh: "8000" },
+  ];
+  for (const pkg of packages) {
+    if (!(await services.db.package.findFirst({ where: { name: pkg.name } }))) {
+      await services.db.package.create({ data: pkg });
+    }
+  }
 
   const api = await startApi(state, true);
   const web = Bun.spawn(["bun", "run", "--filter", "@hashifi/web", "dev"], {

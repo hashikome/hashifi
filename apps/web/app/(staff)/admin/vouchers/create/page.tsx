@@ -118,9 +118,9 @@ export default function CreateVoucherPage() {
         const loadedVenues = allVenues.filter((v) => v.status === "active");
         setVenues(loadedVenues);
 
-        // For managers with exactly one venue, auto-select it and load its packages immediately
+        // With exactly one venue there is nothing to choose.
         const onlyVenue = loadedVenues.length === 1 ? (loadedVenues[0] ?? null) : null;
-        if (user?.role === "manager" && onlyVenue !== null) {
+        if (onlyVenue !== null) {
           setFormData((prev) => ({ ...prev, venueId: onlyVenue.id }));
           setBaseline((prev) => ({ ...prev, venueId: onlyVenue.id }));
           await loadPackages(onlyVenue.id);
@@ -133,7 +133,7 @@ export default function CreateVoucherPage() {
       }
     };
     fetchData();
-  }, [user?.role, loadPackages]);
+  }, [loadPackages]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -354,9 +354,11 @@ export default function CreateVoucherPage() {
                             placeholder={
                               isLoading
                                 ? "Loading packages..."
-                                : packages.length === 0
-                                  ? "No active packages found"
-                                  : "Select package"
+                                : formData.venueId === ""
+                                  ? "Choose a venue first"
+                                  : packages.length === 0
+                                    ? "No active packages found"
+                                    : "Select package"
                             }
                           />
                         </SelectTrigger>
@@ -387,7 +389,7 @@ export default function CreateVoucherPage() {
                           )}
                         </SelectContent>
                       </Select>
-                      {!isLoading && packages.length === 0 && (
+                      {!isLoading && formData.venueId !== "" && packages.length === 0 && (
                         <div className="bg-destructive/5 border border-destructive/10 rounded-lg p-4 mt-2">
                           <p className="text-sm text-destructive font-medium flex items-center gap-2">
                             <AlertCircle className="size-4" />

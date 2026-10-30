@@ -5,6 +5,7 @@
 export const moneyAxis = {
   domain: [0, (max: number) => Math.max(max, 1000)] as [number, (max: number) => number],
   allowDecimals: false,
+  width: 72,
   tickFormatter: (value: number) =>
     value >= 1000 ? `TSH ${(value / 1000).toLocaleString()}k` : `TSH ${value}`,
 };

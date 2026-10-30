@@ -246,9 +246,6 @@ export default function SessionsPage() {
                 <p className="text-sm text-muted-foreground">Total Sessions</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Radio className="size-5 text-primary" />
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -258,9 +255,6 @@ export default function SessionsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Connected</p>
                 <p className="text-2xl font-bold">{stats.connected}</p>
-              </div>
-              <div className="size-10 rounded-full bg-teal-500/10 flex items-center justify-center">
-                <Radio className="size-5 text-teal-700" />
               </div>
             </div>
           </CardContent>
@@ -272,9 +266,6 @@ export default function SessionsPage() {
                 <p className="text-sm text-muted-foreground">Total Upload</p>
                 <p className="text-2xl font-bold">{formatBytes(stats.uploadBytes)}</p>
               </div>
-              <div className="size-10 rounded-full bg-chart-2/20 flex items-center justify-center">
-                <Upload className="size-5 text-chart-2" />
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -284,9 +275,6 @@ export default function SessionsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Download</p>
                 <p className="text-2xl font-bold">{formatBytes(stats.downloadBytes)}</p>
-              </div>
-              <div className="size-10 rounded-full bg-chart-1/20 flex items-center justify-center">
-                <Download className="size-5 text-chart-1" />
               </div>
             </div>
           </CardContent>

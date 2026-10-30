@@ -354,7 +354,6 @@ export default function DashboardPage() {
                     tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
                     tickLine={false}
                     axisLine={false}
-                    width={64}
                     {...moneyAxis}
                   />
                   <Tooltip
