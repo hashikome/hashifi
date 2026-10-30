@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Packages through the NestJS API: admins manage one catalogue and choose what each venue
+  sells; managers read what is on sale. The API enforces the price and throttle rules the form
+  pre-checked, refuses throttle settings the router would ignore, and keeps packages that
+  vouchers still use.
+
 - Routers through the NestJS API: managers see their venues' routers and backlog; admins add,
   replace, delete, sync, probe, verify, set up and provision them. The bootstrap script is
   generated for a saved router and opens its management tunnel when one is configured, with

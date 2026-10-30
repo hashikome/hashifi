@@ -263,3 +263,23 @@ export interface BootstrapScriptResponse {
   /** Whether the script opens the management tunnel. */
   tunnel: boolean;
 }
+
+/** `GET /api/packages`: every package for an admin, the active ones for a manager. */
+export interface PackageList {
+  packages: PackageRecord[];
+}
+
+/** `GET` and `PUT /api/packages/:id`, and `POST /api/packages`. */
+export interface PackageResponse {
+  package: PackageRecord;
+}
+
+/** `GET /api/venues/:venueId/packages`: what the venue sells. */
+export interface VenuePackages {
+  /** The active packages on sale at the venue. */
+  packages: PackageRecord[];
+  /** The packages assigned to the venue, active or not. */
+  assignedPackageIds: string[];
+  /** True when the venue has no assignments, and so sells every active package. */
+  sellsAll: boolean;
+}

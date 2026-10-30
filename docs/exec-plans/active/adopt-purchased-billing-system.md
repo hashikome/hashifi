@@ -134,7 +134,22 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     `routers-tunnel.integration.test.ts` (one tunnel across two scripts, opened to the
     platform). Router sim after the configuration change: a fresh CHR set up in 17 s in LAN
     mode, the guest test 6/6, and set up and verified over the tunnel.
-  - [ ] The remaining routes, each through `venueScope` and the guard: packages,
+  - [x] (2026-10-30) Packages (`src/packages/`). One catalogue for all venues: admins
+    create, replace (`PUT`) and delete, each audited; managers read only active packages. The
+    API enforces the form's rules (whole shillings from TSh 1,000; durations up to a year;
+    throttled speeds below the normal ones) and the ones throttling needs (a throttled speed
+    needs peak hours or a data threshold, and the reverse; both peak hours or neither, and not
+    equal; a threshold below the data limit). A package that unused, pending or active
+    vouchers use cannot be deleted (409 `PACKAGE_IN_USE`; the purchased delete left them
+    without a package, so routers skipped them); deactivate it instead. What a venue sells is
+    one rule (`soldAt`): its assigned active packages, or every active package when none are
+    assigned, at `GET /api/venues/:venueId/packages`, scoped like the venue; assignments are
+    `PUT` and `DELETE` on `/api/venues/:venueId/packages/:packageId`, idempotent and audited.
+    The purchased code had two venue listings with different fallbacks.
+    Acceptance: `packages.integration.test.ts` (CRUD and audit; thirteen refused inputs and a
+    window across midnight accepted; the in-use delete; a manager's reads and 403s; the sold-at
+    rule through assignment, deactivation and removal, and another venue's 404).
+  - [ ] The remaining routes, each through `venueScope` and the guard:
     vouchers, customers (devices), sessions, analytics, revenue, portal settings, team, audit.
     Still to apply as they land:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
@@ -208,7 +223,11 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Evidence: M1 commit; [ADR-0004](../../engineering-decisions/0004-types-without-any-or-undefined.md).
 - Observation: the package create and edit pages enforce business rules (minimum price 1,000
   TSH; throttled speeds below the package speed) in the web.
-  Evidence: `apps/web/app/admin/packages/create/page.tsx`, `[id]/edit/page.tsx`.
+  Evidence: `apps/web/app/admin/packages/create/page.tsx`, `[id]/edit/page.tsx`. The API
+  enforces them since the packages module (`package-input.ts`), with the rules that make
+  throttling apply at all: the purchased API accepted a throttled speed with no peak hours or
+  data threshold, and peak hours or a threshold with no throttled speed, each of which the
+  live monitor then ignored.
 - Observation: Biome's "safe" fixes rewrote the router portal pages' inline scripts (ES5
   `function` to arrow functions). The router only stores and serves these pages; the guest's
   browser runs them, and every browser since about 2016 runs arrow functions, so only very old

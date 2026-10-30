@@ -3,5 +3,10 @@ import { RoutersModule } from "../routers/routers.module.js";
 import { VenuesController } from "./venues.controller.js";
 import { VenuesService } from "./venues.service.js";
 
-@Module({ imports: [RoutersModule], controllers: [VenuesController], providers: [VenuesService] })
+@Module({
+  imports: [RoutersModule],
+  controllers: [VenuesController],
+  providers: [VenuesService],
+  exports: [VenuesService],
+})
 export class VenuesModule {}
