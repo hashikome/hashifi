@@ -105,7 +105,7 @@ function sameSubnet(a: string, b: string, prefix = 24): boolean {
 }
 
 /**
- * The two ways a router relates to this API, which the purchased code treated as one address.
+ * The two ways a router relates to this API, which the earlier code treated as one address.
  *
  * - **Management**: where the router reaches the API, to fetch its portal pages and be pinged,
  *   and the source address the router accepts API connections from. In the cloud design this is
@@ -136,7 +136,7 @@ export interface BackendSettings {
  * Resolve both endpoints for a router at `routerHost`.
  *
  * `managementUrl` sets the management URL; without it, the local IPv4 that shares a subnet
- * with the router is used (the purchased LAN design). `portalOrigin` sets the portal origin;
+ * with the router is used (the earlier LAN design). `portalOrigin` sets the portal origin;
  * without it, guests are sent to the management URL.
  */
 export function resolveBackendEndpoints(

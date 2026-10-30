@@ -1,7 +1,7 @@
 # Mobile-money payments
 
 Status: `ready`. Planned as M6 of the
-[adoption plan](../exec-plans/active/adopt-purchased-billing-system.md#m6-mobile-money-payments-snippe-and-customers),
+[build plan](../exec-plans/active/build-hashifi.md#m6-mobile-money-payments-snippe-and-customers),
 which holds the work; this item is removed when M6 completes.
 
 ## Problem
@@ -12,7 +12,7 @@ venue.
 
 ## What exists
 
-The purchased code, in the import commit `45ebd53`, integrates Snippe
+Commit `45ebd53` integrates Snippe
 (`apps/api/src/routes/snippe-webhook.ts` and `payments.ts`, `src/utils/snippe.ts`,
 `src/scripts/reconcile-pending-payments.ts`, and the payment half of
 `src/services/reconcile-daemon.ts`; read with `git show 45ebd53:<path>`): a payment request from
@@ -22,7 +22,7 @@ pushed to the router once paid. Payments track `router_provisioned_at` separatel
 
 ## Gate
 
-The portal works (adoption plan M5) and a Snippe merchant account exists. Its webhook is
+The portal works (build plan M5) and a Snippe merchant account exists. Its webhook is
 verified against the published contract, and the portal flow reviewed under ADR-0003 (the API
 decides payment state; the web presents it). No physical router is needed: the router sim and
 Snippe's test environment prove it before the release.

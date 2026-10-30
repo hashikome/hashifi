@@ -29,7 +29,7 @@ interface Watcher {
  * staff. Guards do not run on a WebSocket upgrade, so this authenticates the upgrade request
  * itself, as the staff guard would (active staff; an admin only with an authenticator app),
  * and refuses other origins, since a browser sends the session cookie with a cross-site
- * socket too. The purchased `/ws/live` accepted anyone and sent them every venue.
+ * socket too. The earlier `/ws/live` accepted anyone and sent them every venue.
  *
  * Hotspot updates carry guests' voucher codes and MAC addresses, so a manager receives only
  * their venues'; provisioning transcripts name no venue and go to admins only.

@@ -14,7 +14,7 @@ export const CODE_LENGTH = 8;
 
 /**
  * A voucher code: the prefix, a hyphen, and characters from a cryptographic generator (finding
- * 5: the purchased codes were six base-36 characters from `Math.random`). `randomInt` draws
+ * 5: the earlier codes were six base-36 characters from `Math.random`). `randomInt` draws
  * each character without modulo bias.
  */
 export function generateCode(prefix: string): string {

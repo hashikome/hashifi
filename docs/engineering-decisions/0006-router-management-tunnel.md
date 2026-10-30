@@ -6,7 +6,7 @@ remains open).
 
 ## Context
 
-The purchased system assumed the API shares a LAN with its routers: it connected to each
+The earlier system assumed the API shares a LAN with its routers: it connected to each
 router's plaintext RouterOS API at the router's LAN address, discovered its own address by
 matching the router's subnet, and admitted that one address everywhere. HashiFi's API runs in
 the cloud ([network architecture](../design-docs/network-architecture.md)), and venue routers

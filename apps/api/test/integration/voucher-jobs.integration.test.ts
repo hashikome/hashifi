@@ -67,7 +67,7 @@ describe("voucher expiry", () => {
     expect(await statusOf("WIFI-LIVE")).toBe("active");
   });
 
-  test("an expired pending_activation voucher ends as expired, not stuck (purchased-code bug)", async () => {
+  test("an expired pending_activation voucher ends as expired, not stuck (fixed bug)", async () => {
     await venueWithVouchers([
       { code: "WIFI-PENDING", status: "pending_activation", expiresIn: -60_000 },
     ]);

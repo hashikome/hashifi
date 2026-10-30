@@ -3,7 +3,7 @@
 Use the router sim to run router onboarding, provisioning and verification against real
 RouterOS without hardware. It is a MikroTik Cloud Hosted Router (CHR) in QEMU, driven by the
 same provisioning code the API runs. It proves everything except a phone joining real WiFi,
-which needs a physical board (adoption plan M8).
+which needs a physical board (build plan M8).
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ bun run router-sim down
 
 Set `PORTAL_ORIGIN` (for example `PORTAL_ORIGIN=https://handbook.hashikome.com`) to provision
 with a host-name portal behind Cloudflare, as production will; without it guests are sent to
-the management URL, the purchased LAN design.
+the management URL, the earlier LAN design.
 
 `reset`, then `bootstrap` and `setup`, is the full onboarding of a new router. It takes about
 a minute and must end with `Setup succeeded.`; a second `setup` must report 0 changes.

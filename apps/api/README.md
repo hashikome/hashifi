@@ -4,7 +4,7 @@ The HashiFi API: venues, routers, packages, vouchers, sessions, analytics and th
 portal, plus the MikroTik provisioning that makes them real on a router.
 
 NestJS on Bun with Prisma and PostgreSQL 18; the
-[adoption plan](../../docs/exec-plans/active/adopt-purchased-billing-system.md) tracks the port.
+[build plan](../../docs/exec-plans/active/build-hashifi.md) tracks the port.
 
 ## Commands
 

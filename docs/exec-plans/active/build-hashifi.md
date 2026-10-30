@@ -1,4 +1,4 @@
-# Adopt the purchased billing system as HashiFi
+# Adopt the earlier billing system as HashiFi
 
 This ExecPlan is a living document. Maintain it according to `PLANS.md`. Keep `Progress`,
 `Surprises & Discoveries`, `Decision Log` and `Outcomes & Retrospective` current as work
@@ -6,7 +6,7 @@ proceeds.
 
 ## Purpose / Big Picture
 
-Turn the purchased WiFi billing system into HashiFi on the Hashikome stack, deployed through
+Build HashiFi on the Hashikome stack, deployed through
 the shared platform. When done, an admin onboards a reset MikroTik through the generated
 bootstrap script and automated setup, generates vouchers for a package, and a phone on that
 router's WiFi reaches the HashiFi portal, redeems a voucher and browses until the voucher
@@ -15,14 +15,14 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 
 ## Progress
 
-- [x] (2026-10-28) Purchased archives inspected; checksums recorded; third parties' data
+- [x] (2026-10-28) Starting archives inspected; checksums recorded; third parties' data
   found in `database-backups/` and `uploads/` and excluded.
-- [x] (2026-10-28) Baseline as received: backend typecheck clean and 170/170 tests pass on
+- [x] (2026-10-28) Baseline at the start: backend typecheck clean and 170/170 tests pass on
   Bun 1.4.4 (with a placeholder `DATABASE_URL`); frontend typecheck has one known error
   (`components/chart-area-interactive.tsx`, a Recharts overload).
 - [x] (2026-10-28) NestJS 12.3.2 smoke-tested on Bun 1.4.4: dependency injection, decorators
   and routing work.
-- [x] (2026-10-28) Imported as received (`45ebd53`); repository scaffolded from the
+- [x] (2026-10-28) Starting code in `45ebd53`; repository scaffolded from the
   Hashikome template; FSL-1.1-ALv2; packages renamed `@hashifi/api` and `@hashifi/web`; pnpm
   and npm files removed.
 - [x] (2026-10-28) M1 Toolchain and name. One root `bun.lock` (Bun 1.4.4 isolated installs);
@@ -75,7 +75,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     `VoucherExpiry`, `VoucherReconciler`, `LiveMonitor`, `PrismaRouterStore`,
     `TunnelAllocator`; serializers to `@hashifi/types` (`src/serializers/`); business-day
     helpers (`src/analytics/`); an idempotent invented seed.
-  - The purchased Express app is removed; M4 ports each route from the import commit
+  - The earlier Express app is removed; M4 ports each route from commit
     (`git show 45ebd53:apps/api/src/routes/<name>.ts`).
 - [x] (2026-10-30) M4 NestJS API, with the admin web on it.
   - [x] (2026-10-29) Schema: Better Auth's tables, `staff` sharing the user's id, `devices`
@@ -106,7 +106,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     list with router counts, read, and admin-only create, update and delete, each audited; the
     API enforces what the form pre-checks (region, city and country required), refuses control
     characters, lower-cases the contact email, and requires the operator to be an active
-    manager. A venue with routers cannot be deleted (409 `VENUE_HAS_ROUTERS`); the purchased
+    manager. A venue with routers cannot be deleted (409 `VENUE_HAS_ROUTERS`); the earlier
     code cascaded, deleting running routers' records and tunnel keys.
     Acceptance: `venues.integration.test.ts` (401 without a session; 403
     `TWO_FACTOR_ENROLLMENT_REQUIRED` for an unenrolled admin; a manager sees only their
@@ -140,12 +140,12 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     throttled speeds below the normal ones) and the ones throttling needs (a throttled speed
     needs peak hours or a data threshold, and the reverse; both peak hours or neither, and not
     equal; a threshold below the data limit). A package that unused, pending or active
-    vouchers use cannot be deleted (409 `PACKAGE_IN_USE`; the purchased delete left them
+    vouchers use cannot be deleted (409 `PACKAGE_IN_USE`; the earlier delete left them
     without a package, so routers skipped them); deactivate it instead. What a venue sells is
     one rule (`soldAt`): its assigned active packages, or every active package when none are
     assigned, at `GET /api/venues/:venueId/packages`, scoped like the venue; assignments are
     `PUT` and `DELETE` on `/api/venues/:venueId/packages/:packageId`, idempotent and audited.
-    The purchased code had two venue listings with different fallbacks.
+    The earlier code had two venue listings with different fallbacks.
     Acceptance: `packages.integration.test.ts` (CRUD and audit; thirteen refused inputs and a
     window across midnight accepted; the in-use delete; a manager's reads and 403s; the sold-at
     rule through assignment, deactivation and removal, and another venue's 404).
@@ -153,13 +153,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     made by admins, or by managers for their own venues, only for a package the venue sells
     (`soldAt`); codes are unique, retried on collision, and carry the package's duration, data
     limit and price. The prefix defaults to the portal's and no longer overwrites it (the
-    purchased generate set the global portal prefix to each batch's). Routers get the codes in
+    earlier generate set the global portal prefix to each batch's). Routers get the codes in
     the background; a router that misses them gets each at redemption. Revoking
     (`POST /api/vouchers/revoke`, admins) replaces deleting: only unused vouchers, which stop
     working and leave the routers but stay on record, so no paying guest is cut off and no
     sale disappears (the web pre-checked this; the API now decides). Printing is by batch
     (`GET /api/vouchers/batches/:id`) or by voucher ids (`POST /api/vouchers/print`), never by
-    code: the purchased print page put codes, the guests' credentials, in the URL. The list is
+    code: the earlier print page put codes, the guests' credentials, in the URL. The list is
     scoped and paged (`before`, newest first). The web's voucher pages move to these endpoints
     now, since the shared types changed under them; they typecheck and build but were not
     exercised in a browser.
@@ -175,10 +175,10 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     counts or totals over every match. Admins block, unblock and delete devices
     (`PUT /api/devices/:id/status`, `DELETE`), audited without the MAC address; blocking ends
     the device's connected sessions everywhere and kicks their vouchers, and the portal will
-    refuse a blocked device (M5: nothing enforced the purchased `blocked` flag). Deleting
+    refuse a blocked device (M5: nothing enforced the earlier `blocked` flag). Deleting
     forgets the device and keeps its sessions unlinked. Managers end sessions at their venues
     (`POST /api/sessions/:id/terminate`, 409 once ended); the voucher stays valid, so the
-    guest can sign in again. The observed fields the purchased `PATCH /customers/:id` let an
+    guest can sign in again. The observed fields the earlier `PATCH /customers/:id` let an
     admin rewrite (MAC, IP, device name) are read-only. The web's Users and Sessions pages
     still call `/api/customers` and `PATCH .../terminate` until the web pass.
     Acceptance: `devices-sessions.integration.test.ts` (one phone at two venues: the manager
@@ -188,12 +188,12 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   - [x] (2026-10-30) Analytics and revenue (`src/analytics/`). Revenue has one definition,
     a SQL CTE (`REVENUE_EVENTS`): paid payments when paid, by provider (a staff-recorded
     payment is cash), and printed vouchers with no paid payment, at their price, once the
-    router confirmed them (`active` or `used`). The purchased code repeated the rule in four
+    router confirmed them (`active` or `used`). The earlier code repeated the rule in four
     places, counted vouchers that lapsed while pending, and cut months and days by the
     server's clock; every figure now groups by the Africa/Dar_es_Salaam business day or month
     (`businessDaySql`). Daily usage returns every day in the range, so revenue on a day with no
     sessions is no longer dropped. Managers get usage over their venues (package and device-type
-    shares included, which the purchased code reported for everyone) and no revenue; the
+    shares included, which the earlier code reported for everyone) and no revenue; the
     monthly trend, top venues and `/api/revenue/*` are admin-only. Money is two-decimal text;
     the transaction list carries the payment's provider reference or the card's batch prefix,
     never a phone number. Shapes are new (`@hashifi/types`); the web's dashboard, analytics
@@ -205,7 +205,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     on the six admin reports).
   - [x] (2026-10-30) Portal settings (`src/portal/`). One settings row (`singleton`, CHECK);
     `GET /api/portal` gives any staff member the saved settings or the API's defaults (the
-    purchased route answered 404 and each web page carried its own defaults); admins replace
+    earlier route answered 404 and each web page carried its own defaults); admins replace
     them with `PUT`, audited, validated field by field (colours as `#RRGGBB`, one-line texts,
     the voucher prefix upper-case). No uploads: the logo is `apps/web/public/logo.svg`, shown
     by the portal previews and printed vouchers, and the upload routes, image processing
@@ -216,7 +216,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   - [x] (2026-10-30) Team and audit (`src/team/`, `src/audit/audit.controller.ts`), admins
     only. Adding someone creates their Better Auth user and staff record in one transaction
     (`createStaffRows`, shared with `bun run staff:add`); a manager may operate several venues
-    (`venueIds`; the purchased page assumed one), an admin none. Name, email, phone and venues
+    (`venueIds`; the earlier page assumed one), an admin none. Name, email, phone and venues
     are replaced with `PUT`; a changed email is told at its old address. Role and status have
     their own routes; promoting frees the venues and the staff guard then requires an
     authenticator; suspending deletes the person's sessions; another admin resets a lost
@@ -305,7 +305,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   whose addresses change.
   Evidence: `apps/api/src/services/router-provision/steps.ts` (`walledGarden`),
   `verify.ts` (`walledGardenCheck`).
-- Observation: security defects in the code as received (fixed in M4 and M5, each with a
+- Observation: security defects in the starting code (fixed in M4 and M5, each with a
   regression test):
   1. The portal's auto-reconnect returns a voucher code (the hotspot username and password)
      to anyone supplying an active device's MAC in the query string, inside a form that
@@ -357,14 +357,14 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   TSH; throttled speeds below the package speed) in the web.
   Evidence: `apps/web/app/admin/packages/create/page.tsx`, `[id]/edit/page.tsx`. The API
   enforces them since the packages module (`package-input.ts`), with the rules that make
-  throttling apply at all: the purchased API accepted a throttled speed with no peak hours or
+  throttling apply at all: the earlier API accepted a throttled speed with no peak hours or
   data threshold, and peak hours or a threshold with no throttled speed, each of which the
   live monitor then ignored.
 - Observation: Biome's "safe" fixes rewrote the router portal pages' inline scripts (ES5
   `function` to arrow functions). The router only stores and serves these pages; the guest's
   browser runs them, and every browser since about 2016 runs arrow functions, so only very old
-  Android WebViews (4.4 and earlier) would fail. The seller wrote them as ES5 on purpose, so
-  they are restored as received apart from the brand name and excluded from Biome; M5 decides
+  Android WebViews (4.4 and earlier) would fail. They are ES5 on purpose, so
+  they are restored unchanged apart from the brand name and excluded from Biome; M5 decides
   the oldest supported browser when the portal moves to the web.
   Evidence: `git diff 45ebd53 -- apps/api/mikrotik-files`.
 - Observation: a browser smoke test of the built web against a stub API (signed-in manager,
@@ -381,10 +381,10 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   it starts; on a fresh board they also appear a moment after the server is created. Placing our
   accepts first therefore failed the read-back, and moving them above the dynamic rules is
   ignored. The firewall steps now wait for the hotspot's rules and place ours above the
-  placeholder. The hAP lite (the seller's measurement) let a static rule sit above the dynamic
+  placeholder. The hAP lite (measured on the board) let a static rule sit above the dynamic
   ones; both cases are accepted.
   Evidence: router sim, 2026-10-29; `steps.test.ts`.
-- Observation: the purchased code used one backend address for two roles: management (API
+- Observation: the earlier code used one backend address for two roles: management (API
   connections, the router's input accept rule, readiness ping, portal-file download) and the
   guest-facing portal (login redirect, walled garden, forward accept). The IP binding
   (`ip-binding-backend`) bypasses the hotspot for the management address, which only matters if
@@ -400,7 +400,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   codes case-insensitively, PostgreSQL does not; codes are now upper-case by CHECK and guest
   input is to be upper-cased before lookup and login (M5).
   Evidence: router sim, `/ip hotspot active login` with each case, 2026-10-29.
-- Observation: the purchased expiry job selected expired `pending_activation` vouchers but then
+- Observation: the earlier expiry job selected expired `pending_activation` vouchers but then
   marked only `active` and `unused` ones, leaving the rest pending forever (its own comment said
   otherwise). Fixed; `test/integration/voucher-jobs.integration.test.ts`.
 - Observation: Sentry 11 removed `sendDefaultPii`; its replacement, `dataCollection`, collects
@@ -449,7 +449,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Observation: CHR 7.25 rejects `rate-limit` on a hotspot user; the self-test measures it and
   vouchers fall back to per-package profiles, as designed.
 - Observation: Bun 1.4 workspaces install in isolated mode (`node_modules/.bun/`, symlinked per
-  app); the purchased `turbopack.root` pin stopped Next.js resolving itself and was removed.
+  app); the earlier `turbopack.root` pin stopped Next.js resolving itself and was removed.
   Next.js finds the root `bun.lock`.
 - Observation: the root Django `.gitignore` hid `apps/web/lib/` from the first import commit;
   the commit was amended before publication to include it.
@@ -460,8 +460,8 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 
 ## Decision Log
 
-- Decision: build from the purchased system; keep its multi-venue model.
-  Rationale: [ADR-0001](../../engineering-decisions/0001-adopt-purchased-billing-system.md).
+- Decision: build from the earlier system; keep its multi-venue model.
+  Rationale: [ADR-0001](../../engineering-decisions/0001-start-from-a-working-system.md).
   Date/Author: 2026-10-28 / Paul, Claude
 - Decision: Bun, NestJS, Prisma, PostgreSQL 18, Next.js, Biome; newest stable versions pinned.
   Rationale: [ADR-0002](../../engineering-decisions/0002-toolchain.md).
@@ -485,7 +485,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Date/Author: 2026-10-28 / Paul, Claude
 - Decision: the repository stays private until M5's security fixes land.
   Rationale: the findings above describe exploitable defects; the code is published once
-  they are fixed. The purchased code is HashiFi's to change or delete without the seller.
+  they are fixed. The earlier code is HashiFi's to change or delete.
   Date/Author: 2026-10-28 / Paul
 - Decision: the repository goes public when HashiFi is ready to deploy, not when M5 lands.
   Date/Author: 2026-10-30 / Paul
@@ -515,7 +515,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Decision: lint findings in code M3 and M4 replace (Express routes, middleware, `server.ts`,
   the Drizzle layer) are warnings until those milestones remove the code, rather than typed
   now and deleted after. The router portal pages (`apps/api/mikrotik-files/`) are uploaded to
-  routers as received; Biome does not touch them.
+  routers unchanged; Biome does not touch them.
   Rationale: kept code (`services/`, `utils/`, the web) is fixed; the rest is rewritten.
   Date/Author: 2026-10-28 / Claude
 - Decision: M3 is the data foundation and the NestJS shell; M4 ports each Express route once.
@@ -528,8 +528,8 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Rationale: porting the 5.5k lines of route queries to Prisma in M3 and again to NestJS in M4
   would write them twice; nothing is deployed, so the gap costs nothing.
   Date/Author: 2026-10-29 / Claude (advisor review), Paul informed
-- Decision: the purchased Express app is removed once M3 replaced its foundation; M4 reads
-  each route from the import commit `45ebd53` rather than from a copy in the tree.
+- Decision: the earlier Express app is removed once M3 replaced its foundation; M4 reads
+  each route from commit `45ebd53` rather than from a copy in the tree.
   Rationale: git keeps it permanently; a copy in the tree looked live, kept the security
   scanner re-reporting known defects, and the repository removes replaced code.
   Date/Author: 2026-10-29 / Paul
@@ -540,7 +540,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Date/Author: 2026-10-29 / Claude (advisor review)
 - Decision: no uploaded branding. HashiFi's logo and any images ship with the web in
   `apps/web/public/` (`LOGO_SRC`); the portal settings keep wording, colours and voucher
-  defaults only, and the purchased logo, background and letter-mark fields are removed.
+  defaults only, and the earlier logo, background and letter-mark fields are removed.
   Rationale: HashiFi is used as it is, not resold to venues to brand, so upload, storage and
   backup of images would serve nobody. Briefly stored in PostgreSQL before the owner ruled
   that media must not live in the database, and then that the uploads are not needed.
@@ -555,7 +555,7 @@ Not started beyond the import and scaffold.
 
 ## Context And Orientation
 
-- `apps/api` (as received): Express 5, Drizzle on MySQL, `ws`, `routeros` (RouterOS API
+- `apps/api` (at the start): Express 5, Drizzle on MySQL, `ws`, `routeros` (RouterOS API
   client), `sharp` (portal images), `nodemailer` (admin sign-in codes). Entry
   `src/server.ts`; one file per resource in `src/routes/`; `src/services/` holds
   `router-provision/` (bootstrap script, capability probe, per-board dialect, setup steps,
@@ -563,7 +563,7 @@ Not started beyond the import and scaffold.
   `expiry-daemon.ts` and `live-monitor.ts`. Tests sit beside the code as `*.test.ts`.
   `mikrotik-files/` are the pages uploaded to routers; `mikrotik-knowledge-files/` is the
   seller's router onboarding procedure and reference, worth keeping as runbooks.
-- `apps/web` (as received): Next.js 16 admin with shadcn components; `lib/types.ts` mirrors
+- `apps/web` (at the start): Next.js 16 admin with shadcn components; `lib/types.ts` mirrors
   the API's responses.
 - **CHR**: MikroTik's RouterOS as a virtual machine image, used here as the router sim.
 - **Walled garden**: hosts a hotspot lets unauthenticated guests reach (the portal and API).
@@ -578,7 +578,7 @@ dist-tags`: Prisma's `latest` is a release candidate at the time of writing, so 
 Every "WiFi Billing" and `wifi_billing`/`wifibilling` name becomes HashiFi (UI strings,
 cookie and database names, demo addresses, router pages). In the web: remove
 `@vercel/analytics`, replace the `next-maps` GitHub dependency, fix the Recharts error and
-drop `typescript.ignoreBuildErrors`. `bun run verify` passes, with the 170 purchased tests.
+drop `typescript.ignoreBuildErrors`. `bun run verify` passes, with the 170 existing tests.
 
 ### M2 Router sim on CHR
 
@@ -620,14 +620,14 @@ Admins must enroll TOTP with recovery codes; managers may. Rate limits on reques
 verifying codes, one answer whether or not an email is staff. Then the routes, each behind the
 role and venue guard.
 
-The same first migration renames what the purchased names got wrong, folded into the baseline
+The same first migration renames what the earlier names got wrong, folded into the baseline
 (nothing is deployed): `admin_users` becomes `staff` (it holds managers too) and
 `wifi_customers` becomes `devices`, dropping its unused `username` and `email`. A row there is
 one MAC address the network saw, created when a voucher is redeemed: one person can be several
 devices, and a phone that randomises its MAC can be a new device at each venue, so it is not a
 customer. Sessions, vouchers and payments refer to `deviceId`.
 
-Each purchased Express route, read from the import commit (`git show
+Each Express route, read from commit (`git show
 45ebd53:apps/api/src/routes/<name>.ts`), is ported straight to a NestJS module: venues,
 routers, packages, vouchers, customers, sessions, analytics, revenue, portal settings, team,
 audit. The admin/manager role rule comes from `45ebd53:apps/api/src/middleware/rbac.ts`.
@@ -674,10 +674,10 @@ access is granted. Printed vouchers sold for cash stay a supported path alongsid
   (E.164, `+255…`, unique), with the devices they used and their payments. Created on a first
   payment; the phone number is the only personal data, shown to admins and to managers for
   their venues.
-- Ported from the import commit `45ebd53`: `routes/snippe-webhook.ts` and `payments.ts`,
+- Ported from `45ebd53`: `routes/snippe-webhook.ts` and `payments.ts`,
   `utils/snippe.ts`, `scripts/reconcile-pending-payments.ts` and the payment half of
   `services/reconcile-daemon.ts`, as a NestJS module and jobs on the M3 foundation.
-- Kept from the purchased design: a payment's `router_provisioned_at` is tracked apart from
+- Kept from the earlier design: a payment's `router_provisioned_at` is tracked apart from
   `status = paid`, and access waits on it; pending payments are reconciled after the
   authorisation window; the webhook is verified by signature and idempotent per event.
 - The API decides payment state; the portal presents it (ADR-0003). Copy never names a
@@ -726,7 +726,7 @@ bun install
 bun run verify
 ```
 
-Expected result: every check passes, including the 170 purchased tests.
+Expected result: every check passes, including the 170 existing tests.
 
 ## Validation And Acceptance
 

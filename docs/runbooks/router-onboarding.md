@@ -11,8 +11,7 @@ model; the system detects the board and adapts.
 5. Check a phone
 ```
 
-> Written for the purchased system, and still the reference for steps on the router. Two things
-> changed: the bootstrap script is generated for a saved router, because it carries that
+> The reference for steps on the router. Two things to know: the bootstrap script is generated for a saved router, because it carries that
 > router's management tunnel ([ADR-0006](../engineering-decisions/0006-router-management-tunnel.md));
 > and "test connection" only reaches a router the API shares a network with, so a router behind
 > the tunnel is tested by its probe, after the script is pasted.

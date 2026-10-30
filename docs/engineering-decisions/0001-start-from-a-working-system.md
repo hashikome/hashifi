@@ -1,4 +1,4 @@
-# ADR-0001: Build from a purchased hotspot billing system
+# ADR-0001: Start from a working hotspot system
 
 Status: accepted, 28 October 2026.
 
@@ -6,28 +6,22 @@ Status: accepted, 28 October 2026.
 
 HashiFi needed working MikroTik hotspot provisioning, vouchers, a captive portal, sessions
 and an admin interface. Discovering MikroTik's board and RouterOS differences from scratch
-is slow and expensive, and the owner chose not to do that discovery work.
-
-## Options considered
-
-- Build from the empty Django skeleton: full control, but the router knowledge would have
-  to be rediscovered.
-- Buy a developed system for this market and adapt it.
+is slow and expensive.
 
 ## Decision
 
-HashiFi is built from a purchased WiFi billing system (Express, Drizzle, MySQL backend and
-Next.js admin), owned outright by Shikome Technology Limited and relicensed under
-FSL-1.1-ALv2. It was imported as received in commit `45ebd53` and is ported to the
-Hashikome stack ([ADR-0002](0002-toolchain.md)). Its multi-venue business model is kept.
+HashiFi starts from a working WiFi billing system (commit `45ebd53`: Express, Drizzle, MySQL
+backend and Next.js admin), owned outright by Shikome Technology Limited and licensed under
+FSL-1.1-ALv2, and moves it onto the Hashikome stack ([ADR-0002](0002-toolchain.md)). Its
+multi-venue model is kept.
 
-The most valuable parts are kept and wrapped rather than rewritten: router provisioning
-(bootstrap script, capability probing, the per-board dialect, readiness checks), router
-sync, and the expiry and reconciliation jobs, with their tests as the regression guard.
+The most valuable parts are kept rather than rewritten: router provisioning (bootstrap
+script, capability probing, the per-board dialect, readiness checks), router sync, and the
+expiry and reconciliation jobs, with their tests as the regression guard. Everything else is
+replaced whenever there is a better way.
 
 ## What must hold
 
-- The seller's database dumps and uploads (third parties' personal data) never enter the
-  repository.
-- Vendor behaviour is not trusted for security: the port reviews the portal and every
-  endpoint ([SECURITY.md](../SECURITY.md)).
+- Real people's data never enters the repository.
+- Inherited behaviour is not trusted for security: the portal and every endpoint are reviewed
+  ([SECURITY.md](../SECURITY.md)).

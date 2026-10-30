@@ -10,7 +10,7 @@ It started with a personal problem: people asking to use the WiFi, which meant e
 disabling access and tracking MAC addresses by hand, sometimes late at night.
 
 > **Status:** in development. The plan is
-> [docs/exec-plans/active/adopt-purchased-billing-system.md](docs/exec-plans/active/adopt-purchased-billing-system.md).
+> [docs/exec-plans/active/build-hashifi.md](docs/exec-plans/active/build-hashifi.md).
 > The API, the admin web and the captive portal work together; payments arrive in M6.
 
 ## How it works

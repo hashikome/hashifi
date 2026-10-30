@@ -1,9 +1,7 @@
 # Architecture
 
 The stable system map. Evolving detail belongs in [docs/design-docs/](docs/design-docs/README.md).
-This describes the **target** being built by the
-[adoption plan](docs/exec-plans/active/adopt-purchased-billing-system.md); until it lands,
-`apps/api` is the purchased Express application.
+The [build plan](docs/exec-plans/active/build-hashifi.md) tracks what is left to build.
 
 ## Purpose
 

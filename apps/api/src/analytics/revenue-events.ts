@@ -11,7 +11,7 @@ import { BUSINESS_TIME_ZONE } from "./business-day.js";
  *   (`active`, or `used` after it ran out). Until then nothing says the card was sold and
  *   used; a voucher that lapsed while pending gave nobody access, so it is not revenue.
  *
- * The purchased system repeated this rule in four places, and counted the lapsed pending
+ * The earlier system repeated this rule in four places, and counted the lapsed pending
  * vouchers as sales.
  */
 export const REVENUE_EVENTS = Prisma.sql`

@@ -4,7 +4,7 @@ Status: accepted, 30 October 2026, as proved in the router sim. Amends ADR-0006 
 
 ## Context
 
-The purchased portal rendered HTML from the API on a shared LAN. It found the venue from the
+The earlier portal rendered HTML from the API on a shared LAN. It found the venue from the
 host in `link-login`, returned a voucher code to anyone naming an active device's MAC address so
 a device could reconnect, and took everything in the query string. In the cloud design none of
 that holds: routers on the default network share one gateway address, the portal is HTTPS while

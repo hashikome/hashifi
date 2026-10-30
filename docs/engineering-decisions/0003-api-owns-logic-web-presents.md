@@ -5,7 +5,7 @@ Status: accepted, 28 October 2026.
 ## Context
 
 Hashikome's rule for every product is that the API owns the business logic and workflows
-and the web owns the presentation. The purchased system mixes them both ways: the API
+and the web owns the presentation. The earlier system mixes them both ways: the API
 renders the whole captive portal as HTML, CSS and JavaScript from template strings, while
 the admin pages compute totals and keep a copy of the duration rules.
 

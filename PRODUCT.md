@@ -109,7 +109,7 @@ Codes reach phones by **SMS**, through BRIQ, the messaging provider shared with 
 products. Not WhatsApp or email: a guest asking for WiFi usually has no data, and SMS reaches
 any phone with signal. Every code is also shown on screen where it was bought, with a Copy
 button, so an SMS that never arrives costs nothing; only if both are lost does the guest
-contact the venue. Payments use Snippe (adoption plan M6).
+contact the venue. Payments use Snippe (build plan M6).
 
 Acceptance: on the router sim with Snippe's test environment, each path gets a guest online and
 expiry cuts them off, and each appears in the venue's figures; then on a physical router with a
@@ -142,5 +142,5 @@ Development and tests use invented data only.
 
 ## 8. Delivery
 
-Active plan: [the build plan](docs/exec-plans/active/adopt-purchased-billing-system.md).
+Active plan: [the build plan](docs/exec-plans/active/build-hashifi.md).
 Nothing is deployed.

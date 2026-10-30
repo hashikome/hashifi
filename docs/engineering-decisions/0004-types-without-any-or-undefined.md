@@ -4,7 +4,7 @@ Status: accepted, 28 October 2026.
 
 ## Context
 
-The purchased code used `any` for API data, caught errors and connections, and optional
+The earlier code used `any` for API data, caught errors and connections, and optional
 (`undefined`) fields for values that are simply absent. Typing it during the toolchain
 milestone exposed what that hid: web types that no longer matched the API, a print page that
 crashed without portal settings, a preview whose props were declared as strings and received

@@ -17,7 +17,7 @@ links stay valid.
 
 | Record | Decision | Status |
 | --- | --- | --- |
-| [0001](0001-adopt-purchased-billing-system.md) | Build from a purchased hotspot billing system | accepted |
+| [0001](0001-start-from-a-working-system.md) | Start from a working hotspot system | accepted |
 | [0002](0002-toolchain.md) | Bun workspaces, NestJS, Prisma and PostgreSQL | accepted |
 | [0003](0003-api-owns-logic-web-presents.md) | The API owns business logic and workflows; the web presents | accepted |
 | [0004](0004-types-without-any-or-undefined.md) | Types without `any` or `undefined` | accepted |

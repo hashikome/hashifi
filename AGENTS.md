@@ -10,8 +10,7 @@ External documents are references only. Keep this file short: it is a map, not a
 
 ## Current state
 
-HashiFi began as a purchased system, imported as received in commit `45ebd53`, and is being
-ported by the [adoption plan](docs/exec-plans/active/adopt-purchased-billing-system.md): read
+The [build plan](docs/exec-plans/active/build-hashifi.md) tracks the work: read
 it before changing anything under `apps/`. M1 to M5 are done: `apps/api` is NestJS on Bun with
 Prisma on PostgreSQL 18, and `apps/web` runs on it through `lib/api.ts` and `@hashifi/types`,
 including the captive portal. Payments are M6.
@@ -96,9 +95,8 @@ or discard user data without explicit approval.
   from the network, so never enable an http login method.
 - **Time:** stored in UTC; business days are calculated in `Africa/Dar_es_Salaam`.
 - **Copy:** mobile money is "mobile money" and "mobile number"; never name a provider.
-- **Personal data:** the purchased system's original archive contained third parties' data
-  (database dumps, uploads). It stays out of the repository, `ref/` and logs. Development uses
-  seeded, invented data only.
+- **Personal data:** real people's data stays out of the repository, `ref/` and logs.
+  Development uses seeded, invented data only.
 - **Secrets**: Docker secrets (`<NAME>_FILE`) for sensitive values, an env file for the rest
   (each app's `.env.example` lists its keys); the application never depends on a password manager
   ([docs/SECURITY.md](docs/SECURITY.md#credentials)).
