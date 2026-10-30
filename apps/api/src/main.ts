@@ -1,15 +1,13 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import { raw } from "express";
 import { appModule } from "./app.module.js";
 import { authHttpMiddleware } from "./auth/auth-http.js";
 import { type Auth, BETTER_AUTH } from "./auth/create-auth.js";
 import type { AppConfig } from "./config/config.js";
 import type { EmailSender } from "./email/email-sender.js";
 import { ErrorEnvelopeFilter } from "./http/error-envelope.js";
-import { httpWideEvents, rawBodyErrors, requireTrustedOrigin } from "./http/http-middleware.js";
-import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "./portal/portal-images.js";
+import { httpWideEvents, requireTrustedOrigin } from "./http/http-middleware.js";
 
 export interface BootstrapOptions {
   /** Port to listen on; 0 picks a free one (tests). */
@@ -40,11 +38,6 @@ export async function bootstrap(
   app.use(requireTrustedOrigin([config.frontendOrigin]));
   app.use(authHttpMiddleware(app.get<Auth>(BETTER_AUTH)));
   app.getHttpAdapter().registerParserMiddleware(undefined, true);
-  app.use(
-    "/api/portal/images",
-    raw({ type: [...ALLOWED_IMAGE_TYPES], limit: MAX_IMAGE_BYTES }),
-    rawBodyErrors,
-  );
   app.useGlobalFilters(new ErrorEnvelopeFilter());
   app.enableShutdownHooks();
   await app.listen(options.port, "0.0.0.0");

@@ -118,14 +118,12 @@ export interface RevokeResult {
 }
 
 /**
- * The captive portal's branding (`GET` and `PUT /api/portal`). Until an admin saves it, the API
- * answers with its defaults and `updatedAt` is null.
+ * The captive portal's wording, colours and voucher defaults (`GET` and `PUT /api/portal`).
+ * There are no uploaded images: HashiFi's logo ships with the web. Until an admin saves, the
+ * API answers with its defaults and `updatedAt` is null.
  */
 export interface PortalSettingsRecord {
   brandName: string;
-  logoText: string;
-  logoUrl: string | null;
-  backgroundImageUrl: string | null;
   headline: string;
   message: string;
   primaryColor: string;
@@ -142,14 +140,6 @@ export interface PortalSettingsRecord {
   isActive: boolean;
   /** When an admin last saved it; null while the defaults apply. */
   updatedAt: Timestamp | null;
-}
-
-/** `POST /api/portal/images`: an uploaded image, ready to use as `logoUrl` or `backgroundImageUrl`. */
-export interface PortalImageResponse {
-  id: string;
-  kind: "logo" | "background";
-  /** Where the portal loads it from; served to anyone, since guests see it before signing in. */
-  url: string;
 }
 
 /** `POST /api/vouchers/print`: chosen vouchers with what their cards show. */

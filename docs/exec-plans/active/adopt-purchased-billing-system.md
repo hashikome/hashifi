@@ -203,21 +203,16 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     October; growth against September; by venue, by package, transactions without phones;
     31 days including empty ones; six months; a manager's scoped usage, null revenue, and 403
     on the six admin reports).
-  - [x] (2026-10-30) Portal settings (`src/portal/`). One branding row (`singleton`, CHECK);
-    `GET /api/portal` gives any staff member the saved branding or the API's defaults (the
-    purchased route answered 404 and each web page carried its own defaults); admins replace it
-    with `PUT`, audited, with field-by-field validation (colours as `#RRGGBB`, one-line texts,
-    the voucher prefix upper-case). Images go in PostgreSQL: `POST /api/portal/images?kind=`
-    takes the image as the request body (raw parser, image types only, 10 MB, 413 in the error
-    shape), re-encodes it and returns its URL; settings may reference only an image stored
-    here, of the matching kind, so the portal never loads a pasted address. Saving deletes
-    images no longer used, except uploads from the last day still awaiting a save.
-    `GET /api/portal/images/:id` is public (guests see it before signing in) and cached as
-    immutable. The admin portal page moves to these endpoints now.
-    Acceptance: `portal-images.test.ts` (sizes, metadata stripped, non-images refused) and
-    `portal.integration.test.ts` (defaults, one row, audit, manager read-only; five refused
-    fields; upload, public JPEG, slot and existence checks; non-image, SVG, unknown kind and
-    11 MB refused; unused images deleted, recent uploads kept).
+  - [x] (2026-10-30) Portal settings (`src/portal/`). One settings row (`singleton`, CHECK);
+    `GET /api/portal` gives any staff member the saved settings or the API's defaults (the
+    purchased route answered 404 and each web page carried its own defaults); admins replace
+    them with `PUT`, audited, validated field by field (colours as `#RRGGBB`, one-line texts,
+    the voucher prefix upper-case). No uploads: the logo is `apps/web/public/logo.svg`, shown
+    by the portal previews and printed vouchers, and the upload routes, image processing
+    (`sharp`), crop dialog (`react-image-crop`) and the logo, background and letter-mark
+    columns are gone (Decision Log). `logo.svg` is a placeholder mark for the owner to replace.
+    Acceptance: `portal.integration.test.ts` (defaults, one row, audit, manager read-only;
+    refused fields, an unknown `logoUrl` ignored).
   - [x] (2026-10-30) Team and audit (`src/team/`, `src/audit/audit.controller.ts`), admins
     only. Adding someone creates their Better Auth user and staff record in one transaction
     (`createStaffRows`, shared with `bun run staff:add`); a manager may operate several venues
@@ -481,13 +476,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Rationale: the bootstrap script is regenerated (it is safe to paste twice); fresh keys each
   time would orphan the key already on the router.
   Date/Author: 2026-10-29 / Claude (advisor review)
-- Decision: portal images (logo, background) are stored in PostgreSQL (`portal_images`), not
-  on the API's disk, and served by the API at `/api/portal/images/:id`.
-  Rationale: production runs immutable images in Swarm, where a container's disk is neither
-  persistent nor shared between replicas; a volume would be new infrastructure for a few
-  hundred KB per image, and the database is already backed up. Uploads are re-encoded JPEG
-  (EXIF stripped), and settings may reference only images stored here.
-  Date/Author: 2026-10-30 / Claude
+- Decision: no uploaded branding. HashiFi's logo and any images ship with the web in
+  `apps/web/public/` (`LOGO_SRC`); the portal settings keep wording, colours and voucher
+  defaults only, and the purchased logo, background and letter-mark fields are removed.
+  Rationale: HashiFi is used as it is, not resold to venues to brand, so upload, storage and
+  backup of images would serve nobody. Briefly stored in PostgreSQL before the owner ruled
+  that media must not live in the database, and then that the uploads are not needed.
+  Date/Author: 2026-10-30 / Paul
 - Decision: FSL-1.1-ALv2, Shikome Technology Limited as licensor.
   Rationale: public source without permitting a competing commercial service.
   Date/Author: 2026-10-28 / Paul
@@ -578,8 +573,8 @@ The services, jobs, configuration, secrets, encryption and telemetry already exi
 modules use them. Every query is scoped by role and venue (finding 3). The router module's
 bootstrap endpoint allocates the router's tunnel with `TunnelAllocator` and passes it to the
 script. The live view (`/ws/live`) becomes a gateway fed by `LiveMonitor.pollOnce`'s
-`onUpdate` and the router log (`45ebd53:apps/api/src/services/provision-broadcast.ts`); portal
-images are stored in PostgreSQL (see the Decision Log). Analytics groups by `businessDaySql` instead of `CONVERT_TZ`. The API normalises
+`onUpdate` and the router log (`45ebd53:apps/api/src/services/provision-broadcast.ts`); there
+are no portal uploads (see the Decision Log). Analytics groups by `businessDaySql` instead of `CONVERT_TZ`. The API normalises
 on write what the schema's CHECKs require, so an admin's typing never becomes a 500: team
 member emails to lower-case, voucher batch prefixes and the portal's `voucherPrefix` to
 upper-case.

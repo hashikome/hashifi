@@ -9,7 +9,6 @@ import type { PortalSettings } from "./types";
  */
 export const initialPortalSettings: PortalSettings = {
   brandName: "SkyNet Hotspot",
-  logoText: "SN",
   venueName: "Downtown Mall",
   headline: "Welcome to fast WiFi",
   message: "Choose a plan or enter your voucher to get secure internet access.",

@@ -6,9 +6,9 @@
   a lost authenticator app; managers may run several venues; HashiFi always keeps an active
   admin, even when two admins act on each other at once; everyone affected is emailed.
 
-- Portal settings through the NestJS API: one branding with the API's defaults until saved,
-  validated field by field. Logo and background images are stored in PostgreSQL, re-encoded
-  without their metadata, and the portal shows only images uploaded to HashiFi.
+- Portal settings through the NestJS API: wording, colours and voucher defaults, with the API's
+  defaults until saved, validated field by field. No uploaded branding: HashiFi's logo ships
+  with the web (`apps/web/public/logo.svg`) and appears on the portal and printed vouchers.
 
 - Analytics and revenue through the NestJS API, with one definition of revenue and every
   figure by the Dar es Salaam business day and month. Managers see their venues' usage only.

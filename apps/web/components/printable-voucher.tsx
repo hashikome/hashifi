@@ -2,6 +2,7 @@ import type { PortalSettingsRecord } from "@hashifi/types";
 import { QRCodeSVG } from "qrcode.react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { LOGO_SRC } from "@/lib/brand";
 import { formatDuration } from "@/lib/duration";
 
 /** The portal settings a printed voucher is drawn with. */
@@ -9,7 +10,6 @@ export type VoucherTicketSettings = Pick<
   PortalSettingsRecord,
   | "backgroundColor"
   | "brandName"
-  | "logoText"
   | "primaryColor"
   | "radius"
   | "ticketFooter"
@@ -56,15 +56,8 @@ export function PrintableVoucher({
         style={{ backgroundColor: settings.backgroundColor }}
       >
         <div className="flex items-center gap-3">
-          <div
-            className="flex size-10 shrink-0 items-center justify-center font-bold text-white shadow-sm"
-            style={{
-              backgroundColor: settings.primaryColor,
-              borderRadius: `${settings.radius / 2}px`,
-            }}
-          >
-            {settings.logoText || "W"}
-          </div>
+          {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
+          <img src={LOGO_SRC} alt="HashiFi" className="size-10 shrink-0" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{settings.brandName}</p>
             {venueName && <p className="truncate text-[10px] text-white/70">{venueName}</p>}

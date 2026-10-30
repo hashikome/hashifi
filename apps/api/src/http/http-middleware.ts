@@ -1,4 +1,4 @@
-import type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Response } from "express";
+import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { runInWideEvent, WideEvent } from "../observability/wide-event.js";
 import { apiError } from "./error-envelope.js";
 
@@ -51,14 +51,3 @@ export function requireTrustedOrigin(origins: readonly string[]): RequestHandler
     next();
   };
 }
-
-/** A body over the raw parser's limit becomes the API's 413, not Express's HTML error page. */
-export const rawBodyErrors: ErrorRequestHandler = (error: unknown, _request, response, next) => {
-  const status =
-    typeof error === "object" && error !== null && "status" in error ? error.status : null;
-  if (status === 413) {
-    response.status(413).json(apiError("PAYLOAD_TOO_LARGE", "The image is larger than 10 MB."));
-    return;
-  }
-  next(error);
-};

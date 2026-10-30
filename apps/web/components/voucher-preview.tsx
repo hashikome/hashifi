@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { LOGO_SRC } from "@/lib/brand";
 import { formatDuration } from "@/lib/duration";
 import { initialPortalSettings } from "@/lib/portal-defaults";
 
@@ -64,12 +65,8 @@ export function VoucherPreview({
           >
             <div className="flex items-start justify-between gap-4 p-5">
               <div className="flex min-w-0 items-center gap-3">
-                <div
-                  className="flex size-12 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-                  style={{ backgroundColor: portal.primaryColor }}
-                >
-                  {portal.logoText || "W"}
-                </div>
+                {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
+                <img src={LOGO_SRC} alt="HashiFi" className="size-12 shrink-0" />
                 <div className="min-w-0">
                   <p className="truncate text-base font-semibold">{portal.brandName}</p>
                   <p className="truncate text-xs text-white/70">{portal.venueName}</p>

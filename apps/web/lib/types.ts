@@ -155,7 +155,6 @@ export interface UserGrowth {
 
 export interface PortalSettings {
   brandName: string;
-  logoText: string;
   venueName?: string;
   headline: string;
   message: string;

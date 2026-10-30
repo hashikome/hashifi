@@ -14,23 +14,12 @@ import {
   Smartphone,
   Sparkles,
   Ticket,
-  Upload,
   Wifi,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import {
-  type ChangeEvent,
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ImageCropDialog } from "@/components/image-crop-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { useAuth } from "@/lib/auth-context";
+import { LOGO_SRC } from "@/lib/brand";
 import {
   DURATION_BUCKETS,
   type DurationBucketKey,
@@ -65,14 +55,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const PORTAL_LOGIN_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login";
 const BRAND_PLACEHOLDER = "Your brand name";
 
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MAX_RAW_SIZE_MB = 20;
-
 type PortalForm = {
   brandName: string;
-  logoText: string;
-  logoUrl: string | null;
-  backgroundImageUrl: string | null;
   headline: string;
   message: string;
   primaryColor: string;
@@ -90,9 +74,6 @@ type PortalForm = {
 
 const DEFAULT_FORM: PortalForm = {
   brandName: "",
-  logoText: "W",
-  logoUrl: null,
-  backgroundImageUrl: null,
   headline: "Fast & Reliable WiFi",
   message: "Connect to our secure network and enjoy seamless internet access.",
   primaryColor: "#D97757",
@@ -132,15 +113,6 @@ export default function PortalPage() {
   );
   const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isSaving);
 
-  // ── Image upload state ────────────────────────────────────────────────────
-  const [cropSrc, setCropSrc] = useState<string | null>(null);
-  const [cropField, setCropField] = useState<"logo" | "background" | null>(null);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [isUploadingBg, setIsUploadingBg] = useState(false);
-
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const bgInputRef = useRef<HTMLInputElement>(null);
-
   // ── Load portal settings + packages ──────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -157,9 +129,6 @@ export default function PortalPage() {
           const s = data.settings;
           const loaded: PortalForm = {
             brandName: s.brandName,
-            logoText: s.logoText,
-            logoUrl: s.logoUrl ?? null,
-            backgroundImageUrl: s.backgroundImageUrl ?? null,
             headline: s.headline,
             message: s.message,
             primaryColor: s.primaryColor,
@@ -238,7 +207,7 @@ export default function PortalPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Failed to save");
+        throw new Error(data.message || "Failed to save");
       }
       setSavedPortal(portal);
       toast.success("Portal settings saved");
@@ -248,88 +217,6 @@ export default function PortalPage() {
       setIsSaving(false);
     }
   };
-
-  // ── File picker ───────────────────────────────────────────────────────────
-  const handleFileSelect = useCallback(
-    (field: "logo" | "background") => (e: ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      e.target.value = ""; // reset so the same file can be re-selected
-      if (!file) return;
-
-      if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-        toast.error("Please select a JPEG, PNG, WebP, or GIF image");
-        return;
-      }
-      if (file.size > MAX_RAW_SIZE_MB * 1024 * 1024) {
-        toast.error(`Image must be under ${MAX_RAW_SIZE_MB} MB`);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setCropSrc(ev.target?.result as string);
-        setCropField(field);
-      };
-      reader.readAsDataURL(file);
-    },
-    [],
-  );
-
-  // ── Upload cropped blob ───────────────────────────────────────────────────
-  const handleUpload = useCallback(
-    async (blob: Blob) => {
-      if (!cropField) return;
-      const isLogo = cropField === "logo";
-      isLogo ? setIsUploadingLogo(true) : setIsUploadingBg(true);
-
-      try {
-        // The image is the body; the API re-encodes it and returns its URL for the next save.
-        const res = await fetch(`${API_URL}/api/portal/images?kind=${cropField}`, {
-          method: "POST",
-          headers: { "Content-Type": blob.type || "image/jpeg" },
-          credentials: "include",
-          body: blob,
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.message || "Upload failed");
-        }
-        const data = await res.json();
-        setPortal((prev) => ({
-          ...prev,
-          [isLogo ? "logoUrl" : "backgroundImageUrl"]: data.url,
-        }));
-        toast.success(`${isLogo ? "Logo" : "Background"} uploaded`);
-      } catch (err) {
-        toast.error(errorMessage(err, "Upload failed"));
-        throw err; // keep crop dialog open on failure
-      } finally {
-        isLogo ? setIsUploadingLogo(false) : setIsUploadingBg(false);
-      }
-    },
-    [cropField],
-  );
-
-  // ── Remove uploaded image ─────────────────────────────────────────────────
-  const handleRemove = useCallback(
-    async (field: "logo" | "background") => {
-      const isLogo = field === "logo";
-      const url = isLogo ? portal.logoUrl : portal.backgroundImageUrl;
-      if (!url) return;
-
-      // Cleared from the form; the API deletes the unused image once the settings are saved.
-      setPortal((prev) => ({
-        ...prev,
-        [isLogo ? "logoUrl" : "backgroundImageUrl"]: null,
-      }));
-    },
-    [portal.backgroundImageUrl, portal.logoUrl],
-  );
-
-  const closeCropDialog = useCallback(() => {
-    setCropSrc(null);
-    setCropField(null);
-  }, []);
 
   // ── Loading state ─────────────────────────────────────────────────────────
   if (isLoading) {
@@ -470,15 +357,6 @@ export default function PortalPage() {
                           </p>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="logoText">Logo mark (fallback)</Label>
-                        <Input
-                          id="logoText"
-                          maxLength={3}
-                          value={portal.logoText}
-                          onChange={(e) => updatePortal("logoText", e.target.value.toUpperCase())}
-                        />
-                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -500,139 +378,10 @@ export default function PortalPage() {
                       />
                     </div>
 
-                    {/* ── Image uploads ── */}
-                    <div className="space-y-4">
-                      {/* Logo */}
-                      <div className="space-y-2">
-                        <Label>Logo image</Label>
-                        <input
-                          ref={logoInputRef}
-                          type="file"
-                          accept={ACCEPTED_IMAGE_TYPES.join(",")}
-                          className="hidden"
-                          onChange={handleFileSelect("logo")}
-                        />
-                        <div className="flex flex-wrap items-center gap-3">
-                          {portal.logoUrl ? (
-                            <>
-                              {/* biome-ignore lint/performance/noImgElement: an uploaded portal image at its own size; image optimisation is off (next.config.mjs) */}
-                              <img
-                                src={`${API_URL}${portal.logoUrl}`}
-                                alt="Logo"
-                                className="size-12 rounded-lg border object-cover"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => logoInputRef.current?.click()}
-                                disabled={isUploadingLogo}
-                              >
-                                {isUploadingLogo ? (
-                                  <Loader className="mr-2 size-4 animate-spin" />
-                                ) : (
-                                  <Upload className="size-4" />
-                                )}
-                                Change Logo
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRemove("logo")}
-                                disabled={isUploadingLogo}
-                              >
-                                <X className="size-4" />
-                                Remove
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => logoInputRef.current?.click()}
-                              disabled={isUploadingLogo}
-                            >
-                              {isUploadingLogo ? (
-                                <Loader className="mr-2 size-4 animate-spin" />
-                              ) : (
-                                <Upload className="size-4" />
-                              )}
-                              Upload Logo
-                            </Button>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          JPEG, PNG, or WebP · max {MAX_RAW_SIZE_MB} MB · cropped to 400&times;400
-                        </p>
-                      </div>
-
-                      {/* Background image */}
-                      <div className="space-y-2">
-                        <Label>Background image</Label>
-                        <input
-                          ref={bgInputRef}
-                          type="file"
-                          accept={ACCEPTED_IMAGE_TYPES.join(",")}
-                          className="hidden"
-                          onChange={handleFileSelect("background")}
-                        />
-                        <div className="flex flex-wrap items-center gap-3">
-                          {portal.backgroundImageUrl ? (
-                            <>
-                              {/* biome-ignore lint/performance/noImgElement: an uploaded portal image at its own size; image optimisation is off (next.config.mjs) */}
-                              <img
-                                src={`${API_URL}${portal.backgroundImageUrl}`}
-                                alt="Background"
-                                className="h-12 w-20 rounded-lg border object-cover"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => bgInputRef.current?.click()}
-                                disabled={isUploadingBg}
-                              >
-                                {isUploadingBg ? (
-                                  <Loader className="mr-2 size-4 animate-spin" />
-                                ) : (
-                                  <Image className="size-4" />
-                                )}
-                                Change Background
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRemove("background")}
-                                disabled={isUploadingBg}
-                              >
-                                <X className="size-4" />
-                                Remove
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => bgInputRef.current?.click()}
-                              disabled={isUploadingBg}
-                            >
-                              {isUploadingBg ? (
-                                <Loader className="mr-2 size-4 animate-spin" />
-                              ) : (
-                                <Image className="size-4" />
-                              )}
-                              Upload Background
-                            </Button>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Overrides color background · max 1920&times;1080 · JPEG quality 80
-                        </p>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        QR codes are generated automatically on printed vouchers and link customers
-                        to the captive portal.
-                      </p>
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      QR codes are generated automatically on printed vouchers and link customers to
+                      the captive portal.
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -943,21 +692,6 @@ export default function PortalPage() {
 
       {/* ── Unsaved changes guard ────────────────────────────────────────── */}
       <UnsavedChangesDialog open={showDialog} onLeave={confirmLeave} onStay={cancelLeave} />
-
-      {/* ── Crop dialog (rendered outside the tab hierarchy) ─────────────── */}
-      <ImageCropDialog
-        isOpen={!!cropSrc && !!cropField}
-        onClose={closeCropDialog}
-        imageSrc={cropSrc}
-        aspect={cropField === "logo" ? 1 : undefined}
-        title={cropField === "logo" ? "Crop Logo" : "Crop Background Image"}
-        description={
-          cropField === "logo"
-            ? "Drag or resize the square selection. The image will be saved at 400×400 px."
-            : "Select the region to use as the portal background. Saved at up to 1920×1080 px."
-        }
-        onApply={handleUpload}
-      />
     </>
   );
 }
@@ -1032,13 +766,7 @@ function PhonePreview({
     ];
   }
 
-  const bgStyle: CSSProperties = portal.backgroundImageUrl
-    ? {
-        backgroundImage: `url(${API_URL}${portal.backgroundImageUrl})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }
-    : { background: previewBackground };
+  const bgStyle: CSSProperties = { background: previewBackground };
 
   const r = portal.radius + 4;
 
@@ -1058,25 +786,8 @@ function PhonePreview({
                 </span>
               </div>
               <div className="flex items-center gap-2.5">
-                {portal.logoUrl ? (
-                  // biome-ignore lint/performance/noImgElement: an uploaded portal image at its own size; image optimisation is off (next.config.mjs)
-                  <img
-                    src={`${API_URL}${portal.logoUrl}`}
-                    alt="Logo"
-                    className="size-9 shrink-0 object-cover ring-2 ring-white/20"
-                    style={{ borderRadius: `${portal.radius}px` }}
-                  />
-                ) : (
-                  <div
-                    className="flex size-9 shrink-0 items-center justify-center text-sm font-bold ring-2 ring-white/20"
-                    style={{
-                      backgroundColor: portal.primaryColor,
-                      borderRadius: `${portal.radius}px`,
-                    }}
-                  >
-                    {portal.logoText || "W"}
-                  </div>
-                )}
+                {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
+                <img src={LOGO_SRC} alt="HashiFi" className="size-9 shrink-0" />
                 <div>
                   <BrandNameDisplay
                     brandName={portal.brandName}
@@ -1389,21 +1100,8 @@ function VoucherPreview({ portal, packages }: { portal: PortalForm; packages: Pa
             {/* Header */}
             <div className="flex items-start justify-between gap-4 p-5">
               <div className="flex min-w-0 items-center gap-3">
-                {portal.logoUrl ? (
-                  // biome-ignore lint/performance/noImgElement: an uploaded portal image at its own size; image optimisation is off (next.config.mjs)
-                  <img
-                    src={`${API_URL}${portal.logoUrl}`}
-                    alt="Logo"
-                    className="size-12 shrink-0 rounded-lg object-cover"
-                  />
-                ) : (
-                  <div
-                    className="flex size-12 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-                    style={{ backgroundColor: portal.primaryColor }}
-                  >
-                    {portal.logoText || "W"}
-                  </div>
-                )}
+                {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
+                <img src={LOGO_SRC} alt="HashiFi" className="size-12 shrink-0" />
                 <BrandNameDisplay
                   brandName={portal.brandName}
                   className="truncate text-base font-semibold"

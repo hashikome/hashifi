@@ -78,9 +78,6 @@ export function voucherRecord(row: Voucher): VoucherRecord {
 export function portalSettingsRecord(row: PortalSetting): PortalSettingsRecord {
   return {
     brandName: row.brandName,
-    logoText: row.logoText,
-    logoUrl: row.logoUrl,
-    backgroundImageUrl: row.backgroundImageUrl,
     headline: row.headline,
     message: row.message,
     primaryColor: row.primaryColor,

@@ -582,54 +582,31 @@ model SessionUsageSample {
   @@map("session_usage_samples")
 }
 
-/// The captive portal's branding and voucher template. One active row today.
-/// The captive portal's branding: one row (`singleton`, true by CHECK), so saving is an upsert.
+/// The captive portal's wording, colours and voucher defaults: one row (`singleton`, true by
+/// CHECK), so saving is an upsert. No images: HashiFi's logo ships with the web.
 model PortalSetting {
-  id                 String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  singleton          Boolean               @unique @default(true)
-  brandName          String                @map("brand_name") @db.VarChar(160)
-  logoText           String                @default("H") @map("logo_text") @db.VarChar(8)
-  logoUrl            String?               @map("logo_url") @db.VarChar(512)
-  backgroundImageUrl String?               @map("background_image_url") @db.VarChar(512)
-  headline           String                @db.VarChar(180)
-  message            String
-  primaryColor       String                @map("primary_color") @db.VarChar(16)
-  accentColor        String                @map("accent_color") @db.VarChar(16)
-  backgroundColor    String                @map("background_color") @db.VarChar(16)
-  backgroundStyle    PortalBackgroundStyle @default(soft) @map("background_style")
-  radius             Int                   @default(18)
-  voucherLabel       String                @map("voucher_label") @db.VarChar(100)
+  id              String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  singleton       Boolean               @unique @default(true)
+  brandName       String                @map("brand_name") @db.VarChar(160)
+  headline        String                @db.VarChar(180)
+  message         String
+  primaryColor    String                @map("primary_color") @db.VarChar(16)
+  accentColor     String                @map("accent_color") @db.VarChar(16)
+  backgroundColor String                @map("background_color") @db.VarChar(16)
+  backgroundStyle PortalBackgroundStyle @default(soft) @map("background_style")
+  radius          Int                   @default(18)
+  voucherLabel    String                @map("voucher_label") @db.VarChar(100)
   /// Upper-case (CHECK), as voucher codes are.
-  voucherPrefix      String                @default("WIFI") @map("voucher_prefix") @db.VarChar(24)
-  voucherHelp        String                @map("voucher_help")
-  ticketTitle        String                @map("ticket_title") @db.VarChar(160)
-  ticketFooter       String                @map("ticket_footer") @db.VarChar(255)
-  requireTerms       Boolean               @default(true) @map("require_terms")
-  isActive           Boolean               @default(true) @map("is_active")
-  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  voucherPrefix   String                @default("WIFI") @map("voucher_prefix") @db.VarChar(24)
+  voucherHelp     String                @map("voucher_help")
+  ticketTitle     String                @map("ticket_title") @db.VarChar(160)
+  ticketFooter    String                @map("ticket_footer") @db.VarChar(255)
+  requireTerms    Boolean               @default(true) @map("require_terms")
+  isActive        Boolean               @default(true) @map("is_active")
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("portal_settings")
-}
-
-enum PortalImageKind {
-  logo
-  background
-
-  @@map("portal_image_kind")
-}
-
-/// An image the portal shows, re-encoded by the API (portal-images.ts). Kept in PostgreSQL so it
-/// is backed up with everything else and served by every API replica; a few hundred KB each.
-model PortalImage {
-  id          String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  kind        PortalImageKind
-  contentType String          @map("content_type") @db.VarChar(40)
-  bytes       Bytes
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-
-  @@index([createdAt])
-  @@map("portal_images")
 }
 
 model DailyUsageStat {
