@@ -34,9 +34,6 @@ apps/api/src/generated/prisma/
 data/**
 !data/README.md
 
-# Portal branding uploads are runtime data; only the directory marker is tracked.
-apps/api/uploads/*
-!apps/api/uploads/.gitkeep
 
 # Database dumps never enter the repository; they can hold customers' personal data.
 *.sql.gz

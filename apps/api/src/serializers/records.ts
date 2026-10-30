@@ -77,7 +77,6 @@ export function voucherRecord(row: Voucher): VoucherRecord {
 
 export function portalSettingsRecord(row: PortalSetting): PortalSettingsRecord {
   return {
-    id: row.id,
     brandName: row.brandName,
     logoText: row.logoText,
     logoUrl: row.logoUrl,
@@ -96,7 +95,6 @@ export function portalSettingsRecord(row: PortalSetting): PortalSettingsRecord {
     ticketFooter: row.ticketFooter,
     requireTerms: row.requireTerms,
     isActive: row.isActive,
-    createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
 }

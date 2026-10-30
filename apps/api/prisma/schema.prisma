@@ -583,8 +583,10 @@ model SessionUsageSample {
 }
 
 /// The captive portal's branding and voucher template. One active row today.
+/// The captive portal's branding: one row (`singleton`, true by CHECK), so saving is an upsert.
 model PortalSetting {
   id                 String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  singleton          Boolean               @unique @default(true)
   brandName          String                @map("brand_name") @db.VarChar(160)
   logoText           String                @default("H") @map("logo_text") @db.VarChar(8)
   logoUrl            String?               @map("logo_url") @db.VarChar(512)
@@ -607,8 +609,27 @@ model PortalSetting {
   createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  @@index([isActive])
   @@map("portal_settings")
+}
+
+enum PortalImageKind {
+  logo
+  background
+
+  @@map("portal_image_kind")
+}
+
+/// An image the portal shows, re-encoded by the API (portal-images.ts). Kept in PostgreSQL so it
+/// is backed up with everything else and served by every API replica; a few hundred KB each.
+model PortalImage {
+  id          String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  kind        PortalImageKind
+  contentType String          @map("content_type") @db.VarChar(40)
+  bytes       Bytes
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@map("portal_images")
 }
 
 model DailyUsageStat {

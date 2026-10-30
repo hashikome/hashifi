@@ -283,18 +283,16 @@ export default function PortalPage() {
       isLogo ? setIsUploadingLogo(true) : setIsUploadingBg(true);
 
       try {
-        const form = new FormData();
-        form.append("file", blob, `portal-${cropField}.jpg`);
-        form.append("field", cropField);
-
-        const res = await fetch(`${API_URL}/api/portal/upload`, {
+        // The image is the body; the API re-encodes it and returns its URL for the next save.
+        const res = await fetch(`${API_URL}/api/portal/images?kind=${cropField}`, {
           method: "POST",
+          headers: { "Content-Type": blob.type || "image/jpeg" },
           credentials: "include",
-          body: form,
+          body: blob,
         });
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || "Upload failed");
+          throw new Error(data.message || "Upload failed");
         }
         const data = await res.json();
         setPortal((prev) => ({
@@ -319,28 +317,11 @@ export default function PortalPage() {
       const url = isLogo ? portal.logoUrl : portal.backgroundImageUrl;
       if (!url) return;
 
-      isLogo ? setIsUploadingLogo(true) : setIsUploadingBg(true);
-      try {
-        const res = await fetch(`${API_URL}/api/portal/upload`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ url }),
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Failed to remove");
-        }
-        setPortal((prev) => ({
-          ...prev,
-          [isLogo ? "logoUrl" : "backgroundImageUrl"]: null,
-        }));
-        toast.success(`${isLogo ? "Logo" : "Background"} removed`);
-      } catch (err) {
-        toast.error(errorMessage(err, "Failed to remove image"));
-      } finally {
-        isLogo ? setIsUploadingLogo(false) : setIsUploadingBg(false);
-      }
+      // Cleared from the form; the API deletes the unused image once the settings are saved.
+      setPortal((prev) => ({
+        ...prev,
+        [isLogo ? "logoUrl" : "backgroundImageUrl"]: null,
+      }));
     },
     [portal.backgroundImageUrl, portal.logoUrl],
   );

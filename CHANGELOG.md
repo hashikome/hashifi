@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Portal settings through the NestJS API: one branding with the API's defaults until saved,
+  validated field by field. Logo and background images are stored in PostgreSQL, re-encoded
+  without their metadata, and the portal shows only images uploaded to HashiFi.
+
 - Analytics and revenue through the NestJS API, with one definition of revenue and every
   figure by the Dar es Salaam business day and month. Managers see their venues' usage only.
 - Fixed: revenue counted vouchers that never worked, months followed the server's clock,

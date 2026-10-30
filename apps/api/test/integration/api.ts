@@ -89,7 +89,7 @@ export class Client {
   async requestWith(
     method: string,
     path: string,
-    body: string | null,
+    body: string | Uint8Array<ArrayBuffer> | null,
     extra: Record<string, string | null>,
   ): Promise<Reply> {
     const headers: Record<string, string> = { "X-Forwarded-For": this.ip };

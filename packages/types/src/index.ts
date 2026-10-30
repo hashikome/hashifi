@@ -117,8 +117,11 @@ export interface RevokeResult {
   revoked: number;
 }
 
+/**
+ * The captive portal's branding (`GET` and `PUT /api/portal`). Until an admin saves it, the API
+ * answers with its defaults and `updatedAt` is null.
+ */
 export interface PortalSettingsRecord {
-  id: string;
   brandName: string;
   logoText: string;
   logoUrl: string | null;
@@ -137,8 +140,16 @@ export interface PortalSettingsRecord {
   ticketFooter: string;
   requireTerms: boolean;
   isActive: boolean;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  /** When an admin last saved it; null while the defaults apply. */
+  updatedAt: Timestamp | null;
+}
+
+/** `POST /api/portal/images`: an uploaded image, ready to use as `logoUrl` or `backgroundImageUrl`. */
+export interface PortalImageResponse {
+  id: string;
+  kind: "logo" | "background";
+  /** Where the portal loads it from; served to anyone, since guests see it before signing in. */
+  url: string;
 }
 
 /** `POST /api/vouchers/print`: chosen vouchers with what their cards show. */
