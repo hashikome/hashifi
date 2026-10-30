@@ -283,7 +283,7 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   `login-by=mac-cookie` alone, and `/ip hotspot active login` is probed and required. No response
   or router page holds a code; `link-login`, the router's login form and `alogin.html` are gone.
   Every package has a router profile, so a device's MAC cookie lasts as long as its package. On
-  a production build the portal is 168 KB gzipped and downloads no font. Reviewed with the
+  a production build the portal is about 200 KB gzipped, self-hosted font included. Reviewed with the
   design inspector and detector: one FAIL stands, the default brand colour on the house rules'
   banned terracotta list, which is the owner's decision.
   Acceptance: `router-sim guest-test` 17/17 on a router set up by the normal path; integration

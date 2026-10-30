@@ -45,8 +45,12 @@ text colours are computed from them, so any choice stays readable.
 
 ## Typography
 
-- **Admin:** DM Sans, self-hosted through `next/font`; 400, 500, 600 and 700.
-- **Guest portal and router pages:** system fonts, so a guest downloads no typeface.
+- **Figtree everywhere:** the admin, the guest portal and the router's pages. A variable font
+  (OFL-1.1) committed at `apps/web/public/fonts/` and loaded through `next/font/local`, about 20 KB,
+  so every phone sees the same page and no request goes to a third party. Weights 400 to 700.
+  Chosen by measurement: it has true tabular figures, which DM Sans does not.
+- **Never a system font by design.** One exists only as the metric-adjusted fallback if the file
+  fails to load.
 - **Sizes:** page title 24px, section 18px, figure 24px, body 14px, small 12px; nothing under 11px.
   On a phone the portal's body is 16px, so browsers do not zoom on focus.
 - Sentence case, no tracked capitals. Tabular figures on every number in a table or figure, right

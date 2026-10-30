@@ -17,8 +17,6 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
       enableSystem={false}
       disableTransitionOnChange
     >
-      {/* On the body, for dialogs and toasts too; the guest portal must not fetch this typeface. */}
-      <style>{"body { font-family: var(--font-dm-sans), sans-serif; }"}</style>
       <AuthProvider>
         {children}
         <Toaster />

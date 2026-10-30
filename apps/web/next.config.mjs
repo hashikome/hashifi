@@ -10,6 +10,10 @@ const nextConfig = {
   },
   // Before login the walled garden admits one host, this one (ADR-0008), so a guest's browser
   // reaches the API through it.
+  // The router's pages, on the router's origin, load the font from here.
+  headers: async () => [
+    { source: "/fonts/:file", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
+  ],
   rewrites: async () => [
     { source: "/api/guest/:path*", destination: `${apiOrigin}/api/guest/:path*` },
   ],

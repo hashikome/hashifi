@@ -75,9 +75,6 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-/** System fonts: a guest on a slow link downloads no typeface. */
-const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
-
 /** Staff choose the colours, so the text on them is worked out, not assumed. */
 function inkOn(hex: string): string {
   const channel = (at: number) => {
@@ -95,7 +92,6 @@ function themeOf({ settings }: GuestContext) {
     "--portal-action": settings.primaryColor,
     "--portal-action-ink": inkOn(settings.primaryColor),
     "--portal-radius": `${settings.radius}px`,
-    fontFamily: FONT,
   } as CSSProperties;
 }
 
@@ -177,10 +173,7 @@ export function GuestPortal() {
 
   if (screen.kind === "not-on-wifi" && screen.cardHeld) {
     return (
-      <main
-        className="flex min-h-svh items-center bg-teal-900 p-6 text-white"
-        style={{ fontFamily: FONT }}
-      >
+      <main className="flex min-h-svh items-center bg-teal-900 p-6 text-white">
         <div className="mx-auto w-full max-w-md">
           <h1 className="text-2xl font-bold tracking-tight">Your voucher is ready</h1>
           <p className="mt-3 text-lg">Join the venue&apos;s WiFi, then continue.</p>
@@ -203,10 +196,7 @@ export function GuestPortal() {
           ? "One moment…"
           : "Join the WiFi network, and this page opens by itself.";
     return (
-      <main
-        className="flex min-h-svh items-center bg-teal-900 p-6 text-white"
-        style={{ fontFamily: FONT }}
-      >
+      <main className="flex min-h-svh items-center bg-teal-900 p-6 text-white">
         <p className="w-full text-center text-lg">{message}</p>
       </main>
     );

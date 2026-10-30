@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Design foundations in `DESIGN.md`: one provisional teal ladder, DM Sans, flat surfaces and a
+- Design foundations in `DESIGN.md`: one provisional teal ladder, self-hosted Figtree on every page, flat surfaces and a
   sidebar on the page ground, across the admin, the guest portal and the router's pages.
 - The captive portal is a web page at `/portal/login`: a guest enters a voucher and is online,
   through the API, with the router confirming before anything reports success. A device
