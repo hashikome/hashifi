@@ -274,13 +274,22 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Findings 1 and 2 are closed: no code is returned for a MAC, `link-login` is checked against the
   router and rebuilt, and the router pages use URL-encoded variables. Public endpoints are
   reviewed in `docs/SECURITY.md`.
-  Acceptance: `guest.integration.test.ts` (13 tests: foreign `link-login`, another venue's voucher,
+  Acceptance: `guest.integration.test.ts` (another venue's voucher,
   two devices racing for one place, blocked devices, attempt limits, session status);
   `router-sim guest-test` 14/14 through the real API, sign-in back 48 s after an unblock; the page
   in headless Chrome at phone width, wrong code, handoff to the router page and its POST,
   a scanned card going round, a hostile `link-orig` inert, nothing fetched from another host.
-  Not done: the page has not been on a real phone or through an iOS or Android captive sheet
-  (M8), and design-audit has not reviewed it.
+- [x] (2026-10-30) Sign-in moved to the API, closing M5's open findings. The hotspot is
+  `login-by=mac-cookie` alone, and `/ip hotspot active login` is probed and required. No response
+  or router page holds a code; `link-login`, the router's login form and `alogin.html` are gone.
+  Every package has a router profile, so a device's MAC cookie lasts as long as its package. On
+  a production build the portal is 168 KB gzipped and downloads no font. Reviewed with the
+  design inspector and detector: one FAIL stands, the default brand colour on the house rules'
+  banned terracotta list, which is the owner's decision.
+  Acceptance: `router-sim guest-test` 17/17 on a router set up by the normal path; integration
+  tests for a device the router cannot see and a login the router refuses; the page in headless
+  Chrome with a simulated router redirect. Not done: a real phone, a captive sheet and an https
+  portal (M8).
 - [ ] M6 Mobile-money payments (Snippe) and customers.
 - [ ] M7 Release pipeline and deployment.
 - [ ] M8 Live acceptance on a physical router: a mobile-money purchase and a printed voucher.
@@ -478,6 +487,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Rationale: the findings above describe exploitable defects; the code is published once
   they are fixed. The purchased code is HashiFi's to change or delete without the seller.
   Date/Author: 2026-10-28 / Paul
+- Decision: the repository goes public when HashiFi is ready to deploy, not when M5 lands.
+  Date/Author: 2026-10-30 / Paul
+- Decision: the API alone signs devices in, and the router accepts no login from the network,
+  instead of adding CHAP to the router's login. CHAP would leave the router taking guesses, and a
+  captured exchange could be brute forced offline; this closes both open findings
+  (ADR-0008). HashiFi is unreleased, so workflows are replaced when a better one exists.
+  Date/Author: 2026-10-30 / Paul, Claude
 - Decision: email through Resend; BullMQ on Redis where a queue is needed, or a better tool
   with its reason recorded.
   Rationale: [ADR-0002](../../engineering-decisions/0002-toolchain.md), as the other products.

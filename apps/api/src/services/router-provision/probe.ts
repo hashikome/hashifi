@@ -63,6 +63,8 @@ export interface RouterCapabilities {
   userRateLimit: boolean;
   /** `/tool fetch` available — how we upload login.html without FTP */
   toolFetch: boolean;
+  /** `/ip/hotspot/active/login` exists — the only way a device is signed in (ADR-0008) */
+  hotspotLogin: boolean;
 }
 
 /**
@@ -147,6 +149,7 @@ function deriveCapabilities(
   rosVersion: RosVersion,
   packages: RouterPackage[],
   hotspotMenuExists: boolean,
+  hotspotLogin: boolean,
 ): RouterCapabilities {
   const v7 = rosVersion.major >= 7;
   const advancedTools = packages.find((p) => p.name === "advanced-tools");
@@ -157,7 +160,21 @@ function deriveCapabilities(
     userRateLimit: v7,
     // fetch lives in the main bundle on v7, and on v6 unless advanced-tools is disabled
     toolFetch: v7 || !advancedTools || !advancedTools.disabled,
+    hotspotLogin,
   };
+}
+
+/**
+ * Asked with no arguments, a board with the command refuses the missing values and signs nobody
+ * in; only a board without it says "no such command".
+ */
+async function answersLogin(conn: MikroTikConn): Promise<boolean> {
+  try {
+    await conn.write("/ip/hotspot/active/login");
+    return true;
+  } catch (err) {
+    return !(err instanceof Error && /no such command/i.test(err.message));
+  }
 }
 
 /**
@@ -236,6 +253,13 @@ function assessCompatibility(profile: Omit<RouterProfile, "compatibility">): Rou
           `upload it to Files, then reboot.`,
       );
     }
+  }
+
+  if (capabilities.hotspot && !capabilities.hotspotLogin) {
+    reasons.push(
+      `RouterOS ${rosVersion.raw} has no /ip hotspot active login, which is how HashiFi signs ` +
+        `a device in. Upgrade RouterOS.`,
+    );
   }
 
   if (!capabilities.hotspot && storage.totalBytes > 0) {
@@ -382,7 +406,12 @@ export async function probeRouter(
       wifiMenu !== null ? "wifi" : wirelessMenu !== null ? "wireless" : "none";
 
     const rosVersion = parseRosVersion(resource?.get("version"));
-    const capabilities = deriveCapabilities(rosVersion, packages, hotspotMenu !== null);
+    const capabilities = deriveCapabilities(
+      rosVersion,
+      packages,
+      hotspotMenu !== null,
+      hotspotMenu !== null && (await answersLogin(c)),
+    );
 
     const partial: Omit<RouterProfile, "compatibility"> = {
       host,

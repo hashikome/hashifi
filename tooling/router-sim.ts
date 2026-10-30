@@ -888,20 +888,16 @@ async function guestTest(): Promise<void> {
 
     // What the router's redirect carries, which is all the portal page would be told.
     const redirect = (
-      await shell.run(
-        "grep -oE '(router=|&mac=|&ip=|&link-login=|&link-orig=)[^\"]*' /tmp/page",
-        15_000,
-      )
+      await shell.run("grep -oE '(router=|&mac=|&ip=|&link-orig=)[^\"]*' /tmp/page", 15_000)
     ).output;
     const redirected = (pattern: RegExp) => redirect.match(pattern)?.[1] ?? "";
     const routerId = redirected(/router=([0-9a-f-]{36})/);
     const mac = redirected(/&mac=([0-9A-F:]{17})/);
     const ip = redirected(/&ip=(\d+\.\d+\.\d+\.\d+)/);
-    const linkLogin = decodeURIComponent(redirected(/&link-login=(http[^\s"]*)/));
     record(
-      "The router's redirect names it, and URL-encodes what it passes on",
-      routerId === services.router.id && linkLogin === `http://${HOTSPOT_GATEWAY}/login`,
-      `${routerId} ${mac} ${linkLogin}`,
+      "The router's redirect names it and the device",
+      routerId === services.router.id && mac !== "" && ip !== "",
+      `${routerId} ${mac} ${ip}`,
     );
 
     const issued = Bun.spawnSync(["bun", "tooling/router-sim.ts", "voucher", "30"], {
@@ -917,25 +913,35 @@ async function guestTest(): Promise<void> {
     );
     if (!code) return;
 
-    const redeem = await shell.run(
-      "wget -q -T 15 -O - --header 'Content-Type: application/json' --post-data " +
-        `'${JSON.stringify({ router: routerId, mac, ip, linkLogin, code })}' ` +
-        `'${portalOrigin}/api/guest/redeem' 2>&1 | head -c 400`,
-      40_000,
+    const refused = await shell.run(
+      `wget -q -T 8 -O /dev/null --post-data 'username=${code}&password=${code}&dst=' 'http://${HOTSPOT_GATEWAY}/login' 2>&1 | head -c 200`,
+      30_000,
     );
-    const loginUrl = redeem.output.match(/"loginUrl":"([^"]+)"/)?.[1] ?? null;
-    const redeemed = await services.db.voucher.findUniqueOrThrow({ where: { code } });
+    const stillOut = await fetchPage("http://example.com/");
     record(
-      "Before login the guest redeems through the walled garden, and the voucher goes active",
-      loginUrl === linkLogin && redeemed.status === "active",
-      `${redeemed.status}; ${redeem.output.trim().slice(-160)}`,
+      "The router itself accepts no code, even a right one, so nothing can guess at it",
+      !stillOut.internet,
+      `${describe(stillOut)}; ${refused.output.trim().slice(-80)}`,
     );
 
-    const signIn = () =>
+    /** Redeems through the walled garden, as the portal page does. */
+    const redeem = (voucher: string, device = { mac, ip }) =>
       shell.run(
-        `wget -q -T 8 -O - --post-data 'username=${code}&password=${code}&dst=&popup=true' '${linkLogin}' 2>&1 | head -c 2000`,
-        30_000,
+        "wget -q -T 20 -O - --header 'Content-Type: application/json' --post-data " +
+          `'${JSON.stringify({ router: routerId, ...device, code: voucher })}' ` +
+          `'${portalOrigin}/api/guest/redeem' 2>&1 | head -c 400`,
+        40_000,
       );
+
+    const absent = await redeem(code, { mac: "02:00:00:00:00:99", ip });
+    const unstarted = await services.db.voucher.findUniqueOrThrow({ where: { code } });
+    record(
+      "A device the router cannot see is refused, and the voucher's clock does not start",
+      unstarted.status === "unused" && unstarted.activatedAt === null,
+      `${unstarted.status}; ${absent.output.trim().slice(-120)}`,
+    );
+
+    const signIn = () => redeem(code);
     const onRouter = async <T>(work: (conn: MikroTikConn) => Promise<T>): Promise<T> => {
       const creds = services.access.credentials(services.router);
       if (!creds) throw new Error("The sim router has no usable credentials");
@@ -958,14 +964,28 @@ async function guestTest(): Promise<void> {
       }
     };
 
-    const login = await signIn();
+    await signIn();
+    const redeemed = await services.db.voucher.findUniqueOrThrow({ where: { code } });
+    record(
+      "The guest redeems through the walled garden, and the voucher goes active",
+      redeemed.status === "active",
+      redeemed.status,
+    );
     const loggedIn = await fetchPage("http://example.com/");
     record(
-      "Logging in with the voucher opens the internet",
+      "The API signing the device in opens the internet, with no code sent to the router",
       loggedIn.internet,
-      loggedIn.internet
-        ? ""
-        : `${describe(loggedIn)}; login answered: ${login.output.trim().slice(0, 120)}`,
+      describe(loggedIn),
+    );
+
+    const cookieLeft = await onRouter(async (conn) => {
+      const [cookie] = toRows(await conn.write("/ip/hotspot/cookie/print", [`?user=${code}`]));
+      return cookie?.get("expires-in") ?? "none";
+    });
+    record(
+      "The device's cookie lasts as long as its package, not the router's default 3 days",
+      /^\d+m/.test(cookieLeft),
+      cookieLeft,
     );
 
     // The poll runs every 30 s while nobody watches the live view.
@@ -1048,10 +1068,7 @@ async function guestTest(): Promise<void> {
       cwd: ROOT,
     });
     const shortCode = short.stdout.toString().match(/VOUCHER=(\S+)/)?.[1] ?? "";
-    await shell.run(
-      `wget -q -T 8 -O /dev/null --post-data 'username=${shortCode}&password=${shortCode}&dst=' '${linkLogin}'`,
-      30_000,
-    );
+    await redeem(shortCode);
     // limit-uptime is enforced by the router; allow its accounting interval on top.
     console.log("  waiting 80 s for a 1-minute voucher to expire…");
     await Bun.sleep(80_000);

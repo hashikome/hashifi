@@ -88,6 +88,8 @@ export function throttledProfileNameForPackage(packageId: string): string {
  * Idempotent, and updates in place — a package whose speed is edited should change the cap for
  * vouchers already issued against it, which is what a `set` on the existing profile does.
  */
+const COOKIE_MINUTES_WITHOUT_DURATION = 365 * 24 * 60;
+
 export async function ensureHotspotUserProfile(
   conn: MikroTikConn,
   opts: {
@@ -96,9 +98,16 @@ export async function ensureHotspotUserProfile(
     rateLimit: string | null;
     /** Simultaneous devices per voucher. */
     sharedUsers: number;
+    /** The package's duration; null when it has none. */
+    durationMinutes: number | null;
   },
 ): Promise<void> {
-  const params = [`=shared-users=${Math.max(1, opts.sharedUsers)}`];
+  // A device comes back by its cookie (ADR-0008), and the router's default is only 3 days.
+  const cookieMinutes = opts.durationMinutes ?? COOKIE_MINUTES_WITHOUT_DURATION;
+  const params = [
+    `=shared-users=${Math.max(1, opts.sharedUsers)}`,
+    `=mac-cookie-timeout=${minutesToRosUptime(cookieMinutes)}`,
+  ];
   if (opts.rateLimit) params.push(`=rate-limit=${opts.rateLimit}`);
 
   const existing = toRows(
@@ -337,9 +346,10 @@ export async function kickHotspotSession(conn: MikroTikConn, code: string): Prom
 }
 
 /**
- * Signs a client in from the API, with no code going near the device. Removing an active session
- * also deletes its MAC cookie (RouterOS 7.25), so a kick alone leaves the device signed out; the
- * live monitor uses this straight after one, to apply a new speed.
+ * Signs a client in from the API: the only way in, since the hotspot accepts no login over the
+ * network (ADR-0008), so a voucher code never crosses the WiFi to the router. It also follows a
+ * kick to apply a new speed, because removing a session deletes its MAC cookie (RouterOS 7.25).
+ * Rejects if the router refuses.
  */
 export async function loginHotspotClient(
   conn: MikroTikConn,
@@ -351,6 +361,21 @@ export async function loginHotspotClient(
     `=ip=${client.ip}`,
     `=mac-address=${client.mac}`,
   ]);
+}
+
+/** The address the router sees a device at, or null if the device is not on this hotspot. */
+export async function hotspotClientAddress(
+  conn: MikroTikConn,
+  mac: string,
+): Promise<string | null> {
+  const rows = await conn.write("/ip/hotspot/host/print", [`?mac-address=${mac}`]);
+  return toRows(rows)[0]?.get("address") ?? null;
+}
+
+/** The voucher a device is online on, as the router reports it. */
+export async function hotspotSessionUser(conn: MikroTikConn, mac: string): Promise<string | null> {
+  const rows = await conn.write("/ip/hotspot/active/print", [`?mac-address=${mac}`]);
+  return toRows(rows)[0]?.get("user") ?? null;
 }
 
 /**

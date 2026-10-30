@@ -62,7 +62,7 @@ const yes = (v: string | null) => v === "true" || v === "yes";
 const MANUAL_CHECKS = [
   "Connect a phone to the SSID and confirm it gets an address in the hotspot range.",
   "Confirm the captive portal appears and shows your branded page.",
-  "Redeem a real voucher and confirm alogin.html reaches “You’re connected” — it runs a live internet reachability check (§18).",
+  "Redeem a real voucher on a phone and confirm the portal says you are online and the phone can browse.",
   "Confirm the countdown and data-remaining display tick down.",
 ];
 
@@ -253,21 +253,21 @@ async function radioBroadcastingCheck(
 }
 
 async function loginModeCheck(ros: RosClient, plan: HotspotPlan): Promise<ReadinessCheck> {
-  const base = { id: "login-mode", title: "Login method is HTTP-PAP" };
+  const base = { id: "login-mode", title: "Only HashiFi signs devices in" };
   const row = await ros.findByName("/ip/hotspot/profile", plan.profileName);
 
   if (!row) {
     return { ...base, status: "fail", detail: `Hotspot profile "${plan.profileName}" is missing.` };
   }
   const loginBy = row.get("login-by") ?? "";
-  if (!loginBy.includes("http-pap") || !loginBy.includes("mac-cookie")) {
+  if (loginBy !== "mac-cookie") {
     return {
       ...base,
       status: "fail",
-      detail: `login-by is "${loginBy}", not http-pap and mac-cookie.`,
+      detail: `login-by is "${loginBy}", not mac-cookie alone.`,
       fix:
-        "Without http-pap every login fails with 'password is not chap encrypted' (§11, §2.2); " +
-        "without mac-cookie a device cannot come back without its code. Run Set up again.",
+        "Any http method lets the network post and guess voucher codes at the router, and " +
+        "without mac-cookie a device cannot come back. Run Set up again.",
     };
   }
   return { ...base, status: "pass", detail: `login-by is "${loginBy}".` };

@@ -615,19 +615,16 @@ export interface GuestContext {
     dataLimitGb: number | null;
   }[];
   /** The router's own login page, checked against this router. */
-  loginUrl: string;
 }
 
-/** `POST /api/guest/redeem`: the router has confirmed the voucher; sign in at `loginUrl`. */
+/** `POST /api/guest/redeem`: the router reports the device online on this voucher. */
 export interface RedeemResult {
-  loginUrl: string;
-  /** The hotspot username and password: the code the guest gave, normalised. */
-  code: string;
-  /** Where to go after signing in, when it was a safe web address. */
+  /** Where to go now the device is online, when it was a safe web address. */
   dst: string | null;
+  expiresAt: Timestamp | null;
 }
 
-/** `POST /api/guest/session`: a voucher's time and data, for the router's status pages. */
+/** `POST /api/guest/session`: a device's time and data, for the router's status pages. */
 export interface GuestSession {
   active: boolean;
   time: { unlimited: boolean; secondsRemaining: number | null; expiresAt: Timestamp | null } | null;

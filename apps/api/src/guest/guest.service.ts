@@ -16,17 +16,14 @@ import { enrichWideEvent } from "../observability/wide-event.js";
 import { PackagesService } from "../packages/packages.service.js";
 import { PortalService } from "../portal/portal.service.js";
 import { bytes } from "../serializers/records.js";
-import { parseCidr } from "../services/router-provision/context.js";
-import { intToIpv4 } from "../services/router-provision/ipv4.js";
 import { describeFailures, outcomeOk, RouterSync } from "../services/router-sync.js";
 import { countFailure, isLimited } from "./attempts.js";
-import type { contextInput, redeemInput } from "./guest-input.js";
+import type { contextInput, redeemInput, sessionInput } from "./guest-input.js";
 
 const WINDOW_SECONDS = 600;
 /** A venue's guests share one public address, so this is generous; the code length is the wall. */
 const FAILURES_PER_ADDRESS = 60;
 const FAILURES_PER_DEVICE = 10;
-const DEFAULT_GATEWAY = "10.5.50.1";
 const GIB = 1_073_741_824;
 
 const refuse = (code: string, message: string) => new BadRequestException(apiError(code, message));
@@ -35,11 +32,19 @@ const refuse = (code: string, message: string) => new BadRequestException(apiErr
 const invalidVoucher = () =>
   refuse("INVALID_VOUCHER", "That code is not valid. Check it and try again.");
 
+const notConfirmed = () =>
+  new ServiceUnavailableException(
+    apiError(
+      "ROUTER_NOT_CONFIRMED",
+      "Your voucher is fine, but the WiFi router has not let you online yet. Try again in a moment.",
+    ),
+  );
+
 /**
  * What a guest does before they are online. Everything here is public and every value arrives
  * from the guest's browser, so nothing is trusted because it was sent: the router must be
- * registered, `link-login` must be that router's own, and a MAC address decides nothing it
- * would matter to forge. A voucher code goes back only to whoever presented it (finding 1).
+ * registered and must itself see the device, and a MAC address decides nothing it would matter to
+ * forge. No response carries a voucher code, and this API alone signs a device in (ADR-0008).
  */
 @Injectable()
 export class GuestService {
@@ -52,7 +57,6 @@ export class GuestService {
 
   async context(input: z.infer<typeof contextInput>): Promise<GuestContext> {
     const router = await this.routerOf(input.router);
-    const loginUrl = checkedLoginUrl(router, input.linkLogin);
     const [settings, sold, venue] = await Promise.all([
       this.portal.get(),
       this.packages.onSaleAt(router.venueId),
@@ -81,14 +85,13 @@ export class GuestService {
         downloadSpeedMbps: p.downloadSpeedMbps,
         dataLimitGb: p.dataLimitGb,
       })),
-      loginUrl,
     };
   }
 
   /**
-   * Takes a voucher into use at this router. It is `pending_activation` until the router
-   * confirms the hotspot user, and only then `active`; a guest whose router has not confirmed is
-   * told so, and can try again without losing anything.
+   * Takes a voucher into use at this router and signs the device in. It is `pending_activation`
+   * until the router reports the device online on it, and only then `active`; a guest whose
+   * router has not confirmed is told so, and can try again without losing anything.
    */
   async redeem(input: z.infer<typeof redeemInput>, address: string | null): Promise<RedeemResult> {
     const limits = [
@@ -105,7 +108,6 @@ export class GuestService {
     }
 
     const router = await this.routerOf(input.router);
-    const loginUrl = checkedLoginUrl(router, input.linkLogin);
     enrichWideEvent({ "router.id": router.id, "venue.id": router.venueId });
 
     const device = await this.db.device.findUnique({ where: { macAddress: input.mac } });
@@ -125,40 +127,54 @@ export class GuestService {
     enrichWideEvent({ "voucher.id": voucher.id, "voucher.status": voucher.status });
     refuseIfFinished(voucher);
 
+    // Asked only once a code is good, so the public route cannot be used to reach a router at will,
+    // and before the claim, so the clock never starts for a device that is not here.
+    const present = await this.sync.deviceOnNetwork(router, { mac: input.mac, ip: input.ip });
+    if (present === null) throw notConfirmed();
+    if (!present) {
+      throw refuse(
+        "DEVICE_NOT_ON_NETWORK",
+        "We could not find your phone on this WiFi. Reconnect to it and try again.",
+      );
+    }
+
     await this.claim(voucher, input, voucher.package?.deviceLimit ?? 1);
 
     const outcome = await this.sync.ensureVoucher(router.venueId, code, router.id);
     if (!outcomeOk(outcome)) {
       enrichWideEvent({ "error.message": describeFailures(outcome) });
-      throw new ServiceUnavailableException(
-        apiError(
-          "ROUTER_NOT_CONFIRMED",
-          "Your voucher is fine, but the WiFi router has not activated it yet. Try again in a moment.",
-        ),
-      );
+      throw notConfirmed();
     }
+    const client = { user: code, ip: input.ip, mac: input.mac };
+    if (!(await this.sync.signInDevice(router, client))) throw notConfirmed();
+
     await this.db.voucher.updateMany({
       where: { id: voucher.id, status: "pending_activation" },
       data: { status: "active" },
     });
-    return { loginUrl, code, dst: safeDestination(input.linkOrig) };
+    const { expiresAt } = await this.db.voucher.findUniqueOrThrow({ where: { id: voucher.id } });
+    return { dst: safeDestination(input.linkOrig), expiresAt: expiresAt?.toISOString() ?? null };
   }
 
-  /** A voucher's remaining time and data. The caller must hold the code. */
-  async session(code: string, address: string | null): Promise<GuestSession> {
+  /**
+   * A device's remaining time and data, for the router's status pages. Those are served over the
+   * WiFi in clear, so they hold no code: they name the device. A forged MAC reads a figure, and
+   * never a code.
+   */
+  async session(input: z.infer<typeof sessionInput>): Promise<GuestSession> {
     const inactive: GuestSession = { active: false, time: null, data: null };
-    // Its answer says whether a code exists, so guessing here counts as it does at `redeem`.
-    const key = `guest:address:${address ?? "unknown"}`;
-    if (await isLimited(this.db, key, FAILURES_PER_ADDRESS, WINDOW_SECONDS)) return inactive;
-    const voucher = await this.db.voucher.findUnique({ where: { code: code.toUpperCase() } });
-    if (!voucher) {
-      await countFailure(this.db, key, WINDOW_SECONDS);
-      return inactive;
-    }
+    const router = await this.db.router.findUnique({ where: { id: input.router } });
+    if (!router) return inactive;
+    const voucher = await this.db.voucher.findFirst({
+      where: {
+        venueId: router.venueId,
+        status: "active",
+        devices: { some: { device: { macAddress: input.mac } } },
+      },
+      orderBy: { activatedAt: "desc" },
+    });
     const now = new Date();
-    if (voucher.status !== "active" || (voucher.expiresAt !== null && voucher.expiresAt < now)) {
-      return inactive;
-    }
+    if (!voucher || (voucher.expiresAt !== null && voucher.expiresAt < now)) return inactive;
     const usage = await this.db.wifiSession.aggregate({
       where: { voucherId: voucher.id },
       _sum: { uploadBytes: true, downloadBytes: true },
@@ -255,26 +271,6 @@ function expiryOf(voucher: Pick<Voucher, "expiresAt" | "durationMinutes">, now: 
   if (voucher.durationMinutes === null) return voucher.expiresAt;
   const end = now.getTime() + voucher.durationMinutes * 60_000;
   return new Date(Math.min(end, voucher.expiresAt?.getTime() ?? end));
-}
-
-/**
- * The router's login page, rebuilt from what is registered for it. The host a request names is
- * accepted only if it is this router's, and the URL returned is built here, so a `javascript:`
- * or foreign `link-login` never reaches a browser (finding 1).
- */
-export function checkedLoginUrl(router: Router, linkLogin: string): string {
-  const url = URL.canParse(linkLogin) ? new URL(linkLogin) : null;
-  const hosts = new Set([router.ipAddress, gatewayOf(router)]);
-  if (url === null || !["http:", "https:"].includes(url.protocol) || !hosts.has(url.hostname)) {
-    throw refuse("UNKNOWN_LOGIN_PAGE", "This sign-in link did not come from this network.");
-  }
-  return `${url.protocol}//${url.hostname}/login`;
-}
-
-function gatewayOf(router: Router): string {
-  if (router.hotspotGatewayIp) return router.hotspotGatewayIp;
-  if (!router.networkRange?.includes("/")) return DEFAULT_GATEWAY;
-  return intToIpv4(parseCidr(router.networkRange).networkInt + 1);
 }
 
 /** Where to send the guest afterwards: a web address, or nowhere. */

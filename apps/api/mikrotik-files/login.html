@@ -273,42 +273,15 @@
     </div>
 
     <div class="footer">HashiFi</div>
-
-    <form id="login" method="post" action="$(link-login-only)" style="display: none">
-      <input type="hidden" name="username" />
-      <input type="hidden" name="password" />
-      <input type="hidden" name="dst" />
-    </form>
     <script>
-      // Two jobs. Sent back by the portal with a checked voucher in the fragment, sign in from
-      // here: the router's own http page, so an https portal never posts a form to http, and
-      // a fragment never reaches a server or a log. Otherwise, go to the portal, naming this
-      // router. The -esc variables are URL-encoded, so a guest's URL cannot break out of the
-      // string. Written as ES5: the oldest phones run this page.
-      (function () {
-        function param(name) {
-          var match = new RegExp("(?:^|&)" + name + "=([^&]*)").exec(location.hash.slice(1));
-          return match ? decodeURIComponent(match[1]) : "";
-        }
-        var code = param("code");
-        if (code) {
-          var form = document.getElementById("login");
-          form.username.value = code;
-          form.password.value = code;
-          form.dst.value = param("dst");
-          history.replaceState(null, "", location.pathname);
-          form.submit();
-          return;
-        }
-        window.location.replace(
-          "http://192.168.0.15:8080/portal/login#router=__ROUTER_ID__" +
-            "&mac=$(mac)" +
-            "&ip=$(ip)" +
-            "&link-login=$(link-login-only-esc)" +
-            "&link-orig=$(link-orig-esc)" +
-            "$(if error)&failed=1$(endif)",
-        );
-      })();
+      // Goes to the portal, naming this router. The -esc variable is URL-encoded, so a guest's URL
+      // cannot break out of the string. Written as ES5: the oldest phones run this page.
+      window.location.replace(
+        "http://192.168.0.15:8080/portal/login#router=__ROUTER_ID__" +
+          "&mac=$(mac)" +
+          "&ip=$(ip)" +
+          "&link-orig=$(link-orig-esc)"
+      );
     </script>
   </body>
 </html>

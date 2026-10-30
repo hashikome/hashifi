@@ -5,18 +5,14 @@ The canonical product definition: what HashiFi must do and why. How it is built 
 
 ## 1. Summary
 
-Sharing an internet connection means people asking for access, some late at night, and the
-owner enabling and disabling their devices and tracking MAC addresses by hand. HashiFi
-replaces that with prepaid access nobody has to ask for: a guest joins the WiFi, the router
-shows a captive portal, and the guest buys a package with mobile money and is online straight
-away. Guests who pay cash get a printed voucher instead. Either way the router lets them online
-for the package's time, speed and device limit, and cuts them off when it ends.
-The same system serves one home and many venues, each with its own routers, packages and
-branding.
+HashiFi is a prepaid WiFi billing platform for MikroTik hotspots. It lets a home or a venue sell
+internet access by time, speed and device limit: guests pay with mobile money or use a voucher,
+and the router enforces what they bought and cuts them off when it ends.
 
-HashiFi is built from a purchased hotspot billing system developed for this market
-([ADR-0001](docs/engineering-decisions/0001-adopt-purchased-billing-system.md)). Its
-multi-venue business model is HashiFi's long-term direction and is kept.
+It runs one home or many venues from one place, covering routers, packages, vouchers, live
+sessions and revenue. Its main goal is access that nobody has to ask for: no one requesting the
+password late at night, and no owner enabling and disabling devices by hand. Guests who pay cash
+get a printed voucher instead.
 
 ## 2. Users and use
 
@@ -142,9 +138,9 @@ Development and tests use invented data only.
 ## 7. Out of scope
 
 - **Routers other than MikroTik** (OpenWrt, UniFi, Omada, pfSense) are future options.
-- **PPPoE** settings exist in the purchased code but are not selected.
+- **PPPoE** is not offered.
 
 ## 8. Delivery
 
-Active plan: [adopt the purchased billing system](docs/exec-plans/active/adopt-purchased-billing-system.md).
+Active plan: [the build plan](docs/exec-plans/active/adopt-purchased-billing-system.md).
 Nothing is deployed.

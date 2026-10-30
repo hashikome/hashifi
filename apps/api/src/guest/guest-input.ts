@@ -11,7 +11,6 @@ const fromRouter = {
     .regex(MAC, "must be a MAC address")
     .transform((v) => v.toUpperCase()),
   ip: z.string().regex(IPV4, "must be an IPv4 address"),
-  linkLogin: z.string().max(300),
 };
 
 export const contextInput = z.object(fromRouter);
@@ -22,4 +21,4 @@ export const redeemInput = z.object({
   code: z.string().trim().min(1, "is required").max(80),
 });
 
-export const sessionInput = z.object({ code: z.string().trim().min(1).max(80) });
+export const sessionInput = z.object({ router: fromRouter.router, mac: fromRouter.mac });

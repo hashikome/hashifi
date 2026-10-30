@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { needsProfile, needsProfileLimits } from "./router-sync.js";
+import { needsProfileLimits } from "./router-sync.js";
 
 /**
  * When must a voucher's limits ride a hotspot user profile instead of the user itself?
@@ -34,33 +34,5 @@ describe("needsProfileLimits", () => {
      * so there is no way to explain them to whoever finds them.
      */
     expect(needsProfileLimits(null)).toBe(false);
-  });
-});
-
-describe("needsProfile", () => {
-  const CAPABLE = { userRateLimit: true, userSharedUsers: true };
-  const REJECTS = { userRateLimit: false, userSharedUsers: false };
-  const plain = { throttledDownloadMbps: null };
-  const throttleable = { throttledDownloadMbps: 2 };
-
-  test("a board that rejects per-user limits needs one regardless of throttling", () => {
-    expect(needsProfile(plain, REJECTS)).toBe(true);
-  });
-
-  test("a plain package on a capable board still needs none", () => {
-    // The limits ride on the user there; a profile would be permanent clutter.
-    expect(needsProfile(plain, CAPABLE)).toBe(false);
-  });
-
-  test("a throttleable package needs one even on a board that takes per-user limits", () => {
-    // Throttling is a profile swap on every board. Without the normal profile existing here,
-    // un-throttling would have to fall back to `default` — which has no cap at all, so the
-    // customer would leave the throttle window faster than their package allows.
-    expect(needsProfile(throttleable, CAPABLE)).toBe(true);
-  });
-
-  test("an un-probed router stays optimistic unless the package can be throttled", () => {
-    expect(needsProfile(plain, null)).toBe(false);
-    expect(needsProfile(throttleable, null)).toBe(true);
   });
 });

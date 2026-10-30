@@ -171,8 +171,7 @@ Phase 6 covers what a machine can. These need a real device:
 - [ ] Captive portal appears and shows the branded page
 - [ ] Reopening the hotspot address while online shows the branded **status page** — remaining
       time ticking, data used, and a working **Disconnect**
-- [ ] A valid voucher connects, and `alogin.html` reaches **"You're connected"** (it runs a live
-      internet reachability check — §18)
+- [ ] A valid voucher on the portal reaches **"You're online"**, and the phone can browse.
 - [ ] The countdown / data remaining displays and ticks down
 
 The dialog lists these too, so nothing is dropped just because a machine could not check it.
@@ -203,7 +202,7 @@ Most failures now name their own fix in the dialog. These are the ones it cannot
 | Amber: "RouterOS marks the DHCP server invalid… the radio is on the air" | Expected on a hotspot nobody has connected to. On legacy `/interface wireless` the interface reports `running=false` until a device associates, and the DHCP server copies that flag. Connect a phone, or run Set up so `disable-running-check=yes` is applied (§13.9) |
 | Clients get an IP but no websites | DNS — provisioning sets it; verify `/ip dns print` (§16.2) |
 | `password is not chap encrypted` | Hotspot profile reverted to CHAP — run Set up again (§2.2, §11) |
-| Portal shows an old page | Stale `login.html` / `alogin.html` / `status.html` on the router. Phase 6 catches this by byte count; run Set up again with the backend reachable |
+| Portal shows an old page | Stale `login.html` / `status.html` on the router. Phase 6 catches this by byte count; run Set up again with the backend reachable |
 | A `wbs-selftest-*` hotspot user is left behind | Phase 6's throwaway voucher failed to clean up. `/ip hotspot user remove [find name=<name>]` |
 
 ---

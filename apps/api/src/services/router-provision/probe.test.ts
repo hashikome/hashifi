@@ -17,6 +17,7 @@ import { mergeCapabilities } from "./probe.js";
 const probed = (over: Partial<RouterCapabilities> = {}): RouterCapabilities => ({
   hotspot: true,
   toolFetch: true,
+  hotspotLogin: true,
   userRateLimit: true,
   userSharedUsers: true,
   ...over,

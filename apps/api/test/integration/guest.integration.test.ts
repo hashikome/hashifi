@@ -47,7 +47,6 @@ function redeem(routerId: string, changes: Record<string, unknown> = {}) {
     router: routerId,
     mac: MAC,
     ip: "10.5.50.20",
-    linkLogin: "http://10.5.50.1/login",
     code: "wifi-testcode",
     ...changes,
   });
@@ -61,50 +60,70 @@ function routerConfirms(ok: boolean) {
     succeeded: ok ? 1 : 0,
     failures: ok ? [] : [{ router: "Lobby", error: "unreachable" }],
   });
+  sync.deviceOnNetwork = async () => true;
+  sync.signInDevice = async () => true;
 }
 
 beforeEach(() => routerConfirms(true));
 
 describe("the guest portal", () => {
-  test("context names the venue, what it sells, and a login page rebuilt from the router", async () => {
+  test("context names the venue and what it sells", async () => {
     const { router } = await setting();
     const reply = await post("/api/guest/context", {
       router: router.id,
       mac: MAC,
       ip: "10.5.50.20",
-      linkLogin: "http://10.5.50.1/login?extra=1",
     });
     expect(reply.status).toBe(200);
     expect(reply.body).toMatchObject({
       venueName: "Home",
-      loginUrl: "http://10.5.50.1/login",
       packages: [{ name: "Day", priceTsh: "2000.00" }],
     });
   });
 
-  test("a link-login that is not this router's is refused (finding 1)", async () => {
-    const { router } = await setting();
-    for (const linkLogin of [
-      "javascript:alert(1)",
-      "https://evil.example/login",
-      "http://10.9.9.9/login",
-      "not a url",
-    ]) {
-      const reply = await redeem(router.id, { linkLogin });
-      expect({ linkLogin, code: reply.body.code }).toEqual({
-        linkLogin,
-        code: "UNKNOWN_LOGIN_PAGE",
-      });
-    }
-    expect((await t.db.voucher.findFirstOrThrow()).status).toBe("unused");
+  test("a device the router does not see is refused before the voucher's clock starts", async () => {
+    const { router, voucher } = await setting();
+    const sync = api.app.get(RouterSync);
+    sync.deviceOnNetwork = async () => false;
+    const absent = await redeem(router.id);
+    expect(absent.status).toBe(400);
+    expect(absent.body.code).toBe("DEVICE_NOT_ON_NETWORK");
+    sync.deviceOnNetwork = async () => null;
+    expect((await redeem(router.id)).body.code).toBe("ROUTER_NOT_CONFIRMED");
+    expect(await t.db.voucher.findUniqueOrThrow({ where: { id: voucher.id } })).toMatchObject({
+      status: "unused",
+      activatedAt: null,
+    });
   });
 
-  test("a custom hotspot network's gateway is accepted, and the default then is not", async () => {
+  test("a wrong code never reaches the router", async () => {
     const { router } = await setting();
-    await t.db.router.update({ where: { id: router.id }, data: { networkRange: "10.7.0.0/24" } });
-    expect((await redeem(router.id, { linkLogin: "http://10.7.0.1/login" })).status).toBe(200);
-    const old = await redeem(router.id, { linkLogin: "http://10.5.50.1/login" });
-    expect(old.body.code).toBe("UNKNOWN_LOGIN_PAGE");
+    const sync = api.app.get(RouterSync);
+    let asked = 0;
+    sync.deviceOnNetwork = async () => {
+      asked += 1;
+      return true;
+    };
+    await redeem(router.id, { code: "WRONG" });
+    expect(asked).toBe(0);
+  });
+
+  test("the voucher goes active only once the router reports the device online", async () => {
+    const { router, voucher } = await setting();
+    const sync = api.app.get(RouterSync);
+    sync.signInDevice = async () => false;
+    const refused = await redeem(router.id);
+    expect(refused.status).toBe(503);
+    expect(refused.body.code).toBe("ROUTER_NOT_CONFIRMED");
+    const row = await t.db.voucher.findUniqueOrThrow({ where: { id: voucher.id } });
+    expect(row.status).toBe("pending_activation");
+    let signedIn: unknown = null;
+    sync.signInDevice = async (_router, client) => {
+      signedIn = client;
+      return true;
+    };
+    expect((await redeem(router.id)).status).toBe(200);
+    expect(signedIn).toEqual({ user: "WIFI-TESTCODE", ip: "10.5.50.20", mac: MAC });
   });
 
   test("redeeming starts the voucher only once the router confirms it", async () => {
@@ -118,15 +137,11 @@ describe("the guest portal", () => {
 
     routerConfirms(true);
     const done = await redeem(router.id, { linkOrig: "http://example.com/a?code=WIFI-X&b=1" });
+    const active = await t.db.voucher.findUniqueOrThrow({ where: { id: voucher.id } });
     expect(done).toEqual({
       status: 200,
-      body: {
-        loginUrl: "http://10.5.50.1/login",
-        code: "WIFI-TESTCODE",
-        dst: "http://example.com/a?b=1",
-      },
+      body: { dst: "http://example.com/a?b=1", expiresAt: active.expiresAt?.toISOString() },
     });
-    const active = await t.db.voucher.findUniqueOrThrow({ where: { id: voucher.id } });
     expect(active.status).toBe("active");
     expect(active.activatedAt).toEqual(pending.activatedAt);
     const hours = ((active.expiresAt?.getTime() ?? 0) - Date.now()) / 3_600_000;
@@ -202,28 +217,28 @@ describe("the guest portal", () => {
     expect((await redeem(router.id, { ip: "x" })).status).toBe(400);
   });
 
-  test("session status needs the code, never just a MAC address", async () => {
+  test("session status answers for a device on a voucher, and never with its code", async () => {
     const { router } = await setting();
+    const session = (mac: string, id: string = router.id) =>
+      post("/api/guest/session", { router: id, mac });
+    expect((await session(MAC)).body.active).toBe(false);
     await redeem(router.id);
-    const reply = await post("/api/guest/session", { code: "wifi-testcode" });
+    const reply = await session(MAC);
     expect(reply.body).toMatchObject({
       active: true,
       data: { unlimited: true, usedBytes: 0 },
       time: { unlimited: false },
     });
     expect(JSON.stringify(reply.body)).not.toContain("WIFI-");
-    expect((await post("/api/guest/session", { code: "WRONG" })).body.active).toBe(false);
-    expect((await post("/api/guest/session", { mac: MAC })).status).toBe(400);
+    expect((await session("02:00:00:00:00:01")).body.active).toBe(false);
+    const elsewhere = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+    const other = await t.db.router.create({
+      data: { name: "Other", ipAddress: "10.9.0.1", venueId: elsewhere.id },
+    });
+    expect((await session(MAC, other.id)).body.active).toBe(false);
+    expect((await post("/api/guest/session", { code: "WIFI-TESTCODE" })).status).toBe(400);
     const preflight = await fetch(`${api.url}/api/guest/session`, { method: "OPTIONS" });
     expect(preflight.headers.get("access-control-allow-origin")).toBe("*");
-  });
-
-  test("guessing codes at session status is limited too", async () => {
-    const { router } = await setting();
-    await redeem(router.id);
-    for (let i = 0; i < 60; i++) await post("/api/guest/session", { code: `GUESS-${i}` });
-    const right = await post("/api/guest/session", { code: "WIFI-TESTCODE" });
-    expect(right.body.active).toBe(false);
   });
 
   test("a router's pages carry its id and the portal's address, and nothing secret", async () => {
@@ -235,6 +250,9 @@ describe("the guest portal", () => {
     expect(html).not.toContain("?mac=");
     expect(html).not.toContain("__ROUTER_ID__");
     expect(html).toContain("$(link-orig-esc)");
+    expect(html).not.toContain("<form");
+    const status = await fetch(`${api.url}/portal/hotspot-files/${router.id}/status.html`);
+    expect(await status.text()).toContain(`router: "${router.id}"`);
     const refused = await fetch(`${api.url}/portal/hotspot-files/${router.id}/config.txt`);
     expect(refused.status).toBe(404);
   });

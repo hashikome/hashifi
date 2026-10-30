@@ -339,17 +339,12 @@
     <main class="card">
       <span class="pill"><span class="dot" aria-hidden="true"></span>You're online</span>
 
-      <!--
-        $(login-by) is 'trial' for the free trial user and 'mac' for a MAC-bypass login; neither has
-        a voucher code to show. $(username) is the voucher code itself — it never leaves the router,
-        which is why /portal/session-status deliberately does not return it.
-      -->
       $(if login-by == 'trial')
       <p class="who">Connected on a <strong>free trial</strong></p>
       $(elif login-by == 'mac')
       <p class="who">Connected automatically by device</p>
       $(else)
-      <p class="who">Voucher <strong>$(username)</strong></p>
+      <p class="who">Connected with your voucher</p>
       $(endif)
 
       <div class="headline">
@@ -429,7 +424,6 @@
 
         // Substituted by the router. The backend URL is rewritten at push time by
         // renderPortalFile(), so this literal is only ever a placeholder in the repo.
-        var code = "$(username)";
         var API = "http://192.168.0.15:8080";
 
         /* ── Duration handling ─────────────────────────────────────────────
@@ -603,7 +597,7 @@
           fetch(API + "/api/guest/session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: code }),
+            body: JSON.stringify({ router: "__ROUTER_ID__", mac: "$(mac)" }),
           })
             .then(function (r) { return r.json(); })
             .then(function (data) {

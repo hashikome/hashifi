@@ -1,5 +1,5 @@
 /**
- * The hotspot HTML pages (login.html, alogin.html, status.html) that live in
+ * The hotspot HTML pages (login.html, status.html) that live in
  * `backend/mikrotik-files/`,
  * with the backend address templated in at push time.
  *
@@ -22,10 +22,10 @@ const FILES_DIR = join(HERE, "..", "..", "..", "mikrotik-files");
  * and `/portal/hotspot-files/:routerId/:name` will serve it.
  *
  * `status.html` replaces the stock RouterOS page — a bare four-row table with a popup logout that
- * mobile browsers block — with one matching alogin.html. It is the only screen a returning
- * customer ever sees.
+ * mobile browsers block. `alogin.html` is not pushed: the API signs devices in, so no browser
+ * ever posts a login and the router has no after-login page to show.
  */
-export const PORTAL_FILES = ["login.html", "alogin.html", "status.html"] as const;
+export const PORTAL_FILES = ["login.html", "status.html"] as const;
 export type PortalFileName = (typeof PORTAL_FILES)[number];
 
 /** Any `http://<ipv4>:<port>` in the templates is the backend base URL. */

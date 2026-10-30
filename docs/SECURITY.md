@@ -24,14 +24,16 @@ surface:
 - Voucher codes are eight characters from a cryptographic generator (about 39.6 bits), never
   `Math.random`, and never travel in a URL query: printing is by batch or voucher id, QR codes
   and the router's redirects use fragments, which reach no server or log.
-- A voucher code is the hotspot username and password. The API returns it only to a client
-  that has just supplied it. A device comes back by the router's MAC cookie, never by a code
-  returned for a MAC ([ADR-0008](engineering-decisions/0008-captive-portal.md)).
+- A voucher code is the hotspot username and password. It goes from the portal to the API and
+  from the API to the router, never over the WiFi in clear, and no API response carries it
+  ([ADR-0008](engineering-decisions/0008-captive-portal.md)).
+- Only the API signs a device in. The router accepts no login over the network, so nothing can
+  guess at it, and setup fails if an http login method is enabled.
 - Everything the router passes to the portal is untrusted, since it travels through the guest's
-  browser. The router must be registered; `link-login` must be that router's, and the login URL
-  is rebuilt by the API; `mac` and `ip` must match strict formats. A MAC address decides nothing
-  it would matter to forge.
-- Failed codes are limited per client address and per device, at redemption and status.
+  browser. The router must be registered, `mac` and `ip` must match strict formats and the router
+  itself must see that device. A MAC address decides nothing it would matter to forge.
+- Failed codes are limited per client address and per device, and only a good code reaches a
+  router, so the public route cannot be used to drive router connections.
 
 ### Public endpoints
 
@@ -41,14 +43,13 @@ Reviewed 30 October 2026. Everything else requires a staff session.
 | --- | --- | --- |
 | `GET /api/health`, `/api/health/ready` | The platform's checks | Says nothing but up or down |
 | `/api/auth/*` (the routes HashiFi uses) | Signing in | ADR-0007: rate limits, one answer, the rest refused |
-| `POST /api/guest/context` | The portal page | Registered router, its own `link-login`; read-only wording and prices |
-| `POST /api/guest/redeem` | Taking a voucher into use | The above, attempt limits, a lock on the voucher, its venue, blocked devices |
-| `POST /api/guest/session` | The router's status pages | Needs the code; attempt limit; any origin, no cookies |
+| `POST /api/guest/context` | The portal page | Registered router; read-only wording and prices |
+| `POST /api/guest/redeem` | Taking a voucher into use | Attempt limits, a lock on the voucher, its venue, blocked devices, the router seeing the device |
+| `POST /api/guest/session` | The router's status pages | Time and data only, never a code; any origin, no cookies |
 | `GET /portal/hotspot-files/:routerId/:name` | Routers pull them while provisioned | Named files only; the portal's address and router id, no secret |
 | `/ws/live` | Not public: listed because guards do not cover it | Its upgrade signs in as a route would, and checks the origin |
 
-Open findings are in ADR-0008: the code crosses open WiFi in clear until CHAP, and the router
-accepts guesses without a limit.
+What remains open is in ADR-0008.
 
 ## Boundary validation
 

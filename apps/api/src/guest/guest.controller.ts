@@ -52,8 +52,8 @@ export class GuestController {
   @Post("session")
   @HttpCode(200)
   @Header("Access-Control-Allow-Origin", "*")
-  session(@Body() body: unknown, @Req() request: Request): Promise<GuestSession> {
-    return this.guest.session(parseInput(sessionInput, body).code, request.ip ?? null);
+  session(@Body() body: unknown): Promise<GuestSession> {
+    return this.guest.session(parseInput(sessionInput, body));
   }
 }
 

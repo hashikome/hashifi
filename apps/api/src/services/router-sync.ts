@@ -12,8 +12,11 @@ import {
   ensureHotspotUserProfile,
   ensureHotspotUserProfileAssigned,
   type HotspotUserCapabilities,
+  hotspotClientAddress,
+  hotspotSessionUser,
   hotspotUserExists,
   kickHotspotSession,
+  loginHotspotClient,
   type MikroTikConn,
   packageCanThrottle,
   rateLimitFor,
@@ -94,26 +97,9 @@ export function needsProfileLimits(caps: HotspotUserCapabilities | null): boolea
 }
 
 /**
- * Does this package need a profile on this router?
- *
- * Two reasons, not one:
- *
- *   • the board rejects per-user limits, so the cap has nowhere else to live; or
- *   • the package can be throttled, in which case throttling is a swap between this profile and
- *     its throttled twin — and that has to work on *every* board, including ones that would
- *     happily take a per-user rate-limit. Without the normal profile existing on such a board,
- *     un-throttling would have to send the user back to `default`, which has no cap at all: the
- *     customer would come out of a throttle window *faster* than their package allows.
- */
-export function needsProfile(
-  pkg: { throttledDownloadMbps: number | null },
-  caps: HotspotUserCapabilities | null,
-): boolean {
-  return needsProfileLimits(caps) || packageCanThrottle(pkg);
-}
-
-/**
- * Create the per-package profile(s) this router needs, and return the name to put on the user.
+ * Create the per-package profile(s), and return the name to put on the user. Every package has
+ * one: it holds the MAC cookie's lifetime, on every board, as well as limits a board may refuse
+ * per user and the swap throttling makes.
  *
  * Called once per package per connection rather than once per voucher — a batch of 200 codes on one
  * package should cost one profile round-trip, not 200.
@@ -121,9 +107,7 @@ export function needsProfile(
 async function ensureProfileFor(
   conn: Awaited<ReturnType<typeof connectToRouter>>,
   pkg: Package,
-  caps: HotspotUserCapabilities | null,
-): Promise<string | null> {
-  if (!needsProfile(pkg, caps)) return null;
+): Promise<string> {
   const throttleable = packageCanThrottle(pkg);
 
   const name = userProfileNameForPackage(pkg.id);
@@ -131,6 +115,7 @@ async function ensureProfileFor(
     name,
     rateLimit: rateLimitFor(pkg),
     sharedUsers: pkg.deviceLimit,
+    durationMinutes: pkg.durationMinutes,
   });
 
   // Created up front rather than on first throttle: a peak-hour boundary hits every active user at
@@ -140,6 +125,7 @@ async function ensureProfileFor(
       name: throttledProfileNameForPackage(pkg.id),
       rateLimit: throttledRateLimitFor(pkg),
       sharedUsers: pkg.deviceLimit,
+      durationMinutes: pkg.durationMinutes,
     });
   }
 
@@ -232,7 +218,7 @@ export class RouterSync {
               conn = await connectToRouter(creds);
               const caps = capsFor(router);
               // Once for the batch, before any user references it.
-              const profileName = await ensureProfileFor(conn, pkg, caps);
+              const profileName = await ensureProfileFor(conn, pkg);
               for (const code of codes) {
                 if (!(await hotspotUserExists(conn, code))) {
                   await createHotspotUser(
@@ -306,7 +292,7 @@ export class RouterSync {
         const pkg = voucher.package;
         if (!pkg) continue;
         if (!profileByPackage.has(pkg.id)) {
-          profileByPackage.set(pkg.id, await ensureProfileFor(conn, pkg, caps));
+          profileByPackage.set(pkg.id, await ensureProfileFor(conn, pkg));
         }
         const exists = await hotspotUserExists(conn, voucher.code);
         const profileName = profileByPackage.get(pkg.id) ?? null;
@@ -403,7 +389,7 @@ export class RouterSync {
                     pkg,
                     voucher.dataLimitGb,
                     voucher.durationMinutes,
-                    await ensureProfileFor(conn, pkg, caps),
+                    await ensureProfileFor(conn, pkg),
                   ),
                   caps,
                 );
@@ -446,6 +432,51 @@ export class RouterSync {
       } finally {
         if (conn) await closeConnection(conn);
       }
+    }
+  }
+
+  /**
+   * Whether this router sees the device at this address. Null when it cannot be asked. What a
+   * guest's browser names is checked here, so a cookie is never planted for a device not present.
+   */
+  async deviceOnNetwork(
+    router: Router,
+    device: { mac: string; ip: string },
+  ): Promise<boolean | null> {
+    return this.onRouter(
+      router,
+      async (conn) => (await hotspotClientAddress(conn, device.mac)) === device.ip,
+    );
+  }
+
+  /** Signs a device in on this router; true only once the router reports it online. */
+  async signInDevice(
+    router: Router,
+    client: { user: string; ip: string; mac: string },
+  ): Promise<boolean> {
+    const online = await this.onRouter(router, async (conn) => {
+      if ((await hotspotSessionUser(conn, client.mac)) !== client.user) {
+        await loginHotspotClient(conn, client);
+      }
+      return (await hotspotSessionUser(conn, client.mac)) === client.user;
+    });
+    return online === true;
+  }
+
+  private async onRouter<T>(
+    router: Router,
+    work: (conn: MikroTikConn) => Promise<T>,
+  ): Promise<T | null> {
+    const creds = this.access.credentials(router);
+    if (!creds) return null;
+    let conn: MikroTikConn | null = null;
+    try {
+      conn = await connectToRouter(creds);
+      return await work(conn);
+    } catch {
+      return null;
+    } finally {
+      if (conn) await closeConnection(conn);
     }
   }
 

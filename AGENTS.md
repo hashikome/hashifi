@@ -2,8 +2,8 @@
 
 Time-bound, device-limited WiFi access sold as vouchers through a captive portal, for a home
 and for venues with their own MikroTik routers. A cloud backend configures the routers,
-issues vouchers and tracks sessions. Public repository (FSL-1.1-ALv2); production domain not
-yet chosen.
+issues vouchers and tracks sessions. Private until HashiFi is ready to deploy, then public
+(FSL-1.1-ALv2); production domain not yet chosen.
 
 This repository is the source of truth for the HashiFi product and engineering decisions.
 External documents are references only. Keep this file short: it is a map, not a manual.
@@ -70,9 +70,10 @@ including the captive portal. Payments are M6.
 
 Until the owner changes this policy, the repository is one unreleased release unit. Do not
 preserve compatibility for superseded routes, shapes, schemas or docs: update every producer
-and consumer together and remove the replaced implementation. This does not relax data
-safety: never rewrite an applied shared migration or discard user data without explicit
-approval.
+and consumer together and remove the replaced implementation. Nothing inherited is binding: when
+there is a better way, drop whatever stands in the way, whether a package, a module, a model or
+a business workflow. This does not relax data safety: never rewrite an applied shared migration
+or discard user data without explicit approval.
 
 ## Rules that are easy to break
 
@@ -89,9 +90,10 @@ approval.
 - **Never assume what a MikroTik supports: probe, then branch.** Board and RouterOS
   differences belong only in the provisioning dialect
   (`apps/api/src/services/router-provision/dialect.ts` until the port moves it).
-- **A voucher code is a credential** (it is the hotspot username and password). Never return
-  it in a response keyed only by a MAC address, and never use a URL from a request (such as
-  `link-login`) without validating it against a registered router.
+- **A voucher code is a credential** (it is the hotspot username and password). No response
+  returns it, and it never goes to a page the router serves. Only the API signs a device in
+  ([ADR-0008](docs/engineering-decisions/0008-captive-portal.md)): the router accepts no login
+  from the network, so never enable an http login method.
 - **Time:** stored in UTC; business days are calculated in `Africa/Dar_es_Salaam`.
 - **Copy:** mobile money is "mobile money" and "mobile number"; never name a provider.
 - **Personal data:** the purchased system's original archive contained third parties' data

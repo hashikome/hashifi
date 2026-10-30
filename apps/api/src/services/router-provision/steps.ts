@@ -466,11 +466,15 @@ const dhcpNetwork: ProvisionStep = {
  * again without a code, so nothing ever hands a voucher code to a request keyed by a MAC. The
  * live monitor relies on it too, dropping a session so a new speed takes effect.
  */
-const LOGIN_BY = "http-pap,mac-cookie";
+/**
+ * No http method: a device is signed in only by the API, or by its MAC cookie, so nothing on the
+ * network can post or guess a code at the router (ADR-0008).
+ */
+const LOGIN_BY = "mac-cookie";
 
 const hotspotProfile: ProvisionStep = {
   id: "hotspot-profile",
-  title: "Create hotspot profile with HTTP-PAP and MAC-cookie login (§2.2)",
+  title: "Create hotspot profile that signs devices in by MAC cookie only (§2.2)",
   critical: true,
   appliesTo: (ctx) => ctx.profile.capabilities.hotspot,
   async check({ ros, ctx }) {
@@ -699,7 +703,7 @@ const ipBinding: ProvisionStep = {
 
 const portalFiles: ProvisionStep = {
   id: "portal-files",
-  title: "Upload the portal pages — login, alogin, status (§3, §18)",
+  title: "Upload the portal pages — login, status (§3, §18)",
   critical: true,
   appliesTo: (ctx) => ctx.profile.capabilities.hotspot && ctx.dialect.fileWrite !== "manual",
   async check({ ros, ctx }) {

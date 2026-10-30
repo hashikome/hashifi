@@ -80,11 +80,11 @@ bun run router-sim guest-test     # about 6 minutes
 `guest-test` runs the real API on the sim database and walks a guest's whole path, and must
 pass every step: an address from the hotspot; a page request redirected to the portal origin,
 with the router naming itself; with an HTTPS portal, the portal host reachable before login while
-other HTTPS sites stay blocked; a voucher redeemed through the walled garden and confirmed by the
-router; the internet open after logging in; a session opened by the live monitor; a device kept
-on after a kick, and back by its MAC cookie after 135 seconds away; a disconnected device
-forgotten; a blocked device refused, and accepted again within 90 seconds of unblocking; and the
-guest cut off at expiry. It clears the router's sessions and cookies first. Run it in LAN mode,
+other HTTPS sites stay blocked; a direct POST to the router refused even with the right code; a
+device the router cannot see refused; a voucher redeemed through the walled garden and the device
+signed in by the API; a session opened by the live monitor; a device kept on after a kick, and
+back by its MAC cookie after 135 seconds away; a disconnected device forgotten; a blocked device
+refused, and accepted again within 90 seconds of unblocking; and the guest cut off at expiry. It clears the router's sessions and cookies first. Run it in LAN mode,
 after `setup`, with or without `PORTAL_ORIGIN`; port 8080 must be free. The API reaches the
 router through `MIKROTIK_TARGET_OVERRIDE`, which production configuration refuses. The page
 itself is not driven, since the guest has no browser. `bun run router-sim voucher [minutes]` creates a voucher on its own.

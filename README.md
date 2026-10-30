@@ -9,8 +9,7 @@ shared compounds, each with its own routers, packages and branding.
 It started with a personal problem: people asking to use the WiFi, which meant enabling and
 disabling access and tracking MAC addresses by hand, sometimes late at night.
 
-> **Status:** in development. HashiFi is being built from a purchased hotspot billing system
-> (Express, MySQL and a Next.js admin), now being ported to the Hashikome stack. The plan is
+> **Status:** in development. The plan is
 > [docs/exec-plans/active/adopt-purchased-billing-system.md](docs/exec-plans/active/adopt-purchased-billing-system.md).
 > The API, the admin web and the captive portal work together; payments arrive in M6.
 

@@ -191,7 +191,7 @@ async function backendReachableCheck(
       status: "fail",
       detail: `${result.sent} pings to the backend at ${backendIp}, none returned.`,
       fix:
-        `The 'Upload login.html + alogin.html' step will fail: the router fetches those pages ` +
+        `The 'Upload the portal pages' step will fail: the router fetches those pages ` +
         `over HTTP from the backend, so it must be able to reach ${backendIp}. Check the ` +
         `backend machine is running and that its firewall allows the router in.`,
     };

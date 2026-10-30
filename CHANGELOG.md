@@ -6,6 +6,10 @@
   through the API, with the router confirming before anything reports success. A device
   comes back by the router's MAC cookie, a block holds at the router, and sessions open from what
   the router reports.
+- Guests are signed in by the API, and the router accepts no login from the network: a voucher
+  code never crosses the WiFi to the router, and nothing can guess at it. A device must be seen
+  by the router before a voucher starts, and a voucher goes active only once the router reports
+  that device online.
 - Fixed: the portal returned a voucher code to anyone naming a device's MAC address, trusted a
   `link-login` from the request, and put codes in URLs; a voucher could start its clock at
   another venue's router; the router's pages placed a guest's URL unescaped in a script.

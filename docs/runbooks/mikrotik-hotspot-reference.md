@@ -7,6 +7,10 @@
 > hand in this document is now automated, and following the manual steps here instead will
 > produce duplicate rules and untagged config the system cannot manage.
 >
+> **Sign-in changed:** the hotspot has `login-by=mac-cookie` alone and the API signs devices in
+> ([ADR-0008](../engineering-decisions/0008-captive-portal.md)). Older flows described below,
+> where a browser posted a code to the router, no longer apply.
+>
 > **This document is the reference**, not the procedure: why each setting exists, every
 > error we hit and its fix, and the manual equivalent of each automated step. Read it when
 > onboarding goes wrong, or when you need to understand what the provisioner is doing.
@@ -45,7 +49,7 @@ Express backend (192.168.0.15:8080)
 Phone browser POSTs credentials to MikroTik login URL
     │ MikroTik checks /ip hotspot user list
     ▼
-Internet access granted  →  alogin.html shown  →  auto-redirects to destination
+Internet access granted  →  portal says "You're online"  →  goes on to the destination
 ```
 
 **No FreeRADIUS.** MikroTik manages its own user list (`/ip hotspot user`). The backend
@@ -272,7 +276,7 @@ command below with your actual profile name.
 ### 2.2 CRITICAL — Disable CHAP, enable PAP only
 
 ```routeros
-/ip hotspot profile set hsprof3 login-by=http-pap
+/ip hotspot profile set hsprof3 login-by=mac-cookie
 ```
 
 **Why this matters:** MikroTik defaults to HTTP-CHAP (challenge-response authentication).
@@ -281,14 +285,13 @@ injects as `$(chap-id)` and `$(chap-challenge)`. These are raw bytes, not hex st
 When passed through URL parameters (as our redirect does), the encoding is unreliable,
 producing a wrong hash and `login failed: invalid username or password`.
 
-HTTP-PAP sends the plain password. Our captive portal submits the voucher code as the
-password in plain text — this works cleanly.
+Devices are signed in by the API; see section 11.
 
 Verify the change:
 
 ```routeros
 /ip hotspot profile print where name=hsprof3
-# login-by should show: http-pap
+# login-by should show: mac-cookie
 ```
 
 ### 2.3 Check hotspot server is running
@@ -326,7 +329,6 @@ Express portal, passing MikroTik's variables as query parameters.
 | File | When the customer sees it |
 | --- | --- |
 | `login.html` | Not yet authenticated — redirects to the Express portal |
-| `alogin.html` | Immediately after a successful login — "You're connected" |
 | `status.html` | Already online and they open the hotspot address again |
 
 `status.html` replaces the RouterOS stock page (a four-row table whose logout opens a popup window
@@ -605,10 +607,9 @@ Key messages and what they mean:
 | Log message                      | Meaning                                             | Fix                                             |
 | -------------------------------- | --------------------------------------------------- | ----------------------------------------------- |
 | `logged in`                      | Auth succeeded — user is online                     | —                                               |
-| `password is not chap encrypted` | Profile still in CHAP mode                          | Run `login-by=http-pap` from §2.2               |
+| `password is not chap encrypted` | Profile still in CHAP mode                          | Run `login-by=mac-cookie` from §2.2               |
 | `invalid username or password`   | Credentials wrong OR user doesn't exist in MikroTik | Add user with `/ip hotspot user add`            |
 | `trying to log in by http-chap`  | CHAP mode still active                              | Profile change didn't save; re-run it           |
-| `trying to log in by http-pap`   | PAP mode active (correct)                           | If still failing, check username/password match |
 
 ---
 
@@ -724,33 +725,12 @@ All three passing = network layer solid; remaining issues are backend/portal-sid
 
 ---
 
-## 11. HTTP-PAP vs HTTP-CHAP — Full Explanation
+## 11. Login methods
 
-MikroTik supports two hotspot authentication modes:
-
-### HTTP-PAP (what we use)
-
-- Password sent in the form POST as plain text
-- Simple — our portal sets `document.getElementById('mt-pass').value = voucher_code`
-- Works perfectly with our setup
-
-### HTTP-CHAP (MikroTik default — why we avoided it)
-
-- MikroTik injects a `chap-id` (1 raw byte) and `chap-challenge` (raw bytes, typically 16)
-  into the login page via `$(chap-id)` and `$(chap-challenge)` template variables
-- The browser must compute: `MD5(chap_id_byte + plain_password + challenge_bytes)`
-- **Problem 1:** When passed through URL parameters (as our redirect does), `$(chap-id)`
-  and `$(chap-challenge)` are raw bytes. URL encoding changes them. The received values
-  on our Express side are URL-decoded strings, not the original bytes. Recomputing MD5
-  from these produces the wrong hash.
-- **Problem 2:** `$(chap-id)` in URL context is a single raw byte character, not a
-  decimal string. Doing `parseInt(chapId)` gives NaN; `chapId.charCodeAt(0)` gives the
-  byte value but only if the URL encoding preserved it exactly.
-- **Conclusion:** CHAP is reliable only when the login page runs natively from the router
-  (not via a redirect), where MikroTik injects the raw bytes directly into the HTML.
-  Since we redirect, PAP is the correct choice.
-
----
+`login-by=mac-cookie` alone. Every http method is off, so the router accepts no code from the
+network, and the API signs devices in with `/ip hotspot active login`. Provisioning sets this and
+verification fails on anything else. Do not add `http-pap` or `http-chap`, even to debug: either
+one lets the network post and guess codes at the router.
 
 ## 12. Full MikroTik Setup Command Sequence (Clean Install)
 
@@ -758,7 +738,7 @@ Run these in order on a fresh or reset MikroTik hotspot:
 
 ```routeros
 # 1. Switch hotspot to PAP authentication
-/ip hotspot profile set hsprof3 login-by=http-pap
+/ip hotspot profile set hsprof3 login-by=mac-cookie
 
 # 2. Add walled garden entry for backend
 /ip hotspot walled-garden ip add dst-address=192.168.0.15 action=accept
@@ -1101,7 +1081,7 @@ rather than a login screen.
 | `/ip hotspot` missing and the .npk didn't help                                | device-mode `home`/`basic` hides the menu regardless of packages                                | `/system device-mode print`; if `hotspot: false` → `/system device-mode update mode=advanced`, then confirm within 5 min via reset button or power-cycle |
 | WinBox `MacConnection syn timeout` over ethernet, but works over WiFi         | Manual IPv4 set on the ethernet NIC with a **blank subnet mask** — macOS discarded the whole config, leaving the interface with no address and no route | Fill in mask AND router (§1.1); verify with `ifconfig en7 \| grep inet`, not the "Connected" label in the Network pane |
 | `No 'Access-Control-Allow-Origin' header` (admin panel)                       | Express `app.use()` regex path doesn't intercept OPTIONS preflight                             | Change to string paths: `app.use("/api", adminCors)` (§7)                                                      |
-| `password is not chap encrypted` (MikroTik log)                               | Hotspot in CHAP mode, plain text sent                                                          | `/ip hotspot profile set hsprof3 login-by=http-pap` (§2.2)                                                     |
+| `password is not chap encrypted` (MikroTik log)                               | Hotspot in CHAP mode, plain text sent                                                          | `/ip hotspot profile set hsprof3 login-by=mac-cookie` (§2.2)                                                     |
 | `invalid username or password` after CHAP attempt                             | CHAP hash wrong due to raw-byte encoding mismatch through URL params                           | Switch to PAP — see §11 for full explanation                                                                   |
 | `invalid voucher code` (portal error)                                         | Voucher code doesn't exist in MySQL database                                                   | Generate vouchers from admin panel; use an active code from the DB                                             |
 | Portal validates but redirects back to login                                  | Voucher code exists in DB but NOT in MikroTik's user list                                      | `/ip hotspot user add name=<CODE> password=<CODE>` (§8)                                                        |
@@ -1269,113 +1249,11 @@ If all work → MikroTik has internet; if clients still don't, check masquerade 
 
 ---
 
-## 18. alogin.html — After-Login Connected Page
+## 18. After sign-in
 
-### 18.1 What it is
-
-`alogin.html` is MikroTik's template page shown **after successful authentication**,
-before the client is redirected to their original destination. MikroTik substitutes
-template variables into the HTML before serving it.
-
-Available template variables:
-
-| Variable               | Value                                      |
-| ---------------------- | ------------------------------------------ |
-| `$(username)`          | The hotspot username (voucher code)        |
-| `$(link-orig)`         | The URL the user originally tried to visit |
-| `$(mac)`               | Client's MAC address                       |
-| `$(ip)`                | Client's IP address                        |
-| `$(session-time-left)` | Remaining session time                     |
-
-> **It no longer claims success on faith.** The page opens in a "Checking your
-> connection" state and only says "You're connected" after a real reachability probe
-> passes — it loads an image from an external host (google.com / cloudflare.com favicon,
-> cache-busted). Reaching the backend proves nothing, because the backend is inside the
-> walled garden and answers even when no internet was granted. `fetch()` is unsuitable
-> here too: a cross-origin request returns an opaque response whose status can't be read,
-> so an intercepted request is indistinguishable from a successful one. An image either
-> decodes or it doesn't. On failure the page retries once after 2s, then shows
-> "Not connected yet" with a **Check again** button instead of a false positive.
->
-> The script deliberately avoids `async`/`await` — captive-portal mini-browsers on older
-> Android WebViews predate ES2017.
-
-> **Remaining time / data.** The page shows a live countdown and a data bar, fed by
-> `GET /portal/session-status?mac=`, re-synced every 30s. Two deliberate choices:
->
-> - The countdown ticks from the last server figure using *elapsed time since that sync*,
->   never by comparing the client clock to an absolute expiry — a device with a wrong
->   clock would show nonsense. When it reaches zero the client does **not** declare
->   expiry; it asks the server, which decides whether to send the user back to the portal.
-> - The time shown is **wall-clock** (`vouchers.expires_at`). MikroTik separately enforces
->   `limit-uptime`, which counts accumulated online time and diverges whenever a user
->   disconnects and returns. Wall-clock always elapses faster, so displaying it can never
->   promise more time than the user actually has.
->
-> The endpoint deliberately does not return the voucher code — the code is also the
-> hotspot password, and that endpoint is public and keyed only by a spoofable MAC.
-
-### 18.2 Creating the file
-
-The file lives at `mikrotik-files/alogin.html` in this repo. Design principles to match
-the admin UI:
-
-- Background: `#f4efe9` (warm cream — same as admin)
-- Accent: `#e05c2b` (orange — same as admin buttons)
-- Card: white with `#e8dcd5` border
-- Font: system-ui stack (same as admin)
-
-### 18.3 Handling `$(link-orig)` safely
-
-MikroTik substitutes `$(link-orig)` as a raw string. When no original URL is available,
-it stays as the literal text `$(link-orig)`. Always guard against this:
-
-```javascript
-var raw = "$(link-orig)";
-var dest = raw && raw.indexOf("$(") === -1 && raw.length > 0 ? raw : "http://google.com";
-```
-
-This prevents the page from redirecting to a literal `$(link-orig)` string.
-
-### 18.4 Uploading to MikroTik
-
-Via Winbox:
-
-1. Open **Files** in Winbox
-2. Navigate to `hotspot/` folder
-3. Drag and drop `alogin.html` — it overwrites the existing file
-
-Via terminal (if file is already on router):
-
-```routeros
-/file print where name~"hotspot"
-# Note the full name, e.g. hotspot/alogin.html
-```
-
-Verify upload:
-
-```routeros
-/file print where name~"alogin"
-# Should show the file with correct size
-```
-
-### 18.5 Auto-redirect timing
-
-The current implementation auto-redirects after 4 seconds using a CSS animation on the
-progress bar plus a JavaScript `setTimeout`. The CSS animation is purely decorative —
-the JS timeout is what triggers the redirect.
-
-```javascript
-setTimeout(function () {
-  window.location.replace(dest);
-}, 4000);
-```
-
-> **Why we need this page:** Without a custom `alogin.html`, MikroTik shows its own
-> default "you are logged in" page which looks completely out of place (plain HTML,
-> MikroTik branding). A custom page provides continuity with the portal's look and feel.
-
----
+The portal page shows "You're online" and goes on to the address the guest asked for. RouterOS's
+`alogin.html` is not pushed, because no browser logs in at the router. `status.html` is what a
+guest sees at the router's own address.
 
 ## 19. Session Lifecycle — Live Monitoring, Disconnect Detection, Admin Kick
 

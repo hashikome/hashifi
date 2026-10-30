@@ -11,8 +11,8 @@ const rendered = async (name: (typeof PORTAL_FILES)[number]) =>
   renderPortalFile(name, "http://10.0.0.9:9000", "router-1");
 
 describe("every page", () => {
-  test("all three are registered", () => {
-    expect([...PORTAL_FILES]).toEqual(["login.html", "alogin.html", "status.html"]);
+  test("both are registered", () => {
+    expect([...PORTAL_FILES]).toEqual(["login.html", "status.html"]);
   });
 
   test.each([...PORTAL_FILES])("%s is served from hotspot/", (name) => {
@@ -25,6 +25,10 @@ describe("every page", () => {
     // page would call an address that only exists on one developer's desk (§3.1, §10).
     expect(html).not.toContain("192.168.0.15");
     expect(html).toContain("http://10.0.0.9:9000");
+  });
+
+  test.each([...PORTAL_FILES])("%s holds no voucher code: it is served in clear", async (name) => {
+    expect(await rendered(name)).not.toContain("$(username)");
   });
 
   test.each([...PORTAL_FILES])("%s balances its RouterOS conditionals", async (name) => {
@@ -50,7 +54,6 @@ describe("status.html", () => {
       "endif",
       "mac",
       "ip",
-      "username",
       "uptime",
       "session-time-left",
       "bytes-in-nice",
