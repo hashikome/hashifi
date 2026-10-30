@@ -30,10 +30,9 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 const STEP_LABELS = ["Basic Info", "Speed & Throttling", "Pricing & Limits"];
 
@@ -216,29 +215,19 @@ export default function CreatePackagePage() {
               throttleAfterGb: null,
             };
 
-      const res = await fetch(`${API_URL}/api/packages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: form.name,
-          description: form.description || undefined,
-          durationMinutes: parseInt(form.duration, 10),
-          downloadSpeedMbps: parseInt(form.downloadSpeed, 10),
-          uploadSpeedMbps: form.uploadSpeed ? parseInt(form.uploadSpeed, 10) : undefined,
-          priceTsh: parseFloat(form.price),
-          deviceLimit: 1,
-          dataLimitGb: form.dataLimit ? parseInt(form.dataLimit, 10) : undefined,
-          features: [],
-          isActive: true,
-          ...throttlePayload,
-        }),
+      await api.post("/api/packages", {
+        name: form.name,
+        description: form.description || null,
+        durationMinutes: parseInt(form.duration, 10),
+        downloadSpeedMbps: parseInt(form.downloadSpeed, 10),
+        uploadSpeedMbps: form.uploadSpeed ? parseInt(form.uploadSpeed, 10) : null,
+        priceTsh: parseFloat(form.price),
+        dataLimitGb: form.dataLimit ? parseInt(form.dataLimit, 10) : null,
+        deviceLimit: 1,
+        features: [],
+        isActive: true,
+        ...throttlePayload,
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to create package");
-      }
 
       toast.success("Package created!");
       success = true;

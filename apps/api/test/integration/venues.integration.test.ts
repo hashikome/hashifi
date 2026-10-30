@@ -59,7 +59,6 @@ describe("venues", () => {
       contactEmail: "Front@Example.com",
       latitude: -6.7924,
       longitude: 39.2083,
-      operatorId,
       postalCode: "",
     });
     expect(created.status).toBe(201);
@@ -70,17 +69,19 @@ describe("venues", () => {
       contactEmail: "front@example.com",
       latitude: "-6.7924",
       postalCode: null,
-      operatorId,
+      operatorId: null,
       routerCount: 0,
     });
     const id = String(venue.id);
+    // Who operates a venue is the Team page's; saving the venue leaves it alone.
+    await t.db.venue.update({ where: { id }, data: { operatorId } });
 
     const list = await c.request("GET", "/api/venues");
     expect((list.body as { venues: unknown[] }).venues.length).toBe(1);
 
     const updated = await c.request("PUT", `/api/venues/${id}`, { ...VENUE, name: "Home 2" });
     expect(updated.status).toBe(200);
-    expect(updated.body).toMatchObject({ venue: { name: "Home 2", operatorId: null } });
+    expect(updated.body).toMatchObject({ venue: { name: "Home 2", operatorId } });
 
     expect((await c.request("DELETE", `/api/venues/${id}`)).status).toBe(204);
     expect((await c.request("GET", `/api/venues/${id}`)).status).toBe(404);
@@ -116,7 +117,6 @@ describe("venues", () => {
       name: "Line\nbreak",
       city: "",
       latitude: 120,
-      operatorId: "01a18895-f25f-7622-b47d-8a428187786f",
     });
     expect(bad.status).toBe(400);
     expect(bad.body).toMatchObject({
@@ -128,11 +128,6 @@ describe("venues", () => {
         latitude: expect.any(String),
       },
     });
-    const noOperator = await c.request("POST", "/api/venues", {
-      ...VENUE,
-      operatorId: "01a18895-f25f-7622-b47d-8a428187786f",
-    });
-    expect(noOperator.body).toMatchObject({ details: { operatorId: "must be an active manager" } });
     expect((await c.request("GET", "/api/venues/not-a-uuid")).status).toBe(404);
   });
 

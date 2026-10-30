@@ -30,9 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { durationShort } from "@/lib/duration";
 import { errorMessage } from "@/lib/errors";
+import { packageBody } from "@/lib/packages";
 import { statusPill } from "@/lib/status-pill";
 
 /** A package with the fields this page displays. */
@@ -56,14 +58,7 @@ export default function PackagesPage() {
   const fetchPackages = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/packages`,
-        {
-          credentials: "include",
-        },
-      );
-      if (!res.ok) throw new Error("Failed to fetch packages");
-      const data: PackageList = await res.json();
+      const data = await api.get<PackageList>("/api/packages");
       setPackages(
         data.packages.map((p) => ({
           ...p,
@@ -90,19 +85,7 @@ export default function PackagesPage() {
 
     setIsDeleting(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/packages/${packageToDelete}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        },
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete package");
-      }
-
+      await api.delete(`/api/packages/${packageToDelete}`);
       setPackages((prev) => prev.filter((p) => p.id !== packageToDelete));
       toast.success("Package deleted successfully");
     } catch (err) {
@@ -119,22 +102,13 @@ export default function PackagesPage() {
     const newActive = !pkg.isActive;
     setPackages((prev) => prev.map((p) => (p.id === pkg.id ? { ...p, isActive: newActive } : p)));
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/packages/${pkg.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ isActive: newActive }),
-        },
-      );
-      if (!res.ok) throw new Error();
+      await api.put(`/api/packages/${pkg.id}`, packageBody({ ...pkg, isActive: newActive }));
       toast.success(newActive ? `"${pkg.name}" activated` : `"${pkg.name}" paused`);
-    } catch {
+    } catch (err) {
       setPackages((prev) =>
         prev.map((p) => (p.id === pkg.id ? { ...p, isActive: pkg.isActive } : p)),
       );
-      toast.error("Failed to update package");
+      toast.error(errorMessage(err, "Failed to update package"));
     } finally {
       setTogglingId(null);
     }

@@ -17,7 +17,8 @@ const optionalLine = (max: number) =>
 
 /**
  * A venue as the admin enters it, for create and for update alike: the form always sends the
- * whole venue, so an absent optional field is cleared rather than left as it was.
+ * whole venue, so an absent optional field is cleared rather than left as it was. Who operates
+ * it is not here: that is set on the Team page, and a venue save leaves it alone.
  */
 export const venueInput = z.object({
   name: line(180).min(1, "is required"),
@@ -46,7 +47,6 @@ export const venueInput = z.object({
   latitude: z.number().min(-90).max(90).nullable().default(null),
   longitude: z.number().min(-180).max(180).nullable().default(null),
   status: z.enum(["active", "inactive", "maintenance"]).default("active"),
-  operatorId: z.uuid().nullable().default(null),
 });
 
 export type VenueInput = z.infer<typeof venueInput>;

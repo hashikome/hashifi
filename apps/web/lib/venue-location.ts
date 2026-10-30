@@ -1,7 +1,7 @@
-import type { Venue } from "@/lib/types";
+import type { VenueRecord } from "@hashifi/types";
 
 type VenueLocationFields = Pick<
-  Venue,
+  VenueRecord,
   | "city"
   | "region"
   | "country"

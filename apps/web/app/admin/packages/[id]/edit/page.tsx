@@ -1,5 +1,6 @@
 "use client";
 
+import type { PackageRecord, PackageResponse } from "@hashifi/types";
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,10 +30,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
+import { packageBody } from "@/lib/packages";
 import { cn } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 const STEP_LABELS = ["Basic Info", "Speed & Throttling", "Pricing & Limits"];
 
@@ -125,6 +126,7 @@ export default function EditPackagePage() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loaded, setLoaded] = useState<PackageRecord | null>(null);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [savedForm, setSavedForm] = useState<FormData>(EMPTY_FORM);
 
@@ -138,26 +140,27 @@ export default function EditPackagePage() {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   useEffect(() => {
-    fetch(`${API_URL}/api/packages/${params.id}`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+    api
+      .get<PackageResponse>(`/api/packages/${params.id}`)
       .then(({ package: pkg }) => {
-        const loaded: FormData = {
+        setLoaded(pkg);
+        const values: FormData = {
           name: pkg.name,
           description: pkg.description || "",
           duration: pkg.durationMinutes.toString(),
           downloadSpeed: Math.max(1, pkg.downloadSpeedMbps || 1).toString(),
           uploadSpeed: pkg.uploadSpeedMbps ? pkg.uploadSpeedMbps.toString() : "",
           price: Math.floor(parseFloat(pkg.priceTsh)).toString(),
-          dataLimit: pkg.dataLimitGb > 0 ? pkg.dataLimitGb.toString() : "",
-          throttleEnabled: pkg.throttledDownloadMbps != null,
+          dataLimit: pkg.dataLimitGb ? pkg.dataLimitGb.toString() : "",
+          throttleEnabled: pkg.throttledDownloadMbps !== null,
           throttledDownload: pkg.throttledDownloadMbps?.toString() ?? "",
           throttledUpload: pkg.throttledUploadMbps?.toString() ?? "",
-          peakStartHour: pkg.peakStartHour != null ? pkg.peakStartHour.toString() : "",
-          peakEndHour: pkg.peakEndHour != null ? pkg.peakEndHour.toString() : "",
+          peakStartHour: pkg.peakStartHour?.toString() ?? "",
+          peakEndHour: pkg.peakEndHour?.toString() ?? "",
           throttleAfterGb: pkg.throttleAfterGb?.toString() ?? "",
         };
-        setForm(loaded);
-        setSavedForm(loaded);
+        setForm(values);
+        setSavedForm(values);
       })
       .catch(() => toast.error("Failed to load package"))
       .finally(() => setIsLoading(false));
@@ -247,29 +250,18 @@ export default function EditPackagePage() {
               throttleAfterGb: null,
             };
 
-      const res = await fetch(`${API_URL}/api/packages/${params.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: form.name,
-          description: form.description || undefined,
-          durationMinutes: parseInt(form.duration, 10),
-          downloadSpeedMbps: parseInt(form.downloadSpeed, 10),
-          uploadSpeedMbps: form.uploadSpeed ? parseInt(form.uploadSpeed, 10) : undefined,
-          priceTsh: parseFloat(form.price),
-          deviceLimit: 1,
-          dataLimitGb: form.dataLimit ? parseInt(form.dataLimit, 10) : undefined,
-          features: [],
-          isActive: true,
-          ...throttlePayload,
-        }),
+      if (!loaded) return;
+      await api.put(`/api/packages/${params.id}`, {
+        ...packageBody(loaded),
+        name: form.name,
+        description: form.description || null,
+        durationMinutes: parseInt(form.duration, 10),
+        downloadSpeedMbps: parseInt(form.downloadSpeed, 10),
+        uploadSpeedMbps: form.uploadSpeed ? parseInt(form.uploadSpeed, 10) : null,
+        priceTsh: parseFloat(form.price),
+        dataLimitGb: form.dataLimit ? parseInt(form.dataLimit, 10) : null,
+        ...throttlePayload,
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to update package");
-      }
 
       setSavedForm(form);
       toast.success("Package updated!");

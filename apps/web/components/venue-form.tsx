@@ -1,5 +1,6 @@
 "use client";
 
+import type { VenueRecord, VenueResponse, VenueStatus } from "@hashifi/types";
 import { ArrowLeft, Building2, Crosshair, Loader, MapPin, Save, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -14,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import VenueLocationMap from "@/components/venue-location-map";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { api } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 import { reverseGeocodeCoordinates } from "@/lib/geocoding";
 import {
   COUNTRIES,
@@ -28,9 +31,6 @@ import {
   isWithinCountry,
   TANZANIA_BOUNDS,
 } from "@/lib/location-data";
-import type { Venue } from "@/lib/types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface VenueFormData {
   name: string;
@@ -46,7 +46,7 @@ interface VenueFormData {
   contactPhone: string;
   contactEmail: string;
   description: string;
-  status: Venue["status"];
+  status: VenueStatus;
   latitude: string;
   longitude: string;
 }
@@ -70,7 +70,7 @@ const emptyFormData = (): VenueFormData => ({
   longitude: "",
 });
 
-function venueToFormData(venue: Venue): VenueFormData {
+function venueToFormData(venue: VenueRecord): VenueFormData {
   return {
     name: venue.name,
     address: venue.address ?? "",
@@ -150,13 +150,7 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
     const fetchVenue = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/venues/${venueId}`, {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Failed to load venue");
-
-        const data = await res.json();
-        const venue = data.venue as Venue;
+        const { venue } = await api.get<VenueResponse>(`/api/venues/${venueId}`);
         const nextForm = venueToFormData(venue);
         setFormData(nextForm);
         setSavedFormData(nextForm);
@@ -379,29 +373,25 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
     }
   };
 
-  const buildRequestBody = () => {
-    const body: Record<string, unknown> = {
-      name: formData.name,
-      region: formData.region,
-      city: formData.city,
-      country: formData.country,
-      status: formData.status,
-    };
-
-    if (formData.description) body.description = formData.description;
-    if (formData.address) body.address = formData.address;
-    if (formData.road) body.road = formData.road;
-    if (formData.street) body.street = formData.street;
-    if (formData.ward) body.ward = formData.ward;
-    if (formData.district) body.district = formData.district;
-    if (formData.postalCode) body.postalCode = formData.postalCode;
-    if (formData.contactPhone) body.contactPhone = formData.contactPhone;
-    if (formData.contactEmail) body.contactEmail = formData.contactEmail;
-    if (formData.latitude) body.latitude = parseFloat(formData.latitude);
-    if (formData.longitude) body.longitude = parseFloat(formData.longitude);
-
-    return body;
-  };
+  // The whole venue: an update replaces it, and an emptied field is cleared.
+  const buildRequestBody = () => ({
+    name: formData.name,
+    region: formData.region,
+    city: formData.city,
+    country: formData.country,
+    status: formData.status,
+    description: formData.description || null,
+    address: formData.address || null,
+    road: formData.road || null,
+    street: formData.street || null,
+    ward: formData.ward || null,
+    district: formData.district || null,
+    postalCode: formData.postalCode || null,
+    contactPhone: formData.contactPhone || null,
+    contactEmail: formData.contactEmail || null,
+    latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+    longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -415,20 +405,8 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
     let createSuccess = false;
     try {
       const body = buildRequestBody();
-      const url = isEdit ? `${API_URL}/api/venues/${venueId}` : `${API_URL}/api/venues`;
-      const method = isEdit ? "PATCH" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || `Failed to ${isEdit ? "update" : "create"} venue`);
-      }
+      if (isEdit) await api.put(`/api/venues/${venueId}`, body);
+      else await api.post("/api/venues", body);
 
       toast.success(isEdit ? "Venue updated successfully!" : "Venue created successfully!");
 
@@ -441,7 +419,7 @@ export function VenueForm({ mode, venueId }: VenueFormProps) {
       flushSync(() => setSavedFormData(formData));
       router.push("/admin/venues");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "An error occurred";
+      const message = errorMessage(err, "An error occurred");
       toast.error(message);
     } finally {
       if (!createSuccess) {

@@ -1,5 +1,6 @@
 "use client";
 
+import type { VenueList, VenueRecord } from "@hashifi/types";
 import {
   Building2,
   Calendar,
@@ -32,15 +33,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { VenueLocationSummary } from "@/components/venue-location-summary";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { errorMessage } from "@/lib/errors";
 import { statusPill } from "@/lib/status-pill";
-import type { Venue } from "@/lib/types";
+
 import { formatDate } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-function getStatusColor(status: Venue["status"]) {
+function getStatusColor(status: VenueRecord["status"]) {
   switch (status) {
     case "active":
       return statusPill.success;
@@ -51,7 +51,7 @@ function getStatusColor(status: Venue["status"]) {
   }
 }
 
-function venueLocationLine(venue: Venue): string {
+function venueLocationLine(venue: VenueRecord): string {
   return [venue.city, venue.region, venue.country].filter(Boolean).join(", ");
 }
 
@@ -59,20 +59,18 @@ export default function VenuesPage() {
   const router = useRouter();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [venues, setVenues] = useState<Venue[]>([]);
+  const [venues, setVenues] = useState<VenueRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [venueToDelete, setVenueToDelete] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<VenueRecord | null>(null);
 
   const fetchVenues = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch(`${API_URL}/api/venues`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch venues");
-      const data = await res.json();
+      const data = await api.get<VenueList>("/api/venues");
       setVenues(data.venues);
     } catch {
       // Recorded, not just toasted — otherwise the empty state below claims there are no
@@ -92,14 +90,7 @@ export default function VenuesPage() {
     if (!venueToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${API_URL}/api/venues/${venueToDelete}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete venue");
-      }
+      await api.delete(`/api/venues/${venueToDelete}`);
       setVenues((prev) => prev.filter((v) => v.id !== venueToDelete));
       toast.success("Venue deleted successfully");
       router.push("/admin/venues");
@@ -318,8 +309,8 @@ export default function VenuesPage() {
                 </Badge>
                 <span className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Router className="size-3" />
-                  {selectedVenue.routerCount ?? 0} router
-                  {(selectedVenue.routerCount ?? 0) !== 1 ? "s" : ""}
+                  {selectedVenue.routerCount} router
+                  {selectedVenue.routerCount !== 1 ? "s" : ""}
                 </span>
               </div>
 

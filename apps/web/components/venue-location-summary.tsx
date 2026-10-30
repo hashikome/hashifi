@@ -1,11 +1,11 @@
+import type { VenueRecord } from "@hashifi/types";
 import { MapPin } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import type { Venue } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getVenueLocationDetails } from "@/lib/venue-location";
 
 type VenueLocationFields = Pick<
-  Venue,
+  VenueRecord,
   | "city"
   | "region"
   | "country"

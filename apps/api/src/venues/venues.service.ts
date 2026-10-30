@@ -1,10 +1,5 @@
 import type { VenueRecord } from "@hashifi/types";
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { AuditLog } from "../audit/audit-log.js";
 import type { StaffPrincipal } from "../auth/staff-guard.js";
 import { venueScope } from "../auth/venue-scope.js";
@@ -53,7 +48,6 @@ export class VenuesService {
     input: VenueInput,
     origin: RequestOrigin,
   ): Promise<VenueRecord> {
-    await this.checkOperator(input.operatorId);
     const row = await this.db.venue.create({ data: input });
     await this.record(staff, "venue_created", row.id, row.name, origin);
     return venueRecord(row, 0);
@@ -66,7 +60,6 @@ export class VenuesService {
     origin: RequestOrigin,
   ): Promise<VenueRecord> {
     await this.get(staff, id);
-    await this.checkOperator(input.operatorId);
     const row = await this.db.venue.update({
       where: { id },
       data: input,
@@ -89,19 +82,6 @@ export class VenuesService {
     }
     await this.db.venue.delete({ where: { id } });
     await this.record(staff, "venue_deleted", id, venue.name, origin);
-  }
-
-  /** A venue is operated by an active manager, or by nobody. */
-  private async checkOperator(operatorId: string | null): Promise<void> {
-    if (operatorId === null) return;
-    const operator = await this.db.staff.findUnique({ where: { id: operatorId } });
-    if (operator?.role !== "manager" || operator.status !== "active") {
-      throw new BadRequestException(
-        apiError("VALIDATION_FAILED", "Check the highlighted fields.", {
-          operatorId: "must be an active manager",
-        }),
-      );
-    }
   }
 
   private async record(
