@@ -2,6 +2,7 @@ import { toJsonValue } from "../../database/json.js";
 import type { PrismaClient } from "../../generated/prisma/client.js";
 import type { RouterAccess } from "../router-credentials.js";
 import type { RouterSync } from "../router-sync.js";
+import type { BackendSettings } from "./context.js";
 import type { RouterStore } from "./store.js";
 
 /** The router store on PostgreSQL. */
@@ -10,6 +11,7 @@ export class PrismaRouterStore implements RouterStore {
     private readonly db: PrismaClient,
     private readonly access: RouterAccess,
     private readonly sync: RouterSync,
+    readonly backend: BackendSettings,
   ) {}
 
   load(routerId: string) {

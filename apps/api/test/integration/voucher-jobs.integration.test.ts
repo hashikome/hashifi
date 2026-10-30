@@ -11,7 +11,7 @@ import { useTestDatabase } from "./harness.js";
 const t = useTestDatabase();
 
 function services() {
-  const access = new RouterAccess(new SecretBox(randomBytes(32)));
+  const access = new RouterAccess(new SecretBox(randomBytes(32)), 8728, 5);
   const audit = new AuditLog(t.db);
   const sync = new RouterSync(t.db, access, audit);
   return {
@@ -96,7 +96,7 @@ describe("voucher reconciliation", () => {
       { code: "WIFI-STUCK", status: "pending_activation", expiresIn: HOUR },
     ]);
     const { reconciler } = services();
-    expect(await reconciler.backlog()).toBe(1);
+    expect((await reconciler.backlog({})).stuckVouchers).toBe(1);
     const result = await reconciler.runOnce();
     expect(result).toEqual({ retried: 1, recovered: 0 });
     expect(await statusOf("WIFI-STUCK")).toBe("pending_activation");

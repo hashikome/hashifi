@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { intToIpv4, ipv4ToInt } from "../services/router-provision/ipv4.js";
 import { readSecret } from "./secret.js";
 
 /**
@@ -33,6 +34,17 @@ export interface AppConfig {
   mikrotik: { apiPort: number; connectTimeoutSeconds: number };
   routerManagementUrl: string | null;
   portalOrigin: string | null;
+  /**
+   * The platform side of the routers' management tunnel (ADR-0006), or null when routers are
+   * reached on their LAN (development, the router sim's LAN mode).
+   */
+  tunnel: {
+    /** CIDR; its first host is the platform, and `ROUTER_MANAGEMENT_URL` must use it. */
+    network: string;
+    platformPublicKey: string;
+    endpointHost: string;
+    endpointPort: number;
+  } | null;
   /** Background jobs (expiry, reconciliation, router polling). Off for tooling and tests. */
   jobsEnabled: boolean;
   telemetry: {
@@ -65,6 +77,21 @@ const schema = z.object({
   MIKROTIK_CONNECT_TIMEOUT: z.coerce.number().int().min(1).max(120).default(10),
   ROUTER_MANAGEMENT_URL: url.nullable().default(null),
   PORTAL_ORIGIN: url.nullable().default(null),
+  TUNNEL_NETWORK: z
+    .string()
+    .regex(/^\d{1,3}(\.\d{1,3}){3}\/(?:[89]|1\d|2[0-9])$/, "must be an IPv4 CIDR from /8 to /29")
+    .nullable()
+    .default(null),
+  TUNNEL_PLATFORM_PUBLIC_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9+/]{43}=$/, "must be a WireGuard public key")
+    .nullable()
+    .default(null),
+  TUNNEL_ENDPOINT: z
+    .string()
+    .regex(/^[A-Za-z0-9.-]+:\d{1,5}$/, "must be host:port")
+    .nullable()
+    .default(null),
   JOBS_ENABLED: z.enum(["true", "false"]).default("true"),
   SENTRY_DSN: z.url().nullable().default(null),
   SENTRY_RELEASE: z.string().min(1).nullable().default(null),
@@ -110,6 +137,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       );
     }
   }
+  const tunnel = tunnelSettings(c);
   return {
     environment: c.NODE_ENV,
     port: c.PORT,
@@ -122,6 +150,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     mikrotik: { apiPort: c.MIKROTIK_API_PORT, connectTimeoutSeconds: c.MIKROTIK_CONNECT_TIMEOUT },
     routerManagementUrl: c.ROUTER_MANAGEMENT_URL,
     portalOrigin: c.PORTAL_ORIGIN,
+    tunnel,
     jobsEnabled: c.JOBS_ENABLED === "true",
     telemetry: {
       sentryDsn: c.SENTRY_DSN,
@@ -129,4 +158,40 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       tracesSampleRate: c.SENTRY_TRACES_SAMPLE_RATE,
     },
   };
+}
+
+/**
+ * The tunnel settings are all set or all unset. When set, routers accept the RouterOS API only
+ * from the platform's tunnel address, so `ROUTER_MANAGEMENT_URL` must be that address: any
+ * other value would lock provisioning out of every router.
+ */
+function tunnelSettings(c: z.infer<typeof schema>): AppConfig["tunnel"] {
+  const values = [c.TUNNEL_NETWORK, c.TUNNEL_PLATFORM_PUBLIC_KEY, c.TUNNEL_ENDPOINT];
+  if (values.every((value) => value === null)) return null;
+  const network = c.TUNNEL_NETWORK;
+  const key = c.TUNNEL_PLATFORM_PUBLIC_KEY;
+  const endpoint = c.TUNNEL_ENDPOINT;
+  if (network === null || key === null || endpoint === null) {
+    throw new Error(
+      "Invalid configuration:\n  TUNNEL_NETWORK, TUNNEL_PLATFORM_PUBLIC_KEY and TUNNEL_ENDPOINT are set together or not at all",
+    );
+  }
+  const [address = "", prefix = ""] = network.split("/");
+  const base = ipv4ToInt(address);
+  if (base === null) throw new Error(`Invalid configuration:\n  TUNNEL_NETWORK: ${network}`);
+  const bits = Number(prefix);
+  const platform = intToIpv4(((base & ((0xffffffff << (32 - bits)) >>> 0)) >>> 0) + 1);
+  const managementHost =
+    c.ROUTER_MANAGEMENT_URL === null ? null : new URL(c.ROUTER_MANAGEMENT_URL).hostname;
+  if (managementHost !== platform) {
+    throw new Error(
+      `Invalid configuration:\n  ROUTER_MANAGEMENT_URL: must use the platform's tunnel address ${platform} when the tunnel is configured`,
+    );
+  }
+  const at = endpoint.lastIndexOf(":");
+  const endpointPort = Number(endpoint.slice(at + 1));
+  if (endpointPort < 1 || endpointPort > 65535) {
+    throw new Error("Invalid configuration:\n  TUNNEL_ENDPOINT: port out of range");
+  }
+  return { network, platformPublicKey: key, endpointHost: endpoint.slice(0, at), endpointPort };
 }

@@ -78,7 +78,7 @@ describe("venues", () => {
     const list = await c.request("GET", "/api/venues");
     expect((list.body as { venues: unknown[] }).venues.length).toBe(1);
 
-    const updated = await c.request("PATCH", `/api/venues/${id}`, { ...VENUE, name: "Home 2" });
+    const updated = await c.request("PUT", `/api/venues/${id}`, { ...VENUE, name: "Home 2" });
     expect(updated.status).toBe(200);
     expect(updated.body).toMatchObject({ venue: { name: "Home 2", operatorId: null } });
 
@@ -105,7 +105,7 @@ describe("venues", () => {
     expect(hidden.status).toBe(404);
     expect(hidden.body).toMatchObject({ code: "NOT_FOUND" });
 
-    const edit = await own.client.request("PATCH", `/api/venues/${mine.id}`, VENUE);
+    const edit = await own.client.request("PUT", `/api/venues/${mine.id}`, VENUE);
     expect(edit.status).toBe(403);
     expect((await own.client.request("POST", "/api/venues", VENUE)).status).toBe(403);
   });

@@ -122,27 +122,43 @@ export interface BackendEndpoints {
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
+/** Where routers and guests reach this API, from configuration (`AppConfig`). */
+export interface BackendSettings {
+  /** `ROUTER_MANAGEMENT_URL`, or null to find the local address on the router's subnet. */
+  managementUrl: string | null;
+  /** `PORTAL_ORIGIN`, or null to send guests to the management URL. */
+  portalOrigin: string | null;
+  /** The port this API listens on, for a management URL found on the LAN. */
+  listenPort: number;
+}
+
 /**
  * Resolve both endpoints for a router at `routerHost`.
  *
- * `ROUTER_MANAGEMENT_URL` sets the management URL; without it, the local IPv4 that shares a
- * subnet with the router is used (the purchased LAN design). `PORTAL_ORIGIN` sets the portal
- * origin; without it, guests are sent to the management URL.
+ * `managementUrl` sets the management URL; without it, the local IPv4 that shares a subnet
+ * with the router is used (the purchased LAN design). `portalOrigin` sets the portal origin;
+ * without it, guests are sent to the management URL.
  */
-export function resolveBackendEndpoints(routerHost: string): BackendEndpoints {
-  const management = resolveManagementUrl(routerHost);
-  const origin = portalOriginFor(management.url);
+export function resolveBackendEndpoints(
+  routerHost: string,
+  settings: BackendSettings,
+): BackendEndpoints {
+  const management = resolveManagementUrl(routerHost, settings);
+  const origin = portalOriginFor(management.url, settings.portalOrigin);
   const host = new URL(origin).hostname;
   return { management, portal: { origin, host, hostIsIp: IPV4.test(host) } };
 }
 
-/** The portal origin for a management URL: `PORTAL_ORIGIN`, or the management URL itself. */
-export function portalOriginFor(managementUrl: string): string {
-  return (process.env.PORTAL_ORIGIN ?? managementUrl).replace(/\/+$/, "");
+/** The portal origin: the configured one, or the management URL itself. */
+export function portalOriginFor(managementUrl: string, portalOrigin: string | null): string {
+  return (portalOrigin ?? managementUrl).replace(/\/+$/, "");
 }
 
-function resolveManagementUrl(routerHost: string): { url: string; ip: string } {
-  const explicit = process.env.ROUTER_MANAGEMENT_URL;
+function resolveManagementUrl(
+  routerHost: string,
+  settings: BackendSettings,
+): { url: string; ip: string } {
+  const explicit = settings.managementUrl;
   if (explicit) {
     const url = explicit.replace(/\/+$/, "");
     const ip = new URL(url).hostname;
@@ -154,7 +170,7 @@ function resolveManagementUrl(routerHost: string): { url: string; ip: string } {
     return { url, ip };
   }
 
-  const port = process.env.PORT ?? "8080";
+  const port = settings.listenPort;
   const candidates: string[] = [];
 
   for (const addrs of Object.values(networkInterfaces())) {
@@ -332,12 +348,13 @@ export function buildContext(
   profile: RouterProfile,
   dialect: Dialect,
   dryRun: boolean,
+  settings: BackendSettings,
 ): ProvisionContext {
   return {
     router,
     profile,
     dialect,
-    endpoints: resolveBackendEndpoints(router.ipAddress),
+    endpoints: resolveBackendEndpoints(router.ipAddress, settings),
     hotspot: buildHotspotPlan(router, profile),
     dryRun,
   };

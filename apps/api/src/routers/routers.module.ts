@@ -22,6 +22,10 @@ import { PrismaRouterStore } from "../services/router-provision/prisma-store.js"
 import { RouterSync } from "../services/router-sync.js";
 import { VoucherExpiry } from "../vouchers/voucher-expiry.js";
 import { VoucherReconciler } from "../vouchers/voucher-reconciler.js";
+import { backendSettings } from "./backend-settings.js";
+import { RoutersController } from "./routers.controller.js";
+import { RoutersService } from "./routers.service.js";
+import { TUNNEL_ALLOCATOR, TunnelAllocator } from "./tunnel-allocator.js";
 
 const MINUTE = 60_000;
 
@@ -71,7 +75,11 @@ export class BackgroundJobs implements OnApplicationBootstrap, OnApplicationShut
       provide: RouterAccess,
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) =>
-        new RouterAccess(new SecretBox(config.encryptionKey), config.mikrotik.apiPort),
+        new RouterAccess(
+          new SecretBox(config.encryptionKey),
+          config.mikrotik.apiPort,
+          config.mikrotik.connectTimeoutSeconds,
+        ),
     },
     {
       provide: AuditLog,
@@ -86,9 +94,9 @@ export class BackgroundJobs implements OnApplicationBootstrap, OnApplicationShut
     },
     {
       provide: PrismaRouterStore,
-      inject: [PrismaService, RouterAccess, RouterSync],
-      useFactory: (db: PrismaService, access: RouterAccess, sync: RouterSync) =>
-        new PrismaRouterStore(db, access, sync),
+      inject: [PrismaService, RouterAccess, RouterSync, APP_CONFIG],
+      useFactory: (db: PrismaService, access: RouterAccess, sync: RouterSync, config: AppConfig) =>
+        new PrismaRouterStore(db, access, sync, backendSettings(config)),
     },
     {
       provide: LiveMonitor,
@@ -106,8 +114,20 @@ export class BackgroundJobs implements OnApplicationBootstrap, OnApplicationShut
       useFactory: (db: PrismaService, sync: RouterSync, audit: AuditLog) =>
         new VoucherReconciler(db, sync, audit),
     },
+    {
+      provide: TUNNEL_ALLOCATOR,
+      inject: [PrismaService, APP_CONFIG],
+      useFactory: (db: PrismaService, config: AppConfig) =>
+        config.tunnel === null
+          ? null
+          : new TunnelAllocator(db, new SecretBox(config.encryptionKey), {
+              network: config.tunnel.network,
+            }),
+    },
+    RoutersService,
     BackgroundJobs,
   ],
+  controllers: [RoutersController],
   exports: [
     RouterAccess,
     AuditLog,

@@ -1,5 +1,5 @@
 import type { VenueList, VenueResponse } from "@hashifi/types";
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put } from "@nestjs/common";
 import { CurrentStaff, Roles, type StaffPrincipal } from "../auth/staff-guard.js";
 import { idParam, Origin } from "../http/request-origin.js";
 import { parseInput } from "../http/validation.js";
@@ -33,7 +33,8 @@ export class VenuesController {
     return { venue: await this.venues.create(staff, parseInput(venueInput, body), origin) };
   }
 
-  @Patch(":id")
+  /** Replaces the venue: the form sends all of it. */
+  @Put(":id")
   @Roles("admin")
   async update(
     @CurrentStaff() staff: StaffPrincipal,

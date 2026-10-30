@@ -20,6 +20,9 @@ export interface RouterTunnel {
 /** The PostgreSQL advisory lock that serialises tunnel allocations (any fixed number). */
 const ALLOCATION_LOCK = 880_001;
 
+/** The allocator, or null when no tunnel is configured (routers reached on their LAN). */
+export const TUNNEL_ALLOCATOR = Symbol("TUNNEL_ALLOCATOR");
+
 /**
  * Gives each router a tunnel address and key pair, once. The private key is stored sealed so
  * the bootstrap script can be regenerated without orphaning the key already pasted on the

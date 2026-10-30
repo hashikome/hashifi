@@ -181,7 +181,85 @@ export interface VenueList {
   venues: VenueRecord[];
 }
 
-/** `GET`, `POST` and `PATCH /api/venues/:id`. */
+/** `GET` and `PUT /api/venues/:id`, and `POST /api/venues`. */
 export interface VenueResponse {
   venue: VenueRecord;
+}
+
+export type RouterStatus = "online" | "offline" | "provisioning" | "error";
+
+/** A router as the API shows it. Credentials and tunnel keys never leave the API. */
+export interface RouterRecord {
+  id: string;
+  venueId: string;
+  venueName: string;
+  name: string;
+  model: string | null;
+  identity: string | null;
+  /** The router's address on its venue LAN. */
+  ipAddress: string;
+  hotspotGatewayIp: string | null;
+  macAddress: string | null;
+  apiUsername: string | null;
+  /** Whether an API password is stored; the password itself is never returned. */
+  hasApiPassword: boolean;
+  enableHotspot: boolean;
+  hotspotName: string | null;
+  hotspotInterface: string | null;
+  ssid: string | null;
+  networkRange: string | null;
+  /**
+   * Extra RouterOS commands run at provisioning. Admins only: null for managers, since it may
+   * hold credentials.
+   */
+  provisioningCommand: string | null;
+  /** The router's address in the management tunnel, once allocated. */
+  tunnelAddress: string | null;
+  rosVersion: string | null;
+  architecture: string | null;
+  provisionedAt: Timestamp | null;
+  lastSeenAt: Timestamp | null;
+  uptimeSeconds: number;
+  connectedDevices: number;
+  status: RouterStatus;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+/** `GET /api/routers`. */
+export interface RouterList {
+  routers: RouterRecord[];
+}
+
+/** `GET` and `PUT /api/routers/:id`, `POST /api/routers`, and `POST /api/routers/:id/sync`. */
+export interface RouterResponse {
+  router: RouterRecord;
+}
+
+/** `GET /api/routers/provisioning-backlog`: guests waiting on a router, in the caller's venues. */
+export interface ProvisioningBacklog {
+  stuckVouchers: number;
+  unprovisionedPayments: number;
+}
+
+/**
+ * `POST /api/routers/:id/bootstrap-script`. Carries the router's API password, the one response
+ * that does: it has to be typed into the router.
+ */
+export interface BootstrapScriptResponse {
+  script: string;
+  warnings: string[];
+  resolved: {
+    routerName: string;
+    ipAddress: string;
+    lanCidr: string;
+    gatewayIp: string;
+    apiUsername: string;
+    apiPassword: string;
+    apiPort: number;
+    ssid: string;
+    apiPasswordGenerated: boolean;
+  };
+  /** Whether the script opens the management tunnel. */
+  tunnel: boolean;
 }

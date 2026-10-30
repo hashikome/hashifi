@@ -43,6 +43,8 @@ export interface BootstrapInput {
   ssid?: string;
   /** The management tunnel to the platform, or null for a router the API reaches on its LAN. */
   tunnel: ManagementTunnel | null;
+  /** The RouterOS API port the router listens on (`MIKROTIK_API_PORT`). */
+  apiPort: number;
 }
 
 export interface BootstrapScript {
@@ -196,7 +198,7 @@ export function buildBootstrapScript(input: BootstrapInput): BootstrapScript {
   const apiUsername = input.apiUsername.trim();
   const apiPasswordGenerated = !input.apiPassword;
   const apiPassword = input.apiPassword || generatePassword();
-  const apiPort = Number(process.env.MIKROTIK_API_PORT ?? 8728);
+  const apiPort = input.apiPort;
 
   const derivedGateway = firstHostOf(ipAddress, lanPrefix);
   const gatewayIp = input.gatewayIp?.trim() || derivedGateway || "";

@@ -1,5 +1,6 @@
 import type { Router } from "../../generated/prisma/client.js";
 import type { RouterCredentials } from "../mikrotik.js";
+import type { BackendSettings } from "./context.js";
 import type { RouterCapabilities, RouterProfile } from "./probe.js";
 
 export type RouterRow = Router;
@@ -18,6 +19,8 @@ export interface ProvisionOutcome {
  * in-memory one for a virtual router.
  */
 export interface RouterStore {
+  /** Where the router and its guests reach this API. */
+  readonly backend: BackendSettings;
   load(routerId: string): Promise<RouterRow | null>;
   /** Credentials for the router's management target, or null when none are usable. */
   credentials(router: RouterRow): RouterCredentials | null;

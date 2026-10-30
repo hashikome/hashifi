@@ -1,8 +1,6 @@
 import { RouterOSAPI } from "routeros";
 import { minutesToRosUptime } from "../utils/duration.js";
 
-const CONNECT_TIMEOUT = Number(process.env.MIKROTIK_CONNECT_TIMEOUT ?? 10);
-
 export type MikroTikConn = RouterOSAPI;
 
 /**
@@ -14,6 +12,8 @@ export interface RouterCredentials {
   port: number;
   username: string;
   password: string;
+  /** How long to wait for the router to answer a connection (`MIKROTIK_CONNECT_TIMEOUT`). */
+  timeoutSeconds: number;
 }
 
 export interface CreateHotspotUserOptions {
@@ -169,25 +169,29 @@ export async function connectToRouter(creds: RouterCredentials): Promise<MikroTi
     user: creds.username,
     password: creds.password,
     port: creds.port,
-    timeout: CONNECT_TIMEOUT,
+    timeout: creds.timeoutSeconds,
     keepalive: false,
   });
 
-  const timeoutMs = CONNECT_TIMEOUT * 1000;
-  await Promise.race([
-    conn.connect(),
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () =>
-          reject(
-            new Error(
-              `Connection to ${creds.host}:${creds.port} timed out after ${CONNECT_TIMEOUT}s`,
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    await Promise.race([
+      conn.connect(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Connection to ${creds.host}:${creds.port} timed out after ${creds.timeoutSeconds}s`,
+              ),
             ),
-          ),
-        timeoutMs,
-      ),
-    ),
-  ]);
+          creds.timeoutSeconds * 1000,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
 
   return conn;
 }

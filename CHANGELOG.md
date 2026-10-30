@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Routers through the NestJS API: managers see their venues' routers and backlog; admins add,
+  replace, delete, sync, probe, verify, set up and provision them. The bootstrap script is
+  generated for a saved router and opens its management tunnel when one is configured, with
+  one API password and key however often it is generated. No response carries a credential
+  but the script. Venue updates are `PUT`.
+- Fixed: the provisioning backlog counted every venue for managers; a connection test could
+  send a router's stored password to any address typed into the form.
+
 - Venues through the NestJS API: managers see only the venues they operate (another's is not
   found), admins manage them, every change is audited, and a venue with routers cannot be
   deleted. Every error has one shape (`code`, `message`, `details`); every request is a wide

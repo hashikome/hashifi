@@ -43,7 +43,16 @@ sit behind an ISP router, often behind carrier-grade NAT, with no inbound port a
    the tunnel network (its first host is the platform), and a key pair whose private key is
    stored sealed (AES-256-GCM). The bootstrap script can be regenerated, and is safe to paste
    twice; generating fresh keys each time would orphan the key already on the router.
-   Concurrent allocations never share an address (a unique index and a conditional claim).
+   Concurrent allocations queue on a PostgreSQL transaction lock; the unique index on the
+   address remains the guarantee. The script is generated for a saved router
+   (`POST /api/routers/:id/bootstrap-script`), which allocates the tunnel on first use; the
+   platform side comes from `TUNNEL_NETWORK`, `TUNNEL_PLATFORM_PUBLIC_KEY` and
+   `TUNNEL_ENDPOINT`, set together or not at all, and configuration refuses a
+   `ROUTER_MANAGEMENT_URL` other than the network's first host, since routers accept the API
+   from that address only.
+5. **Deleting a router frees its tunnel address** for the next router. This is safe only
+   because the platform admits a peer by its public key: removing a router must remove its
+   peer, so the physical router cannot use the address once it is reassigned.
 
 ## Evidence
 
@@ -61,8 +70,13 @@ re-establishes the tunnel within about 45 seconds; a router switched between an 
   networking, or a userspace WireGuard sidecar). Cloudflare's proxy does not carry WireGuard.
   This is shared-platform work owned by the infra repository; a tunnel concentrator may serve
   other products.
-- **The bootstrap endpoint.** It passes `tunnel: null` until the NestJS router module (M4)
-  calls `TunnelAllocator`.
+- **Peer registration.** The platform must add a router's public key as a peer (allowed IP:
+  its tunnel address) when the tunnel is allocated, and remove it when the router is deleted
+  (decision 5). Infra-owned, with the endpoint.
+- **Long router operations behind the proxy.** Setup takes about 17 seconds on the sim and
+  completes over HTTP (a 25-second request was checked on Bun), but Cloudflare ends a proxied
+  request at 100 seconds. If a real board approaches that, setup becomes a job whose progress
+  the live view streams.
 - **A physical board.** WireGuard is in RouterOS 7's main package; confirm on the board bought
   for M8.
 - **The IP binding** (`ip-binding-backend`) bypasses the hotspot for the management address,

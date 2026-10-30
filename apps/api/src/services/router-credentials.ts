@@ -2,9 +2,6 @@ import type { SecretBox } from "../crypto/secret-box.js";
 import type { Router } from "../generated/prisma/client.js";
 import type { RouterCredentials } from "./mikrotik.js";
 
-/** The RouterOS API port used when a router has no management target of its own. */
-export const DEFAULT_API_PORT = Number(process.env.MIKROTIK_API_PORT ?? 8728);
-
 /**
  * How this API reaches a router: its management target and decrypted API credentials.
  *
@@ -14,7 +11,8 @@ export const DEFAULT_API_PORT = Number(process.env.MIKROTIK_API_PORT ?? 8728);
 export class RouterAccess {
   constructor(
     private readonly box: SecretBox,
-    readonly apiPort: number = DEFAULT_API_PORT,
+    readonly apiPort: number,
+    readonly connectTimeoutSeconds: number,
   ) {}
 
   managementTarget(router: Router): { host: string; port: number } {
@@ -29,6 +27,7 @@ export class RouterAccess {
         ...this.managementTarget(router),
         username: router.apiUsername,
         password: this.box.open(router.apiPasswordEncrypted),
+        timeoutSeconds: this.connectTimeoutSeconds,
       };
     } catch {
       return null;

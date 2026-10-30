@@ -20,6 +20,7 @@ import { RouterAccess } from "../apps/api/src/services/router-credentials.js";
 import { RouterLogger } from "../apps/api/src/services/router-log.js";
 import { buildBootstrapScript } from "../apps/api/src/services/router-provision/bootstrap.js";
 import {
+  type BackendSettings,
   buildHotspotPlan,
   portalOriginFor,
   resolveBackendEndpoints,
@@ -352,6 +353,7 @@ async function bootstrap(): Promise<void> {
     gatewayIp: LAN.gatewayIp,
     apiUsername: API_USER,
     apiPassword,
+    apiPort: API_PORT,
     tunnel: tunnel && {
       routerPrivateKey: tunnel.router.privateKey,
       routerAddress: `${TUNNEL.routerIp}/${TUNNEL.prefix}`,
@@ -389,6 +391,15 @@ async function bootstrap(): Promise<void> {
 /** The management URL the router uses to reach "the API" in this sim. */
 function managementUrl(state: SimState): string {
   return state.tunnel ? `http://${TUNNEL.serverIp}:${BACKEND_PORT}` : BACKEND_URL;
+}
+
+/** The sim's backend settings, as the API takes them from its configuration. */
+function simBackend(state: SimState): BackendSettings {
+  return {
+    managementUrl: managementUrl(state),
+    portalOrigin: process.env.PORTAL_ORIGIN ?? null,
+    listenPort: BACKEND_PORT,
+  };
 }
 
 /**
@@ -479,7 +490,7 @@ async function simServices(state: SimState): Promise<SimServices> {
   const encryptionKey = state.encryptionKey ?? randomBytes(32).toString("hex");
   const box = new SecretBox(Buffer.from(encryptionKey, "hex"));
   const db = createPrismaClient(simDatabaseUrl());
-  const access = new SimRouterAccess(box, API_PORT);
+  const access = new SimRouterAccess(box, API_PORT, 10);
   const sync = new RouterSync(db, access, new AuditLog(db));
   const fields = {
     name: "hashifi-sim",
@@ -506,12 +517,18 @@ async function simServices(state: SimState): Promise<SimServices> {
   if (router.id !== state.routerId || encryptionKey !== state.encryptionKey) {
     writeState({ ...state, routerId: router.id, encryptionKey });
   }
-  return { db, access, sync, store: new PrismaRouterStore(db, access, sync), router };
+  return {
+    db,
+    access,
+    sync,
+    store: new PrismaRouterStore(db, access, sync, simBackend(state)),
+    router,
+  };
 }
 
 /** Serves the portal pages the router fetches, as the API's captive-portal route does. */
 function serveBackend(state: SimState): ReturnType<typeof Bun.serve> {
-  const origin = portalOriginFor(managementUrl(state));
+  const origin = simBackend(state).portalOrigin ?? managementUrl(state);
   return Bun.serve({
     hostname: IN_HUB ? "0.0.0.0" : "127.0.0.1",
     port: BACKEND_PORT,
@@ -537,7 +554,6 @@ async function setup(): Promise<void> {
   const state = readState();
   ensureSimDatabase();
   if (delegateToHub(state, "setup")) return;
-  process.env.ROUTER_MANAGEMENT_URL = managementUrl(state);
   const { db, store, router } = await simServices(state);
   const backend = serveBackend(state);
   try {
@@ -563,7 +579,6 @@ async function verify(): Promise<void> {
   const state = readState();
   ensureSimDatabase();
   if (delegateToHub(state, "verify")) return;
-  process.env.ROUTER_MANAGEMENT_URL = managementUrl(state);
   const { db, access, router } = await simServices(state);
   try {
     const creds = access.credentials(router);
@@ -573,7 +588,7 @@ async function verify(): Promise<void> {
     const report = await probeVerify(creds, logger, {
       dialect: dialectFor(profile),
       plan: buildHotspotPlan(router, profile),
-      endpoints: resolveBackendEndpoints(router.ipAddress),
+      endpoints: resolveBackendEndpoints(router.ipAddress, simBackend(state)),
     });
     for (const check of report.checks) {
       console.log(
@@ -742,7 +757,10 @@ async function guestRun(): Promise<void> {
 
 /** Every step a guest takes, from joining the network to being cut off at expiry. */
 async function guestTest(): Promise<void> {
-  const portalOrigin = portalOriginFor(managementUrl(readState()));
+  const portalOrigin = portalOriginFor(
+    managementUrl(readState()),
+    process.env.PORTAL_ORIGIN ?? null,
+  );
   const shell = await GuestShell.open();
   const results: { step: string; ok: boolean; detail: string }[] = [];
   const record = (step: string, ok: boolean, detail: string) => {

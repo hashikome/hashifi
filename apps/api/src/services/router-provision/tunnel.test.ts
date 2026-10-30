@@ -20,6 +20,7 @@ const script = buildBootstrapScript({
   ipAddress: "192.168.0.161",
   gatewayIp: "192.168.0.1",
   apiUsername: "hashifi",
+  apiPort: 8728,
   apiPassword: "p".repeat(64),
   tunnel: TUNNEL,
 }).script;
@@ -74,6 +75,7 @@ describe("the bootstrap brings the management tunnel up", () => {
       routerName: "lan",
       ipAddress: "192.168.0.161",
       apiUsername: "hashifi",
+      apiPort: 8728,
       apiPassword: "x".repeat(24),
       tunnel: null,
     }).script;

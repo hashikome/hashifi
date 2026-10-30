@@ -247,7 +247,7 @@ export async function setupRouter(
     let managementIp: string | null = null;
     let managementError: string | null = null;
     try {
-      managementIp = resolveBackendEndpoints(router.ipAddress).management.ip;
+      managementIp = resolveBackendEndpoints(router.ipAddress, store.backend).management.ip;
     } catch (err) {
       managementError = err instanceof Error ? err.message : String(err);
     }
@@ -413,7 +413,7 @@ export async function setupRouter(
         selfTest = await probeVerify(creds, logger, {
           dialect: dialectFor(profile),
           plan,
-          endpoints: resolveBackendEndpoints(router.ipAddress),
+          endpoints: resolveBackendEndpoints(router.ipAddress, store.backend),
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

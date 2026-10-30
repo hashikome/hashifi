@@ -185,7 +185,7 @@ export async function provisionRouter(
 
   let ctx: ProvisionContext;
   try {
-    ctx = buildContext(router, profile, dialectFor(profile), dryRun);
+    ctx = buildContext(router, profile, dialectFor(profile), dryRun, store.backend);
   } catch (err) {
     // Backend address could not be resolved — a config problem, not a router problem.
     const message = err instanceof Error ? err.message : String(err);

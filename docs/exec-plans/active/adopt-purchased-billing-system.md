@@ -114,7 +114,27 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     foreign-origin form post and an origin-less write refused) and
     `http-events.integration.test.ts` (events for a 401, a sign-in route and a scoped 404,
     with no id or query value in them).
-  - [ ] The remaining routes, each through `venueScope` and the guard: routers, packages,
+  - [x] (2026-10-30) Routers (`src/routers/`). Managers list and read their venues' routers
+    and the provisioning backlog, now scoped to their venues (finding 3); everything else is
+    admin-only. `routerRecord` is an allowlist: no credential, key or sealed value leaves, and
+    `provisioningCommand` (free RouterOS commands, which may hold credentials) goes only to
+    admins. Status, versions and tunnels are never taken from a request. Updates are `PUT`
+    (the form sends the whole router; an empty password keeps the stored one), and a router
+    cannot change venue. The bootstrap script is generated for a saved router: it creates the
+    API password and the tunnel once and stores them sealed, so it is the same script each
+    time (`Cache-Control: no-store`). `test-connection` is for unsaved routers only and takes
+    every credential, so a stored password is never sent to an address typed into a form; a
+    saved router is tested by probing its stored target. An unreachable router is a 502 with
+    `ROUTER_<KIND>`. Provisioning takes its endpoints, API port and connect timeout from
+    `AppConfig` instead of `process.env`; tunnel settings are in config (ADR-0006).
+    Acceptance: `routers.integration.test.ts` (CRUD with no secret in any body; request
+    cannot set status or tunnel; a manager's scope and 403 on all eleven write and router
+    routes; the scoped backlog; one password across two scripts; a 502 within the connect
+    timeout; test-connection needs every credential) and
+    `routers-tunnel.integration.test.ts` (one tunnel across two scripts, opened to the
+    platform). Router sim after the configuration change: a fresh CHR set up in 17 s in LAN
+    mode, the guest test 6/6, and set up and verified over the tunnel.
+  - [ ] The remaining routes, each through `venueScope` and the guard: packages,
     vouchers, customers (devices), sessions, analytics, revenue, portal settings, team, audit.
     Still to apply as they land:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
@@ -125,7 +145,12 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     - The web reads sign-in state from `/api/me`, not `get-session` (which still answers for
       someone suspended after signing in). The Team page deletes a suspended person's
       sessions, and resets a lost authenticator with a server-side admin action.
-    - Uploads, and the web's client module on `@hashifi/types`.
+    - Uploads, and the web's client module on `@hashifi/types`. The web then follows the API:
+      errors are `message` (not `error`), updates are `PUT`, and router onboarding saves the
+      router before showing its bootstrap script (the create form opens the dialog first
+      today). The provisioning report types move into `@hashifi/types` with it.
+    - Not yet: refusing a second setup while one runs needs a staleness rule, since a crash
+      would otherwise leave a router `provisioning` for good.
 - [ ] M5 Captive portal in the web, and the security pass.
 - [ ] M6 Mobile-money payments (Snippe) and customers.
 - [ ] M7 Release pipeline and deployment.

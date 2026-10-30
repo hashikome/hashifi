@@ -33,7 +33,10 @@ export class CapturingEmailSender implements EmailSender {
 }
 
 /** The API on a free port, on the test database, for every test in the file. */
-export function useApi(): { readonly url: string; readonly email: CapturingEmailSender } {
+export function useApi(env: Record<string, string> = {}): {
+  readonly url: string;
+  readonly email: CapturingEmailSender;
+} {
   const email = new CapturingEmailSender();
   const holder: { app: NestExpressApplication | null; url: string } = { app: null, url: "" };
   beforeAll(async () => {
@@ -44,6 +47,7 @@ export function useApi(): { readonly url: string; readonly email: CapturingEmail
       BETTER_AUTH_SECRET: "cd".repeat(32),
       FRONTEND_ORIGIN,
       JOBS_ENABLED: "false",
+      ...env,
     });
     const app = await bootstrap(config, { port: 0, email });
     holder.app = app;

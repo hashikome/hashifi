@@ -35,6 +35,28 @@ describe("loadConfig", () => {
     expect(config.auth.trustedProxies).toEqual(["10.0.1.0/24", "10.0.2.5"]);
   });
 
+  test("the tunnel settings go together, and management must be the platform's address", () => {
+    const tunnel = {
+      ...BASE,
+      TUNNEL_NETWORK: "10.88.0.0/16",
+      TUNNEL_PLATFORM_PUBLIC_KEY: `${"A".repeat(43)}=`,
+      TUNNEL_ENDPOINT: "tunnel.example.com:51820",
+    };
+    expect(loadConfig(BASE).tunnel).toBeNull();
+    expect(() => loadConfig({ ...BASE, TUNNEL_NETWORK: "10.88.0.0/16" })).toThrow(/together/);
+    expect(() => loadConfig(tunnel)).toThrow(/platform's tunnel address 10.88.0.1/);
+    expect(() => loadConfig({ ...tunnel, ROUTER_MANAGEMENT_URL: "http://10.88.0.9:8080" })).toThrow(
+      /10.88.0.1/,
+    );
+    const config = loadConfig({ ...tunnel, ROUTER_MANAGEMENT_URL: "http://10.88.0.1:8080" });
+    expect(config.tunnel).toEqual({
+      network: "10.88.0.0/16",
+      platformPublicKey: `${"A".repeat(43)}=`,
+      endpointHost: "tunnel.example.com",
+      endpointPort: 51820,
+    });
+  });
+
   test("blank optional values count as unset", () => {
     expect(loadConfig({ ...BASE, PORTAL_ORIGIN: "", PORT: " " }).portalOrigin).toBeNull();
   });

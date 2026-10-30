@@ -1,5 +1,6 @@
 import type { AuditLog } from "../audit/audit-log.js";
 import type { PrismaClient } from "../generated/prisma/client.js";
+import type { VenueWhereInput } from "../generated/prisma/models.js";
 import { enrichWideEvent } from "../observability/wide-event.js";
 import { describeFailures, outcomeOk, type RouterSync } from "../services/router-sync.js";
 
@@ -68,13 +69,28 @@ export class VoucherReconciler {
     return { retried: stuck.length, recovered };
   }
 
-  /** Vouchers still waiting on a router, within the window this retries. */
-  async backlog(now: Date = new Date()): Promise<number> {
-    return this.db.voucher.count({
-      where: {
-        status: "pending_activation",
-        activatedAt: { gt: new Date(now.getTime() - MAX_AGE_MS) },
-      },
-    });
+  /**
+   * Guests still waiting on a router, within the window this retries, in the given venues:
+   * redeemed vouchers no router has confirmed, and payments captured without access.
+   */
+  async backlog(
+    venues: VenueWhereInput,
+    now: Date = new Date(),
+  ): Promise<{ stuckVouchers: number; unprovisionedPayments: number }> {
+    const cutoff = new Date(now.getTime() - MAX_AGE_MS);
+    const [stuckVouchers, unprovisionedPayments] = await Promise.all([
+      this.db.voucher.count({
+        where: { status: "pending_activation", activatedAt: { gt: cutoff }, venue: venues },
+      }),
+      this.db.payment.count({
+        where: {
+          status: "paid",
+          routerProvisionedAt: null,
+          paidAt: { gt: cutoff },
+          venue: venues,
+        },
+      }),
+    ]);
+    return { stuckVouchers, unprovisionedPayments };
   }
 }

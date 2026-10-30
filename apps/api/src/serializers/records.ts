@@ -1,10 +1,11 @@
 import type {
   PackageRecord,
   PortalSettingsRecord,
+  RouterRecord,
   VenueRecord,
   VoucherRecord,
 } from "@hashifi/types";
-import type { Package, PortalSetting, Venue, Voucher } from "../generated/prisma/client.js";
+import type { Package, PortalSetting, Router, Venue, Voucher } from "../generated/prisma/client.js";
 
 /**
  * The only place database rows become API records (`@hashifi/types`): decimals as strings,
@@ -113,6 +114,42 @@ export function venueRecord(row: Venue, routerCount: number): VenueRecord {
     operatorId: row.operatorId,
     status: row.status,
     routerCount,
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+/** An allowlist, so a column added later (a key, a secret) stays out until it is mapped. */
+export function routerRecord(
+  row: Router & { venue: { name: string } },
+  audience: "admin" | "manager",
+): RouterRecord {
+  return {
+    id: row.id,
+    venueId: row.venueId,
+    venueName: row.venue.name,
+    name: row.name,
+    model: row.model,
+    identity: row.identity,
+    ipAddress: row.ipAddress,
+    hotspotGatewayIp: row.hotspotGatewayIp,
+    macAddress: row.macAddress,
+    apiUsername: row.apiUsername,
+    hasApiPassword: row.apiPasswordEncrypted !== null,
+    enableHotspot: row.enableHotspot,
+    hotspotName: row.hotspotName,
+    hotspotInterface: row.hotspotInterface,
+    ssid: row.ssid,
+    networkRange: row.networkRange,
+    provisioningCommand: audience === "admin" ? row.provisioningCommand : null,
+    tunnelAddress: row.tunnelAddress,
+    rosVersion: row.rosVersion,
+    architecture: row.architecture,
+    provisionedAt: isoOrNull(row.provisionedAt),
+    lastSeenAt: isoOrNull(row.lastSeenAt),
+    uptimeSeconds: row.uptimeSeconds,
+    connectedDevices: row.connectedDevices,
+    status: row.status,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
