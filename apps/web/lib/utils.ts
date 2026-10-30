@@ -81,3 +81,12 @@ export function formatDate(
       return `${day}${suffix(day)} ${longMonth} ${year}, ${time}`;
   }
 }
+
+/** A business month (YYYY-MM) as a chart label, such as "Oct 2026". */
+export function businessMonthLabel(month: string): string {
+  const [year = 0, monthNumber = 1] = month.split("-").map(Number);
+  return new Date(year, monthNumber - 1, 1).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+}

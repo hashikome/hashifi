@@ -1,5 +1,13 @@
 "use client";
 
+import type {
+  AnalyticsSummary,
+  DailyUsage as DailyUsageReport,
+  DeviceTypeShares,
+  MonthlyTrend,
+  PackageShares,
+  TopVenues,
+} from "@hashifi/types";
 import {
   BarChart3,
   Building2,
@@ -40,10 +48,9 @@ import {
 } from "@/components/month-picker";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { parseLocalDate } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { businessMonthLabel, parseLocalDate } from "@/lib/utils";
 
 type DailyUsage = {
   date: string;
@@ -140,71 +147,52 @@ export default function AnalyticsPage() {
       try {
         const { from, to } = monthRange(selectedMonth);
 
-        const baseRequests = [
-          fetch(`${API_URL}/api/analytics/daily-usage?from=${from}&to=${to}`, {
-            credentials: "include",
-          }),
-          fetch(`${API_URL}/api/analytics/packages`, { credentials: "include" }),
-          fetch(`${API_URL}/api/analytics/devices`, { credentials: "include" }),
-          fetch(`${API_URL}/api/analytics/summary`, { credentials: "include" }),
-        ];
-        const adminRequests = isAdmin
-          ? [
-              fetch(`${API_URL}/api/analytics/monthly`, { credentials: "include" }),
-              fetch(`${API_URL}/api/analytics/venues`, { credentials: "include" }),
-            ]
-          : [];
-
-        const [dailyRes, pkgRes, devRes, summaryRes, monthlyRes, venueRes] = await Promise.all([
-          ...baseRequests,
-          ...adminRequests,
-        ]);
-
-        if (!mounted) return;
-
         const [daily, pkg, dev, summary, monthly, venue] = await Promise.all([
-          dailyRes.ok ? dailyRes.json() : { dailyUsage: [] },
-          pkgRes.ok ? pkgRes.json() : { packageDistribution: [] },
-          devRes.ok ? devRes.json() : { deviceTypes: [] },
-          summaryRes.ok ? summaryRes.json() : { totalCustomers: 0 },
-          monthlyRes?.ok ? monthlyRes.json() : { monthly: [] },
-          venueRes?.ok ? venueRes.json() : { topVenues: [] },
+          api.get<DailyUsageReport>(`/api/analytics/daily-usage?from=${from}&to=${to}`),
+          api.get<PackageShares>("/api/analytics/packages"),
+          api.get<DeviceTypeShares>("/api/analytics/devices"),
+          api.get<AnalyticsSummary>("/api/analytics/summary"),
+          isAdmin ? api.get<MonthlyTrend>("/api/analytics/monthly") : { months: [] },
+          isAdmin ? api.get<TopVenues>("/api/analytics/venues") : { venues: [] },
         ]);
 
         if (!mounted) return;
 
-        const dailyUsage: DailyUsage[] = (daily.dailyUsage ?? []).map(
-          (d: {
-            date: string;
-            uploadBytes: number;
-            downloadBytes: number;
-            revenueTsh: number;
-          }) => ({
-            date: d.date,
-            upload: bytesToGb(d.uploadBytes),
-            download: bytesToGb(d.downloadBytes),
-            revenue: d.revenueTsh,
-          }),
-        );
+        const dailyUsage: DailyUsage[] = daily.days.map((d) => ({
+          date: d.date,
+          upload: bytesToGb(d.uploadBytes),
+          download: bytesToGb(d.downloadBytes),
+          revenue: Number(d.revenueTsh ?? 0),
+        }));
 
         setData({
           dailyUsage,
-          monthlyRevenue: (monthly.monthly ?? []).map(
-            (m: { month: string; revenueTsh: number }) => ({
-              month: m.month,
-              revenue: m.revenueTsh,
-            }),
-          ),
-          userGrowth: (monthly.monthly ?? []).map((m: { month: string; newUsers: number }) => ({
-            month: m.month,
-            users: m.newUsers,
+          monthlyRevenue: monthly.months.map((m) => ({
+            month: businessMonthLabel(m.month),
+            revenue: Number(m.revenueTsh),
           })),
-          packageDistribution: pkg.packageDistribution ?? [],
-          deviceTypes: dev.deviceTypes ?? [],
-          topVenues: venue.topVenues ?? [],
-          totalCustomers: summary.totalCustomers ?? 0,
-          allTimeUploadBytes: summary.allTimeUploadBytes ?? 0,
-          allTimeDownloadBytes: summary.allTimeDownloadBytes ?? 0,
+          userGrowth: monthly.months.map((m) => ({
+            month: businessMonthLabel(m.month),
+            users: m.newDevices,
+          })),
+          packageDistribution: pkg.packages.map((p) => ({
+            package: p.packageName ?? "Unknown",
+            count: p.count,
+            percentage: p.percentage,
+          })),
+          deviceTypes: dev.types.map((t) => ({
+            type: t.type.charAt(0).toUpperCase() + t.type.slice(1),
+            count: t.count,
+            percentage: t.percentage,
+          })),
+          topVenues: venue.venues.map((v) => ({
+            venue: v.venueName,
+            users: v.devices,
+            revenue: Number(v.revenueTsh),
+          })),
+          totalCustomers: summary.devices,
+          allTimeUploadBytes: summary.allTimeUploadBytes,
+          allTimeDownloadBytes: summary.allTimeDownloadBytes,
         });
       } catch {
         // keep empty state
@@ -304,7 +292,7 @@ export default function AnalyticsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Users</p>
+                  <p className="text-sm text-muted-foreground">Devices</p>
                   <p className="text-2xl font-bold">
                     {loading ? "…" : data.totalCustomers.toLocaleString()}
                   </p>

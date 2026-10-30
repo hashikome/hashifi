@@ -1,5 +1,6 @@
 "use client";
 
+import type { AnalyticsSummary, MonthlyTrend, VoucherList, VoucherListItem } from "@hashifi/types";
 import {
   Activity,
   Clock,
@@ -36,35 +37,9 @@ import {
 } from "@/components/ui/table";
 import { useLiveSessions } from "@/hooks/use-live-sessions";
 import { useRoutersStatus } from "@/hooks/use-routers-status";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { formatDate } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-type ManagerVoucher = {
-  id: string;
-  code: string;
-  packageName?: string | null;
-  venueName?: string | null;
-  status: "active" | "used" | "expired" | "unused" | "revoked" | "pending_activation";
-  priceTsh: string | number;
-  expiresAt?: string | null;
-};
-
-type AnalyticsSummary = {
-  activeSessions: number;
-  totalSessions: number;
-  totalCustomers: number | null;
-  monthlyRevenueTsh: number | null;
-  weeklyUploadBytes: number;
-  weeklyDownloadBytes: number;
-};
-
-type MonthlyPoint = {
-  month: string;
-  revenueTsh: number;
-  newUsers: number;
-};
+import { businessMonthLabel, formatDate } from "@/lib/utils";
 
 function formatBytes(bytes: number) {
   if (bytes === 0) return "0 B";
@@ -82,12 +57,12 @@ export default function DashboardPage() {
   const { user } = useAuth();
 
   // Manager state
-  const [managerVouchers, setManagerVouchers] = useState<ManagerVoucher[]>([]);
+  const [managerVouchers, setManagerVouchers] = useState<VoucherListItem[]>([]);
   const [isLoadingManagerData, setIsLoadingManagerData] = useState(false);
 
   // Summary state — used by both admin and manager
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [monthly, setMonthly] = useState<MonthlyPoint[]>([]);
+  const [monthly, setMonthly] = useState<MonthlyTrend["months"]>([]);
   const {
     clients: liveClients,
     isConnected: wsConnected,
@@ -100,8 +75,8 @@ export default function DashboardPage() {
     if (user?.role !== "manager") return;
     let isMounted = true;
     setIsLoadingManagerData(true);
-    fetch(`${API_URL}/api/vouchers`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { vouchers: [] }))
+    api
+      .get<VoucherList>("/api/vouchers")
       .then((data) => {
         if (isMounted) setManagerVouchers(data.vouchers);
       })
@@ -119,27 +94,20 @@ export default function DashboardPage() {
     if (!user) return;
     let isMounted = true;
 
-    const fetches: Promise<Response>[] = [
-      fetch(`${API_URL}/api/analytics/summary`, { credentials: "include" }),
-    ];
-    if (user.role === "admin") {
-      fetches.push(fetch(`${API_URL}/api/analytics/monthly`, { credentials: "include" }));
-    }
-
-    Promise.all(fetches)
-      .then(async (responses) => {
-        if (!isMounted) return;
-        const [summaryRes, monthlyRes] = responses;
-        if (summaryRes?.ok) {
-          const s = await summaryRes.json();
-          if (isMounted) setSummary(s);
-        }
-        if (monthlyRes?.ok) {
-          const m = await monthlyRes.json();
-          if (isMounted) setMonthly(m.monthly ?? []);
-        }
+    api
+      .get<AnalyticsSummary>("/api/analytics/summary")
+      .then((data) => {
+        if (isMounted) setSummary(data);
       })
       .catch(() => {});
+    if (user.role === "admin") {
+      api
+        .get<MonthlyTrend>("/api/analytics/monthly")
+        .then((data) => {
+          if (isMounted) setMonthly(data.months);
+        })
+        .catch(() => {});
+    }
 
     return () => {
       isMounted = false;
@@ -162,10 +130,10 @@ export default function DashboardPage() {
       {
         title: "Weekly Data",
         value: summary
-          ? `${bytesToGb((summary.weeklyUploadBytes ?? 0) + (summary.weeklyDownloadBytes ?? 0))} GB`
+          ? `${bytesToGb(summary.weeklyUploadBytes + summary.weeklyDownloadBytes)} GB`
           : "…",
         description: summary
-          ? `↑ ${bytesToGb(summary.weeklyUploadBytes ?? 0)} GB  ↓ ${bytesToGb(summary.weeklyDownloadBytes ?? 0)} GB`
+          ? `↑ ${bytesToGb(summary.weeklyUploadBytes)} GB  ↓ ${bytesToGb(summary.weeklyDownloadBytes)} GB`
           : "Last 7 days",
         icon: HardDrive,
       },
@@ -283,7 +251,7 @@ export default function DashboardPage() {
   const statCards = [
     {
       title: "Total Customers",
-      value: summary?.totalCustomers != null ? summary.totalCustomers.toLocaleString() : "…",
+      value: summary ? summary.devices.toLocaleString() : "…",
       description: "Registered customers",
       icon: Users,
     },
@@ -298,8 +266,8 @@ export default function DashboardPage() {
     {
       title: "Monthly Revenue",
       value:
-        summary?.monthlyRevenueTsh != null
-          ? `TSH ${Math.floor(summary.monthlyRevenueTsh).toLocaleString()}`
+        summary?.revenueThisMonthTsh != null
+          ? `TSH ${Math.floor(Number(summary.revenueThisMonthTsh)).toLocaleString()}`
           : "…",
       description: "This calendar month",
       icon: DollarSign,
@@ -307,17 +275,23 @@ export default function DashboardPage() {
     {
       title: "Weekly Data",
       value: summary
-        ? `${bytesToGb((summary.weeklyUploadBytes ?? 0) + (summary.weeklyDownloadBytes ?? 0))} GB`
+        ? `${bytesToGb(summary.weeklyUploadBytes + summary.weeklyDownloadBytes)} GB`
         : "…",
       description: summary
-        ? `↑ ${bytesToGb(summary.weeklyUploadBytes ?? 0)} GB  ↓ ${bytesToGb(summary.weeklyDownloadBytes ?? 0)} GB`
+        ? `↑ ${bytesToGb(summary.weeklyUploadBytes)} GB  ↓ ${bytesToGb(summary.weeklyDownloadBytes)} GB`
         : "Last 7 days",
       icon: HardDrive,
     },
   ];
 
-  const monthlyRevenue = monthly.map((m) => ({ month: m.month, revenue: m.revenueTsh }));
-  const userGrowth = monthly.map((m) => ({ month: m.month, users: m.newUsers }));
+  const monthlyRevenue = monthly.map((m) => ({
+    month: businessMonthLabel(m.month),
+    revenue: Number(m.revenueTsh),
+  }));
+  const userGrowth = monthly.map((m) => ({
+    month: businessMonthLabel(m.month),
+    users: m.newDevices,
+  }));
 
   return (
     <div className="space-y-6">

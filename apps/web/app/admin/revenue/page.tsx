@@ -1,5 +1,11 @@
 "use client";
 
+import type {
+  RevenueByPackage,
+  RevenueByVenue,
+  RevenueSummary,
+  RevenueTransactions,
+} from "@hashifi/types";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -26,35 +32,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
-type Summary = {
-  allTime: number;
-  thisMonth: number;
-  lastMonth: number;
-  today: number;
-  monthGrowthPct: number | null;
-  selectedYear: number;
-  selectedMonth: number;
-  bySource: {
-    online: { allTime: number; thisMonth: number };
-    cash: { allTime: number; thisMonth: number };
-  };
-};
 
 type PackageRow = { name: string; revenue: number; count: number };
 type VenueRow = { name: string; revenue: number };
-type Transaction = {
-  id: string;
-  type: "online" | "cash";
-  amountTsh: number;
-  packageName: string;
-  venueName: string | null;
-  reference: string | null;
-  occurredAt: string;
-};
+type Transaction = RevenueTransactions["transactions"][number];
+
+/** The figures this page draws, as numbers. */
+function summaryView(s: RevenueSummary) {
+  const online = (field: "allTime" | "month") =>
+    Number(s.bySource.mobile_money[field]) + Number(s.bySource.card[field]);
+  return {
+    allTime: Number(s.allTime),
+    thisMonth: Number(s.thisMonth),
+    lastMonth: Number(s.lastMonth),
+    today: Number(s.today),
+    monthGrowthPct: s.monthGrowthPct,
+    bySource: {
+      online: { allTime: online("allTime"), thisMonth: online("month") },
+      cash: { allTime: Number(s.bySource.cash.allTime), thisMonth: Number(s.bySource.cash.month) },
+    },
+  };
+}
 
 const PIE_COLORS = ["var(--chart-1)", "var(--chart-2)"];
 
@@ -63,7 +63,7 @@ function tsh(n: number) {
 }
 
 export default function RevenuePage() {
-  const [summary, setSummary] = useState<Summary | null>(null);
+  const [summary, setSummary] = useState<ReturnType<typeof summaryView> | null>(null);
   const [byPkg, setByPkg] = useState<PackageRow[]>([]);
   const [byVenue, setByVenue] = useState<VenueRow[]>([]);
   const [txns, setTxns] = useState<Transaction[]>([]);
@@ -78,26 +78,29 @@ export default function RevenuePage() {
 
   const load = useCallback(async (m: MonthValue) => {
     setLoading(true);
-    const qs = `year=${m.year}&month=${m.month}`;
+    const qs = `month=${m.year}-${String(m.month).padStart(2, "0")}`;
     try {
-      const [s, p, v, t] = await Promise.all([
-        fetch(`${API_URL}/api/revenue/summary?${qs}`, { credentials: "include" }).then((r) =>
-          r.json(),
-        ),
-        fetch(`${API_URL}/api/revenue/by-package?${qs}`, { credentials: "include" }).then((r) =>
-          r.json(),
-        ),
-        fetch(`${API_URL}/api/revenue/by-venue?${qs}`, { credentials: "include" }).then((r) =>
-          r.json(),
-        ),
-        fetch(`${API_URL}/api/revenue/transactions?${qs}`, { credentials: "include" }).then((r) =>
-          r.json(),
-        ),
+      const [summaryReport, p, v, t] = await Promise.all([
+        api.get<RevenueSummary>(`/api/revenue/summary?${qs}`),
+        api.get<RevenueByPackage>(`/api/revenue/by-package?${qs}`),
+        api.get<RevenueByVenue>(`/api/revenue/by-venue?${qs}`),
+        api.get<RevenueTransactions>(`/api/revenue/transactions?${qs}`),
       ]);
-      setSummary(s);
-      setByPkg(p.byPackage ?? []);
-      setByVenue(v.byVenue ?? []);
-      setTxns(t.transactions ?? []);
+      setSummary(summaryView(summaryReport));
+      setByPkg(
+        p.packages.map((row) => ({
+          name: row.packageName ?? "Unknown",
+          revenue: Number(row.revenueTsh),
+          count: row.sales,
+        })),
+      );
+      setByVenue(
+        v.venues.map((row) => ({
+          name: row.venueName ?? "Unknown",
+          revenue: Number(row.revenueTsh),
+        })),
+      );
+      setTxns(t.transactions);
     } catch {
       // keep previous state
     } finally {
@@ -395,7 +398,7 @@ export default function RevenuePage() {
                       {formatDate(tx.occurredAt)}
                     </TableCell>
                     <TableCell>
-                      {tx.type === "online" ? (
+                      {tx.source !== "cash" ? (
                         <Badge
                           variant="secondary"
                           className="bg-green-500/15 text-green-600 dark:text-green-400 gap-1"
@@ -411,7 +414,9 @@ export default function RevenuePage() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{tx.packageName}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {tx.packageName ?? "Unknown"}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{tx.venueName ?? "—"}</TableCell>
                     <TableCell>
                       {tx.reference ? (
@@ -423,7 +428,7 @@ export default function RevenuePage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-bold whitespace-nowrap">
-                      {tsh(tx.amountTsh)}
+                      {tsh(Number(tx.amountTsh))}
                     </TableCell>
                   </TableRow>
                 ))}
