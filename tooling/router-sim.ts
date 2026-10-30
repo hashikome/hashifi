@@ -4,8 +4,16 @@
 //
 // bun run router-sim <up|down|reset|status|console|hub|bootstrap|setup|verify|voucher|guest|guest-test>
 
-import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { AuditLog } from "../apps/api/src/audit/audit-log.js";
 import { SecretBox } from "../apps/api/src/crypto/secret-box.js";
@@ -46,6 +54,7 @@ import {
 } from "../apps/api/src/services/router-provision/tunnel.js";
 import { probeVerify } from "../apps/api/src/services/router-provision/verify.js";
 import { describeFailures, outcomeOk, RouterSync } from "../apps/api/src/services/router-sync.js";
+import { addStaff } from "../apps/api/src/staff/add-staff.js";
 
 const ROOT = resolve(import.meta.dir, "..");
 const SIM = join(ROOT, "data", "router-sim");
@@ -769,7 +778,10 @@ async function guestRun(): Promise<void> {
 }
 
 /** The real API on the sim database, reaching the router through its port forward. */
-async function startApi(state: SimState): Promise<ReturnType<typeof Bun.spawn>> {
+async function startApi(
+  state: SimState,
+  stableAuth = false,
+): Promise<ReturnType<typeof Bun.spawn>> {
   const api = Bun.spawn(["bun", "apps/api/src/entrypoint.ts"], {
     cwd: ROOT,
     stdout: "ignore",
@@ -780,7 +792,10 @@ async function startApi(state: SimState): Promise<ReturnType<typeof Bun.spawn>> 
       PORT: String(BACKEND_PORT),
       DATABASE_URL: simDatabaseUrl(),
       ENCRYPTION_KEY: state.encryptionKey ?? "",
-      BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      // The demo's sign-ins and authenticators outlive a restart.
+      BETTER_AUTH_SECRET: stableAuth
+        ? createHash("sha256").update(`auth:${state.encryptionKey}`).digest("hex")
+        : randomBytes(32).toString("hex"),
       ROUTER_MANAGEMENT_URL: managementUrl(state),
       ...(process.env.PORTAL_ORIGIN ? { PORTAL_ORIGIN: process.env.PORTAL_ORIGIN } : {}),
       MIKROTIK_TARGET_OVERRIDE: `127.0.0.1:${FORWARD.api}`,
@@ -793,6 +808,87 @@ async function startApi(state: SimState): Promise<ReturnType<typeof Bun.spawn>> 
   }
   api.kill();
   throw new Error("The API did not start");
+}
+
+/** The latest sign-in code the API wrote to the outbox: there is no real email in development. */
+function latestCode(): void {
+  const outbox = join(ROOT, "data", "email");
+  const newest = readdirSync(outbox)
+    .map((name) => ({ name, time: statSync(join(outbox, name)).mtimeMs }))
+    .sort((a, b) => b.time - a.time)
+    .map(({ name }) => readFileSync(join(outbox, name), "utf8"))
+    .find((text) => /\b\d{6}\b/.test(text));
+  console.log(newest?.match(/\b\d{6}\b/)?.[0] ?? "No code yet: ask for one on the sign-in page.");
+}
+
+/**
+ * Everything together, to use in a browser: the router, a guest device, the API and the web. The
+ * browser stands in for the guest's phone, naming the guest VM, so a voucher redeemed there really
+ * signs that device in. Runs until stopped.
+ */
+async function demo(): Promise<void> {
+  const state = readState();
+  if (state.tunnel) throw new Error("The demo runs the API on this machine: use LAN mode.");
+  if (!state.apiPassword) throw new Error("Run `reset`, `bootstrap` and `setup` first.");
+  if (qemuPid() === null) await up();
+  const booting = guestPid() === null;
+  if (booting) guest();
+  if (booting) await Bun.sleep(25_000);
+
+  const services = await simServices(state);
+  const email = "admin@example.com";
+  if (!(await services.db.user.findFirst({ where: { email } }))) {
+    await addStaff(services.db, { email, name: "Demo Admin", role: "admin" });
+  }
+  const issued = Bun.spawnSync(["bun", "tooling/router-sim.ts", "voucher", "60"], {
+    stdout: "pipe",
+    cwd: ROOT,
+  });
+  const code = issued.stdout.toString().match(/VOUCHER=(\S+)/)?.[1] ?? "none";
+
+  const api = await startApi(state, true);
+  const web = Bun.spawn(["bun", "run", "--filter", "@hashifi/web", "dev"], {
+    cwd: ROOT,
+    stdout: "ignore",
+    stderr: "ignore",
+  });
+  const stop = () => {
+    api.kill();
+    web.kill();
+    process.exit(0);
+  };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+
+  // The router forgets a host idle for 5 minutes, and a real phone is never that quiet.
+  const shell = await GuestShell.open();
+  await shell.run("ip link set eth0 up; udhcpc -i eth0 -n -q -t 4 -T 2 2>&1 | tail -1", 30_000);
+  await shell.run(
+    "(while :; do wget -q -T 5 -O /dev/null http://example.com/; sleep 60; done) >/dev/null 2>&1 &",
+  );
+  shell.close();
+  await Bun.sleep(3_000);
+
+  const creds = services.access.credentials(services.router);
+  if (!creds) throw new Error("The sim router has no usable credentials");
+  const conn = await connectToRouter(creds);
+  const [host] = toRows(await conn.write("/ip/hotspot/host/print"));
+  await closeConnection(conn);
+  const fragment = new URLSearchParams({
+    router: services.router.id,
+    mac: host?.get("mac-address") ?? "",
+    ip: host?.get("address") ?? "",
+    "link-orig": "https://example.com/",
+  });
+  console.log(`
+HashiFi is running. Stop with Ctrl-C.
+
+  Admin    http://localhost:4000
+           Sign in as ${email}. Get the emailed code with: bun run router-sim code
+  Guest    http://localhost:4000/portal/login#${fragment}
+           A voucher to try: ${code}
+`);
+  await new Promise(() => {});
 }
 
 /** Every step a guest takes, from joining the network to being cut off at expiry. */
@@ -1199,6 +1295,8 @@ const commands: Record<string, () => Promise<void> | void> = {
   status: () =>
     console.log(qemuPid() === null ? "Router sim is not running." : "Router sim is running."),
   console: () => consoleCommand(args.join(" ")),
+  demo,
+  code: latestCode,
   hub,
   "tunnel-status": tunnelStatus,
   guest,

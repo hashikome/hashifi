@@ -2,12 +2,10 @@
 
 import type { ProvisioningBacklog, RouterList, RouterRecord, RouterResponse } from "@hashifi/types";
 import {
-  Activity,
   AlertTriangle,
   Clock,
   Loader,
   Plus,
-  Power,
   RefreshCw,
   RotateCw,
   Router as RouterIcon,
@@ -151,7 +149,7 @@ export default function RoutersPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Routers</h1>
           <p className="text-muted-foreground">Monitor and manage network access points</p>
@@ -211,7 +209,6 @@ export default function RoutersPage() {
                 <p className="text-sm text-muted-foreground">Total Routers</p>
                 <p className="text-2xl font-bold">{routers.length}</p>
               </div>
-              <RouterIcon className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -222,7 +219,6 @@ export default function RoutersPage() {
                 <p className="text-sm text-muted-foreground">Online</p>
                 <p className="text-2xl font-bold">{onlineCount}</p>
               </div>
-              <Activity className="size-8 text-teal-700" />
             </div>
           </CardContent>
         </Card>
@@ -233,7 +229,6 @@ export default function RoutersPage() {
                 <p className="text-sm text-muted-foreground">Offline</p>
                 <p className="text-2xl font-bold">{offlineCount}</p>
               </div>
-              <Power className="size-8 text-destructive" />
             </div>
           </CardContent>
         </Card>
@@ -244,7 +239,6 @@ export default function RoutersPage() {
                 <p className="text-sm text-muted-foreground">Connected Devices</p>
                 <p className="text-2xl font-bold">{totalDevices}</p>
               </div>
-              <Users className="size-8 text-primary" />
             </div>
           </CardContent>
         </Card>

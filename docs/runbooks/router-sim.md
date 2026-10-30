@@ -61,6 +61,19 @@ a minute and must end with `Setup succeeded.`; a second `setup` must report 0 ch
 `verify` then passes with two expected warnings: no client activity, and the voucher speed
 cap applied through a profile (CHR rejects a per-user `rate-limit`).
 
+## Using it in a browser
+
+```bash
+bun run router-sim reset && bun run router-sim bootstrap && bun run router-sim setup   # once
+bun run router-sim demo          # starts everything and prints the links
+bun run router-sim code          # the latest emailed sign-in code
+```
+
+`demo` runs the router, the guest VM, the API on the sim database and the web on port 4000. The
+guest link puts your browser in the guest's place, naming the VM's MAC and IP, so redeeming a voucher
+there really signs that device in, and it appears in Live Sessions. A browser cannot prove what a
+phone does: real captive sheets are for M8.
+
 ## Guest
 
 A guest VM stands in for a phone on the hotspot: Alpine Linux's `virt` ISO booted live, with

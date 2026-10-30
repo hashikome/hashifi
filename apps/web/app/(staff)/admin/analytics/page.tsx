@@ -50,6 +50,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { moneyAxis } from "@/lib/chart";
 import { businessMonthLabel, parseLocalDate } from "@/lib/utils";
 
 type DailyUsage = {
@@ -345,6 +346,7 @@ export default function AnalyticsPage() {
                   tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
+                  domain={[0, (max: number) => Math.max(max, 1)]}
                   tickFormatter={(v) => `${v} GB`}
                 />
                 <Tooltip
@@ -457,7 +459,7 @@ export default function AnalyticsPage() {
                     tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v) => `TSH ${v.toLocaleString()}`}
+                    {...moneyAxis}
                   />
                   <Tooltip
                     cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
@@ -642,7 +644,7 @@ export default function AnalyticsPage() {
                       tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(v) => `TSH ${(v / 1000).toFixed(0)}k`}
+                      {...moneyAxis}
                     />
                     <Tooltip
                       cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}

@@ -11,12 +11,9 @@ import {
   Monitor,
   RefreshCw,
   Search,
-  ShieldX,
   Smartphone,
   Tablet,
   Users,
-  Wifi,
-  WifiOff,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -192,7 +189,7 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Users</h1>
           <p className="text-muted-foreground">Manage and monitor WiFi users</p>
@@ -215,7 +212,6 @@ export default function UsersPage() {
                 <p className="text-sm text-muted-foreground">Total Users</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <Users className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -226,9 +222,6 @@ export default function UsersPage() {
                 <p className="text-sm text-muted-foreground">Online Now</p>
                 <p className="text-2xl font-bold">{stats.online}</p>
               </div>
-              <Wifi
-                className={`size-8 ${stats.online > 0 ? "text-teal-700" : "text-muted-foreground"}`}
-              />
             </div>
           </CardContent>
         </Card>
@@ -239,7 +232,6 @@ export default function UsersPage() {
                 <p className="text-sm text-muted-foreground">Offline</p>
                 <p className="text-2xl font-bold">{stats.offline}</p>
               </div>
-              <WifiOff className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -250,7 +242,6 @@ export default function UsersPage() {
                 <p className="text-sm text-muted-foreground">Blocked</p>
                 <p className="text-2xl font-bold">{stats.blocked}</p>
               </div>
-              <ShieldX className="size-8 text-destructive" />
             </div>
           </CardContent>
         </Card>

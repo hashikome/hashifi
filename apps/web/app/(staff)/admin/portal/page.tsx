@@ -25,13 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -271,7 +264,6 @@ export default function PortalPage() {
                     {portal.brandName.trim() || "Not set yet"}
                   </p>
                 </div>
-                <Wifi className="size-8 shrink-0 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -282,7 +274,6 @@ export default function PortalPage() {
                   <p className="text-sm text-muted-foreground">Access methods</p>
                   <p className="text-2xl font-bold">Voucher &amp; Package</p>
                 </div>
-                <ShieldCheck className="size-8 text-muted-foreground" />
               </div>
             </CardContent>
           </Card>
@@ -293,7 +284,6 @@ export default function PortalPage() {
                   <p className="text-sm text-muted-foreground">Voucher prefix</p>
                   <p className="text-2xl font-bold">{portal.voucherPrefix}-2026</p>
                 </div>
-                <Ticket className="size-8 text-muted-foreground" />
               </div>
             </CardContent>
           </Card>

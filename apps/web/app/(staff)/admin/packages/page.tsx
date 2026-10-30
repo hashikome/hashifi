@@ -122,7 +122,7 @@ export default function PackagesPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Packages</h1>
           <p className="text-muted-foreground">Configure WiFi access packages and pricing</p>
@@ -155,7 +155,6 @@ export default function PackagesPage() {
                 <p className="text-sm text-muted-foreground">Total Packages</p>
                 <p className="text-2xl font-bold">{packages.length}</p>
               </div>
-              <Package className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -166,7 +165,6 @@ export default function PackagesPage() {
                 <p className="text-sm text-muted-foreground">Active</p>
                 <p className="text-2xl font-bold">{activePackages}</p>
               </div>
-              <Zap className="size-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -177,7 +175,6 @@ export default function PackagesPage() {
                 <p className="text-sm text-muted-foreground">Inactive</p>
                 <p className="text-2xl font-bold">{packages.length - activePackages}</p>
               </div>
-              <Clock className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -188,7 +185,6 @@ export default function PackagesPage() {
                 <p className="text-sm text-muted-foreground">Avg Price</p>
                 <p className="text-2xl font-bold">TSH {avgPrice}</p>
               </div>
-              <HardDrive className="size-8 text-primary" />
             </div>
           </CardContent>
         </Card>

@@ -241,7 +241,7 @@ export default function VouchersPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Vouchers</h1>
           <p className="text-muted-foreground">Manage WiFi access vouchers and their usage</p>
@@ -272,7 +272,6 @@ export default function VouchersPage() {
                 <p className="text-sm text-muted-foreground">Total Vouchers</p>
                 <p className="text-2xl font-bold">{vouchers.length}</p>
               </div>
-              <Ticket className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -283,7 +282,6 @@ export default function VouchersPage() {
                 <p className="text-sm text-muted-foreground">Active</p>
                 <p className="text-2xl font-bold">{activeCount}</p>
               </div>
-              <CheckCircle className="size-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -294,7 +292,6 @@ export default function VouchersPage() {
                 <p className="text-sm text-muted-foreground">Unused</p>
                 <p className="text-2xl font-bold">{unusedCount}</p>
               </div>
-              <Clock className="size-8 text-chart-3" />
             </div>
           </CardContent>
         </Card>
@@ -305,7 +302,6 @@ export default function VouchersPage() {
                 <p className="text-sm text-muted-foreground">Expired</p>
                 <p className="text-2xl font-bold">{expiredCount}</p>
               </div>
-              <XCircle className="size-8 text-destructive" />
             </div>
           </CardContent>
         </Card>

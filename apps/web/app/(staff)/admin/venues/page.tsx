@@ -110,7 +110,7 @@ export default function VenuesPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Venues</h1>
           <p className="text-muted-foreground">Manage WiFi hotspot locations</p>
@@ -143,7 +143,6 @@ export default function VenuesPage() {
                 <p className="text-sm text-muted-foreground">Total Venues</p>
                 <p className="text-2xl font-bold">{totalVenues}</p>
               </div>
-              <Building2 className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -154,7 +153,6 @@ export default function VenuesPage() {
                 <p className="text-sm text-muted-foreground">Active</p>
                 <p className="text-2xl font-bold">{activeVenues}</p>
               </div>
-              <Building2 className="size-8 text-teal-700" />
             </div>
           </CardContent>
         </Card>
@@ -165,7 +163,6 @@ export default function VenuesPage() {
                 <p className="text-sm text-muted-foreground">Maintenance</p>
                 <p className="text-2xl font-bold">{maintenanceVenues}</p>
               </div>
-              <Building2 className="size-8 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
@@ -176,7 +173,6 @@ export default function VenuesPage() {
                 <p className="text-sm text-muted-foreground">Inactive</p>
                 <p className="text-2xl font-bold">{inactiveVenues}</p>
               </div>
-              <Building2 className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>

@@ -39,6 +39,7 @@ import { useLiveSessions } from "@/hooks/use-live-sessions";
 import { useRoutersStatus } from "@/hooks/use-routers-status";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { moneyAxis } from "@/lib/chart";
 import { businessMonthLabel, formatDate } from "@/lib/utils";
 
 function formatBytes(bytes: number) {
@@ -354,7 +355,7 @@ export default function DashboardPage() {
                     tickLine={false}
                     axisLine={false}
                     width={64}
-                    tickFormatter={(v) => `TSH ${(v / 1000).toFixed(0)}k`}
+                    {...moneyAxis}
                   />
                   <Tooltip
                     // Recharts' default cursor is a hardcoded light grey — a pale slab

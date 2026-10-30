@@ -10,13 +10,10 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Building2,
-  DollarSign,
   Loader,
   RefreshCw,
   Smartphone,
   Ticket,
-  TrendingDown,
-  TrendingUp,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
@@ -124,7 +121,7 @@ export default function RevenuePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Revenue</h1>
           <p className="text-muted-foreground">
@@ -149,7 +146,6 @@ export default function RevenuePage() {
                 <p className="text-2xl font-bold">{loading ? "…" : tsh(summary?.allTime ?? 0)}</p>
                 <p className="text-xs text-muted-foreground mt-1">Since day one</p>
               </div>
-              <DollarSign className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -176,7 +172,6 @@ export default function RevenuePage() {
                   <p className="text-xs text-muted-foreground mt-1">No prior month data</p>
                 )}
               </div>
-              <TrendingUp className="size-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -189,7 +184,6 @@ export default function RevenuePage() {
                 <p className="text-2xl font-bold">{loading ? "…" : tsh(summary?.lastMonth ?? 0)}</p>
                 <p className="text-xs text-muted-foreground mt-1">Previous month</p>
               </div>
-              <TrendingDown className="size-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -202,7 +196,6 @@ export default function RevenuePage() {
                 <p className="text-2xl font-bold">{loading ? "…" : tsh(summary?.today ?? 0)}</p>
                 <p className="text-xs text-muted-foreground mt-1">Since midnight</p>
               </div>
-              <DollarSign className="size-8 text-chart-3" />
             </div>
           </CardContent>
         </Card>

@@ -76,6 +76,9 @@ respects `prefers-reduced-motion`.
 - **Empty states:** keep the frame and say one sentence. A real zero prints as a zero, and a missing
   value as a grey dash.
 
+- **Mark:** an H whose crossbar is a WiFi arc with its dot, white on teal; one file
+  (`public/logo.svg`) at every size.
+
 ## Do's and Don'ts
 
 - Do put colour on data, status and the one primary action.
