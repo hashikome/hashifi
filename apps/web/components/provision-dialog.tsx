@@ -1,5 +1,7 @@
 "use client";
 
+import type { LiveMessage } from "@hashifi/types";
+
 import {
   AlertTriangle,
   CheckCircle2,
@@ -131,15 +133,7 @@ interface ProvisionReport {
   blockingReasons: string[];
 }
 
-interface LogLine {
-  seq: number;
-  message: string;
-  command?: string;
-  params?: string[];
-  durationMs?: number;
-  outcome?: string;
-  level: string;
-}
+type LogLine = Extract<LiveMessage, { type: "provision_log" }>["event"];
 
 const STATE_STYLES: Record<StepState, string> = {
   satisfied: "text-muted-foreground",
@@ -210,7 +204,10 @@ export function ProvisionDialog({
       try {
         const msg = JSON.parse(evt.data);
         if (msg.type !== "provision_log") return;
-        setLines((prev) => [...prev, msg.event as LogLine]);
+        setLines((prev) => [
+          ...prev,
+          (msg as Extract<LiveMessage, { type: "provision_log" }>).event,
+        ]);
       } catch {
         /* ignore malformed frames */
       }
@@ -675,7 +672,7 @@ export function ProvisionDialog({
                         <span className="text-zinc-500">{line.outcome === "ok" ? "→" : "✗"} </span>
                         {line.command}
                         {line.params?.length ? ` ${line.params.join(" ")}` : ""}
-                        {line.durationMs !== undefined ? ` (${line.durationMs}ms)` : ""}
+                        {line.durationMs === null ? "" : ` (${line.durationMs}ms)`}
                       </>
                     ) : (
                       line.message

@@ -231,7 +231,19 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     and reactivate; four self-actions refused; two mutual demotions and two mutual suspensions
     at once leave one admin, the first seen to fail without the lock; promotion and reset;
     removal frees venues and stays in the audit trail).
-  - [ ] Still in M4: the live-view gateway; `RosRow` as a `null`-returning accessor; the
+  - [x] (2026-10-30) The live view (`src/live/live-hub.ts`, finding 8). `/ws/live` is
+    upgraded by the hub itself, since guards do not run on an upgrade: the session cookie must
+    belong to active staff (an admin only with an authenticator), and the Origin must be the
+    web's, or the upgrade is refused with 401 or 403. Open sockets are signed in again every
+    minute (`REVALIDATE_MS`), so suspension disconnects (close 4401). Hotspot updates go to
+    admins and the venue's managers; provisioning transcripts (secret parameters already
+    redacted) to admins. While anyone watches, the live monitor polls routers every tick;
+    otherwise every sixth. Works through Express on Bun's `node:http`.
+    Acceptance: `live.integration.test.ts` (no session, another origin and an unenrolled admin
+    refused; a manager gets one of two venues' updates and no transcript, an admin all three;
+    a suspended manager is closed at the next check); the origin test fails with the check
+    removed.
+  - [ ] Still in M4: `RosRow` as a `null`-returning accessor; the
     vendor's knowledge files into `docs/runbooks/`; the web pass (one client module on
     `@hashifi/types`, sign-in on Better Auth, and every page on the routes above). Notes for
     what remains:
@@ -298,6 +310,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
      rejects them in the router name as in the other fields; `bootstrap.test.ts`.
      Evidence: `45ebd53:apps/api/src/services/router-provision/bootstrap.ts` (banner and
      `routerName` schema).
+  8. The live socket (`/ws/live`) accepted any connection: no sign-in, no origin check. Anyone
+     who could reach the API received every venue's connected guests (voucher codes, MAC and
+     IP addresses) and every provisioning transcript. Fixed in M4 (`live-hub.ts`): the upgrade
+     needs active staff (an admin with an authenticator) and the web's origin, sockets are
+     checked again every minute, managers receive only their venues' hotspots, and transcripts
+     go to admins only; `live.integration.test.ts`.
+     Evidence: `45ebd53:apps/api/src/server.ts` (`new WebSocketServer({ server, path })`).
 - Observation: typing the web exposed defects that `any` hid: `lib/types.ts` no longer matches
   the API (stale voucher statuses and removed portal fields); the voucher print page crashed
   when portal settings were missing (now falls back to the defaults); the voucher preview's

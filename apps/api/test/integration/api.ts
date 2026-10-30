@@ -36,6 +36,7 @@ export class CapturingEmailSender implements EmailSender {
 export function useApi(env: Record<string, string> = {}): {
   readonly url: string;
   readonly email: CapturingEmailSender;
+  readonly app: NestExpressApplication;
 } {
   const email = new CapturingEmailSender();
   const holder: { app: NestExpressApplication | null; url: string } = { app: null, url: "" };
@@ -59,6 +60,10 @@ export function useApi(env: Record<string, string> = {}): {
   return {
     get url() {
       return holder.url;
+    },
+    get app() {
+      if (!holder.app) throw new Error("API not started");
+      return holder.app;
     },
     email,
   };
@@ -108,6 +113,11 @@ export class Client {
     }
     const text = await response.text();
     return { status: response.status, body: text === "" ? null : JSON.parse(text) };
+  }
+
+  /** The cookies this browser would send, as a `Cookie` header. */
+  cookieHeader(): string {
+    return [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
   }
 
   has(cookieSuffix: string): boolean {

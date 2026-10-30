@@ -35,7 +35,8 @@ surface:
 Every request body, query and external callback is validated at the API boundary before it
 reaches domain logic. Webhooks are verified by signature. Router credentials and tunnel keys are stored sealed and never returned; the bootstrap script
 is the one response carrying a router's API password, uncached. Testing a connection never
-reuses a stored password: a saved router is probed at its stored address only. A write carrying a session cookie
+reuses a stored password: a saved router is probed at its stored address only. The live socket (`/ws/live`) signs its upgrade in like any route and refuses other origins;
+managers receive only their venues' updates. A write carrying a session cookie
 is refused unless it comes from the web's own origin, since a cross-site form post needs no
 CORS preflight. Errors say what went wrong for the caller, never why internally: an
 unexpected failure is a plain 500, reported to Sentry.

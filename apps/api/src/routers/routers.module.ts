@@ -11,6 +11,7 @@ import { APP_CONFIG } from "../config/config.module.js";
 import { SecretBox } from "../crypto/secret-box.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { IntervalJob } from "../jobs/interval-job.js";
+import { LiveHub } from "../live/live-hub.js";
 import {
   HEALTH_CHECK_INTERVAL_MS,
   IDLE_POLL_EVERY_N_TICKS,
@@ -40,13 +41,16 @@ export class BackgroundJobs implements OnApplicationBootstrap, OnApplicationShut
     monitor: LiveMonitor,
     expiry: VoucherExpiry,
     reconciler: VoucherReconciler,
+    live: LiveHub,
   ) {
     this.jobs = [
-      // Nobody watches the live view yet (M4 adds it), so poll every Nth tick to keep session
+      // Every tick while someone watches the live view; otherwise every Nth, to keep session
       // status honest without polling routers every five seconds.
       new IntervalJob("live-monitor.poll", POLL_INTERVAL_MS, async () => {
         this.tick++;
-        if (this.tick % IDLE_POLL_EVERY_N_TICKS === 0) await monitor.pollOnce();
+        if (live.watching() || this.tick % IDLE_POLL_EVERY_N_TICKS === 0) {
+          await monitor.pollOnce((update) => live.publishHotspot(update));
+        }
       }),
       new IntervalJob("live-monitor.health", HEALTH_CHECK_INTERVAL_MS, () => monitor.healthCheck()),
       new IntervalJob("voucher.expiry", MINUTE, async () => {
@@ -125,10 +129,12 @@ export class BackgroundJobs implements OnApplicationBootstrap, OnApplicationShut
             }),
     },
     RoutersService,
+    LiveHub,
     BackgroundJobs,
   ],
   controllers: [RoutersController],
   exports: [
+    LiveHub,
     RouterAccess,
     AuditLog,
     RouterSync,

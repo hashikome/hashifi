@@ -8,6 +8,7 @@ import type { AppConfig } from "./config/config.js";
 import type { EmailSender } from "./email/email-sender.js";
 import { ErrorEnvelopeFilter } from "./http/error-envelope.js";
 import { httpWideEvents, requireTrustedOrigin } from "./http/http-middleware.js";
+import { LiveHub } from "./live/live-hub.js";
 
 export interface BootstrapOptions {
   /** Port to listen on; 0 picks a free one (tests). */
@@ -39,6 +40,7 @@ export async function bootstrap(
   app.use(authHttpMiddleware(app.get<Auth>(BETTER_AUTH)));
   app.getHttpAdapter().registerParserMiddleware(undefined, true);
   app.useGlobalFilters(new ErrorEnvelopeFilter());
+  app.get(LiveHub).attach(app.getHttpServer());
   app.enableShutdownHooks();
   await app.listen(options.port, "0.0.0.0");
   return app;

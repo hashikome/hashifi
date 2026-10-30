@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The live view through the NestJS API: routers' connected guests and provisioning transcripts
+  pushed to signed-in staff, each manager seeing their own venues.
+- Fixed: the live socket accepted anyone and sent them every venue's guests and every
+  provisioning run.
+
 - Team and audit through the NestJS API: admins add, change, suspend and remove staff and reset
   a lost authenticator app; managers may run several venues; HashiFi always keeps an active
   admin, even when two admins act on each other at once; everyone affected is emailed.

@@ -542,3 +542,48 @@ export interface AuditList {
   entries: AuditEntry[];
   nextBefore: string | null;
 }
+
+/** A device on a router's hotspot right now, as the router reports it. */
+export interface LiveClient {
+  id: string;
+  /** The voucher code the device signed in with. */
+  user: string;
+  mac: string;
+  ip: string;
+  uptime: string;
+  idleTime: string;
+  bytesIn: number;
+  bytesOut: number;
+}
+
+/**
+ * A message on the live socket (`/ws/live`). Hotspot updates reach admins and the managers of
+ * that venue; provisioning transcripts reach admins only.
+ */
+export type LiveMessage =
+  | {
+      type: "hotspot_update";
+      routerId: string;
+      routerName: string;
+      venueId: string;
+      venueName: string;
+      timestamp: Timestamp;
+      clients: LiveClient[];
+    }
+  | {
+      type: "provision_log";
+      event: {
+        runId: string;
+        seq: number;
+        at: Timestamp;
+        level: "debug" | "info" | "warn" | "error";
+        phase: "connect" | "command" | "step" | "summary";
+        scope: string;
+        message: string;
+        /** The RouterOS command, with secret parameters already redacted (`password=***`). */
+        command: string | null;
+        params: string[] | null;
+        durationMs: number | null;
+        outcome: "ok" | "failed" | "unsupported" | "skipped" | null;
+      };
+    };
