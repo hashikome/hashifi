@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Vouchers through the NestJS API: batches for a package the venue sells, with codes from a
+  cryptographic generator; managers make and print their own venues' vouchers; admins revoke
+  unused ones, which stay on record. Printing is by batch or voucher id.
+- Fixed: voucher codes came from `Math.random` and could be guessed; printing put codes in the
+  URL; every batch overwrote the portal's voucher prefix; deleting vouchers removed sales
+  records.
+
 - Packages through the NestJS API: admins manage one catalogue and choose what each venue
   sells; managers read what is on sale. The API enforces the price and throttle rules the form
   pre-checked, refuses throttle settings the router would ignore, and keeps packages that

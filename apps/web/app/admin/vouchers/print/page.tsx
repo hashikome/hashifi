@@ -5,6 +5,7 @@ import type {
   PortalSettingsResponse,
   PrintableVoucher as PrintableVoucherRecord,
   PrintableVouchersResponse,
+  VoucherBatchDetail,
 } from "@hashifi/types";
 import { ArrowLeft, Loader, Printer, TriangleAlert } from "lucide-react";
 import Link from "next/link";
@@ -31,21 +32,28 @@ function PrintVouchersContent() {
   const [portalSettings, setPortalSettings] = useState<PortalSettingsRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchVouchers = useCallback(async (codes: string) => {
+  // A whole batch by its id, or chosen vouchers by theirs: never by code, since a code is the
+  // guest's credential and a URL ends up in history and logs.
+  const fetchVouchers = useCallback(async (batch: string | null, ids: string | null) => {
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/by-codes?codes=${codes}`, {
-        credentials: "include",
-      });
+      const res = batch
+        ? await fetch(`${API_URL}/api/vouchers/batches/${batch}`, { credentials: "include" })
+        : await fetch(`${API_URL}/api/vouchers/print`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ ids: (ids ?? "").split(",").filter(Boolean) }),
+          });
       if (!res.ok) throw new Error("Failed to fetch vouchers");
-      const data: PrintableVouchersResponse = await res.json();
+      const data: VoucherBatchDetail | PrintableVouchersResponse = await res.json();
       setVouchers(
         data.vouchers.map((v) => ({
           ...v,
           pkg: {
             name: v.packageName,
-            speed: v.downloadSpeed,
+            speed: v.downloadSpeedMbps,
             price: Number(v.priceTsh),
-            duration: v.duration,
+            duration: v.durationMinutes,
             dataLimit: v.dataLimitGb ?? -1,
           },
         })),
@@ -68,9 +76,10 @@ function PrintVouchersContent() {
   }, []);
 
   useEffect(() => {
-    const codesParam = searchParams.get("codes");
+    const batch = searchParams.get("batch");
+    const ids = searchParams.get("ids");
     Promise.all([
-      codesParam ? fetchVouchers(codesParam) : Promise.resolve(),
+      batch || ids ? fetchVouchers(batch, ids) : Promise.resolve(),
       fetchPortalSettings(),
     ]).finally(() => setIsLoading(false));
   }, [searchParams, fetchVouchers, fetchPortalSettings]);

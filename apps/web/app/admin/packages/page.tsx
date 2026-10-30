@@ -1,6 +1,6 @@
 "use client";
 
-import type { PackageRecord, PackagesResponse } from "@hashifi/types";
+import type { PackageList, PackageRecord } from "@hashifi/types";
 import {
   Clock,
   Eye,
@@ -63,7 +63,7 @@ export default function PackagesPage() {
         },
       );
       if (!res.ok) throw new Error("Failed to fetch packages");
-      const data: PackagesResponse = await res.json();
+      const data: PackageList = await res.json();
       setPackages(
         data.packages.map((p) => ({
           ...p,

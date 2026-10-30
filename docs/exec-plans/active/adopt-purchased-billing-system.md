@@ -149,8 +149,27 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     Acceptance: `packages.integration.test.ts` (CRUD and audit; thirteen refused inputs and a
     window across midnight accepted; the in-use delete; a manager's reads and 403s; the sold-at
     rule through assignment, deactivation and removal, and another venue's 404).
+  - [x] (2026-10-30) Vouchers (`src/vouchers/`). Batches (`POST /api/vouchers/batches`) are
+    made by admins, or by managers for their own venues, only for a package the venue sells
+    (`soldAt`); codes are unique, retried on collision, and carry the package's duration, data
+    limit and price. The prefix defaults to the portal's and no longer overwrites it (the
+    purchased generate set the global portal prefix to each batch's). Routers get the codes in
+    the background; a router that misses them gets each at redemption. Revoking
+    (`POST /api/vouchers/revoke`, admins) replaces deleting: only unused vouchers, which stop
+    working and leave the routers but stay on record, so no paying guest is cut off and no
+    sale disappears (the web pre-checked this; the API now decides). Printing is by batch
+    (`GET /api/vouchers/batches/:id`) or by voucher ids (`POST /api/vouchers/print`), never by
+    code: the purchased print page put codes, the guests' credentials, in the URL. The list is
+    scoped and paged (`before`, newest first). The web's voucher pages move to these endpoints
+    now, since the shared types changed under them; they typecheck and build but were not
+    exercised in a browser.
+    Acceptance: `voucher-codes.test.ts` (format, alphabet coverage, collisions replaced, a
+    full store fails) and `vouchers.integration.test.ts` (a manager's batch with the package's
+    terms; prefix defaulting without touching the portal; packages not on sale and another
+    venue refused; scoped, paged listing and batches; revoke only unused, admins only; reprint
+    by id within scope).
   - [ ] The remaining routes, each through `venueScope` and the guard:
-    vouchers, customers (devices), sessions, analytics, revenue, portal settings, team, audit.
+    customers (devices), sessions, analytics, revenue, portal settings, team, audit.
     Still to apply as they land:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
       their own checks; the router sim's guest test runs once they are ported.
@@ -199,8 +218,9 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
      Evidence: `45ebd53:apps/api/src/utils/encrypt.ts:3`.
   5. Voucher codes, which are the hotspot credentials, come from `Math.random()`: six base-36
      characters (about 31 bits) from a non-cryptographic generator, so they can be guessed or
-     predicted, and nothing rate-limits redemption. M4 generates them with `node:crypto` from an
-     unambiguous upper-case alphabet with enough length, and M5 rate-limits redemption.
+     predicted, and nothing rate-limits redemption. Fixed in M4: eight characters from
+     `node:crypto`'s `randomInt` over a 31-character upper-case alphabet without 0, O, 1, I or L
+     (`voucher-codes.ts`, about 39.6 bits); M5 rate-limits redemption.
      Evidence: `45ebd53:apps/api/src/routes/vouchers.ts` (batch generation).
   6. Customers are listed and read with no venue scoping, so a manager sees every venue's
      guests (phone numbers, devices). M4 scopes customers to the manager's venues through their

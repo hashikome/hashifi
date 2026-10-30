@@ -21,6 +21,8 @@ check.
 The portal is public and reachable before guests authenticate, so it is the most exposed
 surface:
 
+- Voucher codes are eight characters from a cryptographic generator (about 39.6 bits), never
+  `Math.random`, and never travel in a URL: printing is by batch or voucher id.
 - A voucher code is the hotspot username and password. The API returns it only to a client
   that has just supplied it; reconnection never reveals it.
 - Values the router passes to the portal (`mac`, `ip`, `link-login`, `link-orig`, CHAP

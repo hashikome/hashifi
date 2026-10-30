@@ -1,6 +1,6 @@
 "use client";
 
-import type { VoucherListItem, VouchersResponse } from "@hashifi/types";
+import type { RevokeResult, VoucherList, VoucherListItem } from "@hashifi/types";
 import {
   CheckCircle,
   Clock,
@@ -135,7 +135,7 @@ export default function VouchersPage() {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch vouchers");
-      const data: VouchersResponse = await res.json();
+      const data: VoucherList = await res.json();
       setVouchers(
         data.vouchers.map((v) => ({
           ...v,
@@ -205,40 +205,33 @@ export default function VouchersPage() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
+  // The API decides what can be revoked (unused vouchers only) and says how many it revoked.
   const handleBatchDelete = async () => {
     if (!canDeleteVouchers) {
-      toast.error("Only admins can delete vouchers");
+      toast.error("Only admins can revoke vouchers");
       return;
     }
-
     setIsDeleting(true);
-    const protectedStatuses = new Set(["active", "used"]);
-    const idsToDelete = (deleteId ? [deleteId] : selectedIds).filter(
-      (id) => !protectedStatuses.has(vouchers.find((v) => v.id === id)?.status ?? ""),
-    );
-    if (idsToDelete.length === 0) {
-      toast.error("Active and used vouchers cannot be deleted.");
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
-      setDeleteId(null);
-      return;
-    }
+    const ids = deleteId ? [deleteId] : selectedIds;
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/batch`, {
-        method: "DELETE",
+      const res = await fetch(`${API_URL}/api/vouchers/revoke`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: idsToDelete }),
+        body: JSON.stringify({ ids }),
         credentials: "include",
       });
-
-      if (!res.ok) throw new Error("Failed to delete vouchers");
-
-      toast.success(`${idsToDelete.length} voucher(s) deleted`);
-      setSelectedIds((prev) => prev.filter((id) => !idsToDelete.includes(id)));
+      if (!res.ok) throw new Error("Failed to revoke vouchers");
+      const { revoked }: RevokeResult = await res.json();
+      if (revoked < ids.length) {
+        toast.info(`${revoked} revoked. Only unused vouchers can be revoked.`);
+      } else {
+        toast.success(`${revoked} voucher(s) revoked`);
+      }
+      setSelectedIds([]);
       fetchVouchers();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to delete vouchers");
+      toast.error("Failed to revoke vouchers");
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -252,11 +245,8 @@ export default function VouchersPage() {
   };
 
   const handleBatchPrint = () => {
-    const selectedVouchers = vouchers.filter((v) => selectedIds.includes(v.id));
-    const codes = selectedVouchers.map((v) => v.code).join(",");
-    const packageId = selectedVouchers[0]?.packageId;
     setIsPrinting(true);
-    router.push(`/admin/vouchers/print?codes=${codes}&packageId=${packageId || ""}`);
+    router.push(`/admin/vouchers/print?ids=${selectedIds.join(",")}`);
   };
 
   return (
@@ -483,7 +473,7 @@ export default function VouchersPage() {
                             View
                           </Button>
                           <TableNavButton
-                            href={`/admin/vouchers/print?codes=${voucher.code}&packageId=${voucher.packageId || ""}`}
+                            href={`/admin/vouchers/print?ids=${voucher.id}`}
                             icon={<Printer className="size-4" />}
                             ariaLabel="Print voucher"
                           />
@@ -631,9 +621,7 @@ export default function VouchersPage() {
                   disabled={isDialogPrinting}
                   onClick={() => {
                     setIsDialogPrinting(true);
-                    router.push(
-                      `/admin/vouchers/print?codes=${selectedVoucher.code}&packageId=${selectedVoucher.packageId || ""}`,
-                    );
+                    router.push(`/admin/vouchers/print?ids=${selectedVoucher.id}`);
                   }}
                 >
                   {isDialogPrinting ? (
@@ -692,7 +680,7 @@ export default function VouchersPage() {
                   ) : (
                     <Trash2 className="size-4 mr-2" />
                   )}
-                  {isDeleting && !deleteId ? "Deleting..." : "Delete"}
+                  {isDeleting && !deleteId ? "Revoking..." : "Revoke"}
                 </Button>
               )}
 
@@ -720,11 +708,11 @@ export default function VouchersPage() {
           }
         }}
         onConfirm={handleBatchDelete}
-        title={deleteId ? "Delete Voucher" : "Delete Vouchers"}
+        title={deleteId ? "Revoke voucher" : "Revoke vouchers"}
         description={
           deleteId
-            ? `Are you sure you want to delete voucher ${vouchers.find((v) => v.id === deleteId)?.code}? This action cannot be undone.`
-            : `Are you sure you want to delete ${selectedIds.length} selected vouchers? This action cannot be undone.`
+            ? `Revoke voucher ${vouchers.find((v) => v.id === deleteId)?.code}? It will stop working. Only unused vouchers can be revoked.`
+            : `Revoke ${selectedIds.length} selected vouchers? They will stop working. Only unused vouchers are revoked.`
         }
         variant="destructive"
         isLoading={isDeleting}

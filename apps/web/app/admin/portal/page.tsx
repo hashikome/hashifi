@@ -1,6 +1,6 @@
 "use client";
 
-import type { PackagesResponse } from "@hashifi/types";
+import type { PackageList } from "@hashifi/types";
 import {
   AlertCircle,
   Check,
@@ -180,7 +180,7 @@ export default function PortalPage() {
         // 404 → no settings yet, use DEFAULT_FORM
 
         if (!cancelled && pkgRes.ok) {
-          const data: PackagesResponse = await pkgRes.json();
+          const data: PackageList = await pkgRes.json();
           const mapped: Package[] = data.packages
             .filter((p) => p.isActive)
             .map((p) => ({

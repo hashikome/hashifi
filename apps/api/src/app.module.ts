@@ -8,6 +8,7 @@ import { HealthController } from "./health/health.controller.js";
 import { PackagesModule } from "./packages/packages.module.js";
 import { RoutersModule } from "./routers/routers.module.js";
 import { VenuesModule } from "./venues/venues.module.js";
+import { VouchersModule } from "./vouchers/vouchers.module.js";
 
 @Module({})
 export class AppModule {}
@@ -22,6 +23,7 @@ export function appModule(config: AppConfig, email: EmailSender | null): Dynamic
       RoutersModule,
       VenuesModule,
       PackagesModule,
+      VouchersModule,
     ],
     controllers: [HealthController],
   };

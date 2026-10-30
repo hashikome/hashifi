@@ -70,12 +70,51 @@ export interface VoucherListItem extends VoucherRecord {
   venueName: string | null;
 }
 
-/** `GET /api/vouchers/by-codes` row, for printing. */
+/** `GET /api/vouchers`: newest first, a page at a time. */
+export interface VoucherList {
+  vouchers: VoucherListItem[];
+  /** Pass as `before` for the next page; null on the last page. */
+  nextBefore: string | null;
+}
+
+/** A batch of vouchers made together, usually for printing. */
+export interface VoucherBatchRecord {
+  id: string;
+  venueId: string | null;
+  venueName: string | null;
+  packageId: string | null;
+  packageName: string | null;
+  createdById: string | null;
+  quantity: number;
+  prefix: string;
+  /** The date by which its cards must be used, or null. */
+  expiresAt: Timestamp | null;
+  createdAt: Timestamp;
+  /** How many of its vouchers are in each status. */
+  counts: Record<VoucherStatus, number>;
+}
+
+/** `GET /api/vouchers/batches`. */
+export interface VoucherBatchList {
+  batches: VoucherBatchRecord[];
+}
+
+/** A voucher with what its printed card shows. */
 export interface PrintableVoucher extends VoucherListItem {
-  downloadSpeed: number | null;
-  uploadSpeed: number | null;
-  /** The package's duration in whole minutes. */
-  duration: number | null;
+  downloadSpeedMbps: number | null;
+  uploadSpeedMbps: number | null;
+}
+
+/** `GET /api/vouchers/batches/:id` and `POST /api/vouchers/batches`: a batch and its cards. */
+export interface VoucherBatchDetail {
+  batch: VoucherBatchRecord;
+  vouchers: PrintableVoucher[];
+}
+
+/** `POST /api/vouchers/revoke`. */
+export interface RevokeResult {
+  /** Vouchers revoked now; ones already finished are left as they were. */
+  revoked: number;
 }
 
 export interface PortalSettingsRecord {
@@ -102,25 +141,13 @@ export interface PortalSettingsRecord {
   updatedAt: Timestamp;
 }
 
-export interface PackagesResponse {
-  packages: PackageRecord[];
-}
-
-export interface VouchersResponse {
-  vouchers: VoucherListItem[];
-}
-
+/** `POST /api/vouchers/print`: chosen vouchers with what their cards show. */
 export interface PrintableVouchersResponse {
   vouchers: PrintableVoucher[];
 }
 
 export interface PortalSettingsResponse {
   settings: PortalSettingsRecord;
-}
-
-/** Every API error body. */
-export interface ApiErrorBody {
-  error: string;
 }
 
 export type StaffRole = "admin" | "manager";

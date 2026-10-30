@@ -1,6 +1,6 @@
 "use client";
 
-import type { PackageRecord, PackagesResponse } from "@hashifi/types";
+import type { PackageList, PackageRecord, VoucherBatchDetail } from "@hashifi/types";
 import {
   AlertCircle,
   ArrowLeft,
@@ -76,6 +76,7 @@ export default function CreateVoucherPage() {
   const { showDialog, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty && !isGenerating);
   const [showSuccess, setShowSuccess] = useState(false);
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
+  const [batchId, setBatchId] = useState<string | null>(null);
   const [packages, setPackages] = useState<PackageOption[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,7 +89,7 @@ export default function CreateVoucherPage() {
           : `${API_URL}/api/packages`;
       const pkgRes = await fetch(url, { credentials: "include" });
       if (!pkgRes.ok) throw new Error("Failed to fetch packages");
-      const data: PackagesResponse = await pkgRes.json();
+      const data: PackageList = await pkgRes.json();
       setPackages(
         data.packages
           .filter((pkg) => pkg.isActive)
@@ -193,7 +194,7 @@ export default function CreateVoucherPage() {
 
     setIsGenerating(true);
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/generate`, {
+      const res = await fetch(`${API_URL}/api/vouchers/batches`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -201,26 +202,24 @@ export default function CreateVoucherPage() {
           packageId: formData.packageId,
           quantity: parseInt(formData.quantity, 10),
           prefix: formData.prefix.trim().toUpperCase() || FORM_DEFAULTS.prefix,
-          expiryDays: parseInt(formData.expiryDays, 10),
-          venueId: formData.venueId || undefined,
+          expiryDays: parseInt(formData.expiryDays, 10) || null,
+          venueId: formData.venueId,
         }),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to generate vouchers");
+        throw new Error(errorData.message || "Failed to generate vouchers");
       }
 
-      const data = await res.json();
-      setGeneratedCodes(data.codes);
-      const next = {
-        ...FORM_DEFAULTS,
-        prefix: (data.prefix as string) || formData.prefix.trim().toUpperCase(),
-      };
+      const data: VoucherBatchDetail = await res.json();
+      setGeneratedCodes(data.vouchers.map((v) => v.code));
+      setBatchId(data.batch.id);
+      const next = { ...FORM_DEFAULTS, prefix: data.batch.prefix };
       setFormData(next);
       setBaseline(next);
       setShowSuccess(true);
-      toast.success(`${data.count} voucher(s) generated successfully!`);
+      toast.success(`${data.batch.quantity} voucher(s) generated successfully!`);
     } catch (err) {
       console.error(err);
       toast.error(errorMessage(err, "An error occurred"));
@@ -543,9 +542,7 @@ export default function CreateVoucherPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const codesStr = generatedCodes.join(",");
-                    const pkgId = formData.packageId;
-                    router.push(`/admin/vouchers/print?codes=${codesStr}&packageId=${pkgId}`);
+                    if (batchId) router.push(`/admin/vouchers/print?batch=${batchId}`);
                   }}
                 >
                   <Printer className="size-4 mr-2" />
