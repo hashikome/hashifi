@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Loader, Wifi } from "lucide-react";
+import { ArrowRight, Loader } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -9,14 +9,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { LOGO_SRC } from "@/lib/brand";
+import { errorMessage } from "@/lib/errors";
+
+const TITLES = {
+  email: "Sign in",
+  otp: "Check your email",
+  authenticator: "Authenticator app",
+  backup: "Backup code",
+};
+
+const DESCRIPTIONS = {
+  email: "Enter your email to receive a sign-in code",
+  otp: "",
+  authenticator: "Enter the 6-digit code from your authenticator app",
+  backup: "Enter one of the backup codes you saved. Each works once.",
+};
 
 export default function LoginPage() {
   const router = useRouter();
-  const { sendOtp, login, user, isLoading } = useAuth();
+  const { refresh, user, isLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"email" | "otp">("email");
+  const [backupCode, setBackupCode] = useState("");
+  const [step, setStep] = useState<"email" | "otp" | "authenticator" | "backup">("email");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Redirect if already logged in
@@ -38,36 +56,62 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true);
-    const result = await sendOtp(email);
-    setIsSubmitting(false);
-
-    if (result.success) {
+    try {
+      await api.post("/api/auth/email-otp/send-verification-otp", { email, type: "sign-in" });
       setStep("otp");
-      toast.success("OTP sent", {
-        description: "Check your email for the 6-digit login code.",
+      toast.success("Check your email", {
+        description: "If this address is on the team, a 6-digit code is on its way.",
       });
-    } else {
-      toast.error(result.error || "Email not found. Please use a valid admin email.");
+    } catch (err) {
+      toast.error(errorMessage(err, "Could not send a code. Try again."));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  /** Asks who signed in, and goes on: the layout sends an admin to set up an authenticator. */
+  const finish = async () => {
+    await refresh();
+    router.push("/admin");
+  };
+
+  const handleCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.length !== 6) {
-      toast.error("Please enter the 6-digit OTP");
-      return;
-    }
-
     setIsSubmitting(true);
-    const result = await login(email, otp);
-
-    if (result.success) {
-      toast.success("Welcome back!");
-      router.push("/admin");
-      // button stays loading — navigating away
-    } else {
+    try {
+      const result = await api.post<{ twoFactorRedirect?: boolean }>(
+        "/api/auth/sign-in/email-otp",
+        {
+          email,
+          otp,
+        },
+      );
+      setOtp("");
+      if (result.twoFactorRedirect === true) {
+        setStep("authenticator");
+        setIsSubmitting(false);
+        return;
+      }
+      await finish();
+    } catch (err) {
       setIsSubmitting(false);
-      toast.error(result.error || "Invalid OTP. Request a new code if it expired.");
+      toast.error(errorMessage(err, "That code did not work. Request a new one if it expired."));
+    }
+  };
+
+  const handleAuthenticator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      if (step === "backup") {
+        await api.post("/api/auth/two-factor/verify-backup-code", { code: backupCode.trim() });
+      } else {
+        await api.post("/api/auth/two-factor/verify-totp", { code: otp });
+      }
+      await finish();
+    } catch (err) {
+      setIsSubmitting(false);
+      toast.error(errorMessage(err, "That code did not work."));
     }
   };
 
@@ -85,22 +129,19 @@ export default function LoginPage() {
         {/* Logo and Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center justify-center size-12 rounded-full bg-primary text-primary-foreground">
-              <Wifi className="size-6" />
-            </div>
+            {/* biome-ignore lint/performance/noImgElement: a small static SVG; image optimisation is off (next.config.mjs) */}
+            <img src={LOGO_SRC} alt="" className="size-12" />
             <h1 className="text-2xl font-bold text-foreground">HashiFi</h1>
           </div>
-          <p className="text-muted-foreground">Enterprise Admin Portal</p>
+          <p className="text-muted-foreground">Staff sign-in</p>
         </div>
 
         {/* Login Card */}
         <Card className="border-border shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle>{step === "email" ? "Sign In" : "Enter OTP"}</CardTitle>
+            <CardTitle>{TITLES[step]}</CardTitle>
             <CardDescription>
-              {step === "email"
-                ? "Enter your admin email to receive an OTP"
-                : `We sent a code to ${email}`}
+              {step === "otp" ? `Enter the code sent to ${email}` : DESCRIPTIONS[step]}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -129,12 +170,49 @@ export default function LoginPage() {
                   )}
                 </Button>
               </form>
-            ) : (
-              <form onSubmit={handleLogin} className="space-y-4">
+            ) : step === "backup" ? (
+              <form onSubmit={handleAuthenticator} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>One-Time Password</Label>
+                  <Label htmlFor="backupCode">Backup code</Label>
+                  <Input
+                    id="backupCode"
+                    autoComplete="off"
+                    value={backupCode}
+                    onChange={(e) => setBackupCode(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting || !backupCode.trim()}
+                >
+                  {isSubmitting ? <Loader className="size-4 animate-spin" /> : "Sign In"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setStep("authenticator")}
+                >
+                  Use the authenticator app
+                </Button>
+              </form>
+            ) : (
+              <form
+                onSubmit={step === "otp" ? handleCode : handleAuthenticator}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label>{step === "otp" ? "Email code" : "Authenticator code"}</Label>
                   <div className="flex justify-center">
-                    <InputOTP maxLength={6} value={otp} onChange={setOtp} disabled={isSubmitting}>
+                    <InputOTP
+                      autoFocus
+                      maxLength={6}
+                      value={otp}
+                      onChange={setOtp}
+                      disabled={isSubmitting}
+                    >
                       <InputOTPGroup>
                         <InputOTPSlot index={0} />
                         <InputOTPSlot index={1} />
@@ -153,6 +231,16 @@ export default function LoginPage() {
                 >
                   {isSubmitting ? <Loader className="size-4 animate-spin" /> : "Sign In"}
                 </Button>
+                {step === "authenticator" && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setStep("backup")}
+                  >
+                    Use a backup code
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
@@ -162,7 +250,7 @@ export default function LoginPage() {
                     setOtp("");
                   }}
                 >
-                  Use a different email
+                  Start again
                 </Button>
               </form>
             )}

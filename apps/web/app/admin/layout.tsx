@@ -36,6 +36,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/");
+    } else if (user?.twoFactorEnrollmentRequired) {
+      router.replace("/setup-authenticator");
     } else if (!isLoading && user && user.role === "manager") {
       if (!isManagerAllowedRoute(pathname)) {
         router.replace("/admin");
@@ -51,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!user) {
+  if (!user || user.twoFactorEnrollmentRequired) {
     return null;
   }
 

@@ -1,139 +1,71 @@
 "use client";
 
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
-import type { AdminUser } from "./types";
-
-interface AuthResult {
-  success: boolean;
-  error?: string;
-}
+import type { SignedInStaff } from "@hashifi/types";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { ApiRequestError, api } from "./api";
 
 interface AuthContextType {
-  user: AdminUser | null;
+  user: SignedInStaff | null;
   isLoading: boolean;
-  login: (email: string, otp: string) => Promise<AuthResult>;
+  /** Asks the API who is signed in; the API alone decides. */
+  refresh: () => Promise<SignedInStaff | null>;
   logout: () => Promise<void>;
-  sendOtp: (email: string) => Promise<AuthResult>;
-  updateUser: (updates: Partial<AdminUser>) => void;
+  updateUser: (updates: Partial<SignedInStaff>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AdminUser | null>(null);
+  const [user, setUser] = useState<SignedInStaff | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadSession() {
-      try {
-        const response = await fetch(`${API_URL}/api/auth/me`, {
-          credentials: "include",
-        });
-
-        if (!isMounted) return;
-
-        if (response.ok) {
-          const data = (await response.json()) as { user: AdminUser };
-          setUser(data.user);
-        } else {
-          localStorage.removeItem("hashifi_user");
-          setUser(null);
-        }
-      } catch {
-        if (isMounted) {
-          localStorage.removeItem("hashifi_user");
-          setUser(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+  const refresh = useCallback(async () => {
+    try {
+      const staff = await api.get<SignedInStaff>("/api/me");
+      setUser(staff);
+      return staff;
+    } catch (error) {
+      if (!(error instanceof ApiRequestError)) throw error;
+      setUser(null);
+      return null;
     }
-
-    loadSession();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
-  const sendOtp = async (email: string): Promise<AuthResult> => {
+  useEffect(() => {
+    refresh()
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false));
+  }, [refresh]);
+
+  const logout = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/auth/request-otp`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        return { success: false, error: data?.error };
-      }
-
-      return { success: true };
-    } catch {
-      return { success: false };
-    }
-  };
-
-  const login = async (email: string, otp: string): Promise<AuthResult> => {
-    try {
-      const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, otp }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        return { success: false, error: data?.error };
-      }
-
-      const data = (await response.json()) as { user: AdminUser };
-      setUser(data.user);
-      return { success: true };
-    } catch {
-      return { success: false };
-    }
-  };
-
-  const updateUser = (updates: Partial<AdminUser>) => {
-    setUser((prev) => (prev ? { ...prev, ...updates } : prev));
-  };
-
-  const logout = async () => {
-    try {
-      await fetch(`${API_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
+      await api.post("/api/auth/sign-out");
     } finally {
-      localStorage.removeItem("hashifi_user");
       setUser(null);
     }
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, sendOtp, updateUser }}>
-      {children}
-    </AuthContext.Provider>
+  const updateUser = useCallback((updates: Partial<SignedInStaff>) => {
+    setUser((previous) => (previous ? { ...previous, ...updates } : previous));
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, isLoading, refresh, logout, updateUser }),
+    [user, isLoading, refresh, logout, updateUser],
   );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (context === null) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

@@ -163,6 +163,19 @@ describe("sign-in", () => {
   });
 });
 
+describe("my profile", () => {
+  test("anyone changes their own name, and only that", async () => {
+    await addStaff(t.db, { email: "me@example.com", name: "Old", role: "manager" });
+    const c = client();
+    await signIn(c, "me@example.com");
+    const reply = await c.request("PUT", "/api/me", { name: "  New Name ", role: "admin" });
+    expect(reply.status).toBe(200);
+    expect(reply.body).toMatchObject({ name: "New Name", role: "manager" });
+    expect((await c.request("GET", "/api/me")).body).toMatchObject({ name: "New Name" });
+    expect((await c.request("PUT", "/api/me", { name: "" })).status).toBe(400);
+  });
+});
+
 describe("authenticator app", () => {
   test("an admin without one is told to set it up", async () => {
     await addStaff(t.db, { email: "admin@example.com", name: "Admin", role: "admin" });

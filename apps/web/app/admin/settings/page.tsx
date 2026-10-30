@@ -1,5 +1,6 @@
 "use client";
 
+import type { SignedInStaff } from "@hashifi/types";
 import { Loader, Monitor, Moon, Save, ShieldCheck, Sun, User } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
@@ -8,9 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function getInitials(name: string) {
   return name
@@ -34,15 +34,8 @@ export default function SettingsPage() {
     }
     setIsSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/profile`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name: name.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save");
-      updateUser({ name: name.trim() });
+      const saved = await api.put<SignedInStaff>("/api/me", { name: name.trim() });
+      updateUser({ name: saved.name });
       toast.success("Settings saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "An error occurred");

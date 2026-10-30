@@ -252,7 +252,13 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
     did not repeat, and the cause is not known.
   - [x] (2026-10-30) The vendor's guides are `docs/runbooks/router-onboarding.md` and
     `mikrotik-hotspot-reference.md`, with a note on what changed since they were written.
-  - [ ] Still in M4: the web pass (one client module on
+  - [x] (2026-10-30) Web pass, first slice: `lib/api.ts` (one client, typed errors), sign-in
+    on Better Auth (email code, then the authenticator or a backup code), and
+    `/setup-authenticator` (QR code, key, backup codes), where the admin layout holds anyone
+    `twoFactorEnrollmentRequired`. `PUT /api/me` changes one's own name. Checked in headless
+    Chrome: an admin held at setup, enrolled, reaching `/admin`; a second browser asked for both
+    codes; no API errors but the 401 from `/api/me` before signing in.
+  - [ ] Still in M4: the rest of the web pass (one client module on
     `@hashifi/types`, sign-in on Better Auth, and every page on the routes above). Notes for
     what remains:
     - Endpoints the router or a guest calls (portal, router callbacks) are `@Public()` with
