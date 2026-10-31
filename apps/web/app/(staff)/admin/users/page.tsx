@@ -191,10 +191,16 @@ export default function UsersPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Users</h1>
-          <p className="text-muted-foreground">Manage and monitor WiFi users</p>
+          <h1 className="text-2xl font-semibold">Devices</h1>
+          <p className="text-sm text-muted-foreground">{stats.online} online now</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => fetchCustomers()} disabled={isLoading}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fetchCustomers()}
+          aria-label="Refresh"
+          disabled={isLoading}
+        >
           {isLoading ? (
             <Loader className="size-4 animate-spin" />
           ) : (
@@ -203,53 +209,9 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Online Now</p>
-                <p className="text-2xl font-bold">{stats.online}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Offline</p>
-                <p className="text-2xl font-bold">{stats.offline}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Blocked</p>
-                <p className="text-2xl font-bold">{stats.blocked}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -278,7 +240,7 @@ export default function UsersPage() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>User List</CardTitle>
+          <CardTitle>All devices</CardTitle>
           <CardDescription>{customers.length} users found</CardDescription>
         </CardHeader>
         <CardContent>
@@ -288,9 +250,9 @@ export default function UsersPage() {
                 <TableHead>Device</TableHead>
                 <TableHead>MAC</TableHead>
                 <TableHead>IP</TableHead>
-                <TableHead className="text-center">Data Used</TableHead>
+                <TableHead className="text-center">Data used</TableHead>
                 <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-center">Last Active</TableHead>
+                <TableHead className="text-center">Last seen</TableHead>
                 <TableHead className="text-center">Joined</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
@@ -468,7 +430,7 @@ export default function UsersPage() {
                     <div className="flex items-start gap-2">
                       <Calendar className="size-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-muted-foreground text-xs">Last Active</p>
+                        <p className="text-muted-foreground text-xs">Last seen</p>
                         <p className="font-medium">
                           {selectedUser.lastActiveAt
                             ? formatDate(selectedUser.lastActiveAt, "longDate")

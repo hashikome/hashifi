@@ -225,8 +225,8 @@ export default function SessionsPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Live Sessions</h1>
-          <p className="text-muted-foreground">Real-time monitoring of WiFi connections</p>
+          <h1 className="text-2xl font-semibold">Live sessions</h1>
+          <p className="text-sm text-muted-foreground">{stats.connected} connected now</p>
         </div>
         <Button onClick={fetchSessions} variant="outline" size="sm" disabled={isLoading}>
           {isLoading ? (
@@ -235,50 +235,6 @@ export default function SessionsPage() {
             <RefreshCw className="size-4" />
           )}
         </Button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Sessions</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Connected</p>
-                <p className="text-2xl font-bold">{stats.connected}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Upload</p>
-                <p className="text-2xl font-bold">{formatBytes(stats.uploadBytes)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Download</p>
-                <p className="text-2xl font-bold">{formatBytes(stats.downloadBytes)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Live Feed from MikroTik */}
@@ -425,7 +381,7 @@ export default function SessionsPage() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />

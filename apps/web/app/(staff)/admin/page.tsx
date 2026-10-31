@@ -375,7 +375,7 @@ export default function DashboardPage() {
                     }}
                   />
                   <Area
-                    type="monotone"
+                    type="linear"
                     dataKey="revenue"
                     stroke="var(--chart-1)"
                     fill="url(#revenueGradient)"

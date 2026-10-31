@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adding a router asks four plain questions, and list screens lead with their list: the same counts
+  as a line under the title, named actions, and Devices for what Users listed.
 - A venue is now a name, a city or town and an optional address; the map and the other fields are gone.
 - Every router has its own page: connect, set up and serving, with progress and a result that
   survive a refresh. Setup runs in the background, and the setup dialog is gone.

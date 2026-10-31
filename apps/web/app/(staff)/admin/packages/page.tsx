@@ -115,20 +115,23 @@ export default function PackagesPage() {
   };
 
   const activePackages = packages.filter((p) => p.isActive).length;
-  const avgPriceValue =
-    packages.length > 0 ? packages.reduce((sum, p) => sum + p.price, 0) / packages.length : 0;
-  const avgPrice = Math.round(avgPriceValue).toLocaleString();
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Packages</h1>
-          <p className="text-muted-foreground">Configure WiFi access packages and pricing</p>
+          <h1 className="text-2xl font-semibold">Packages</h1>
+          <p className="text-sm text-muted-foreground">{activePackages} on sale</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchPackages} disabled={isLoading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchPackages}
+            aria-label="Refresh"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <Loader className="size-4 animate-spin" />
             ) : (
@@ -146,64 +149,20 @@ export default function PackagesPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Packages</p>
-                <p className="text-2xl font-bold">{packages.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold">{activePackages}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Inactive</p>
-                <p className="text-2xl font-bold">{packages.length - activePackages}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Price</p>
-                <p className="text-2xl font-bold">TSH {avgPrice}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Packages Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Package List</CardTitle>
+          <CardTitle>All packages</CardTitle>
           <CardDescription>All WiFi access packages and their configurations</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Package Name</TableHead>
+                <TableHead>Package</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="text-center">Speed</TableHead>
-                <TableHead className="text-center">Data Limit</TableHead>
+                <TableHead className="text-center">Data</TableHead>
                 <TableHead className="text-center">Duration</TableHead>
                 <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-center">Status</TableHead>

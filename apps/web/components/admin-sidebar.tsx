@@ -49,14 +49,14 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard, roles: ["admin", "manager"] },
-  { name: "Live Sessions", href: "/admin/sessions", icon: Radio, roles: ["admin", "manager"] },
+  { name: "Live sessions", href: "/admin/sessions", icon: Radio, roles: ["admin", "manager"] },
   { name: "Vouchers", href: "/admin/vouchers", icon: Ticket, roles: ["admin", "manager"] },
   { name: "Payments", href: "/admin/payments", icon: Receipt, roles: ["admin", "manager"] },
   { name: "Packages", href: "/admin/packages", icon: Package, roles: ["admin", "manager"] },
   { name: "Venues", href: "/admin/venues", icon: Building2, roles: ["admin", "manager"] },
   { name: "Routers", href: "/admin/routers", icon: Router, roles: ["admin", "manager"] },
-  { name: "Users", href: "/admin/users", icon: Users, roles: ["admin"] },
-  { name: "Portal Pages", href: "/admin/portal", icon: Smartphone, roles: ["admin"] },
+  { name: "Devices", href: "/admin/users", icon: Users, roles: ["admin"] },
+  { name: "WiFi page", href: "/admin/portal", icon: Smartphone, roles: ["admin"] },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3, roles: ["admin", "manager"] },
   { name: "Revenue", href: "/admin/revenue", icon: DollarSign, roles: ["admin"] },
   { name: "Team", href: "/admin/team", icon: Users2, roles: ["admin"] },

@@ -174,8 +174,6 @@ export default function VouchersPage() {
     setCurrentPage(1);
   };
 
-  const activeCount = vouchers.filter((v) => v.status === "active").length;
-  const expiredCount = vouchers.filter((v) => v.status === "expired").length;
   const unusedCount = vouchers.filter((v) => v.status === "unused").length;
 
   const copyCode = (code: string) => {
@@ -239,11 +237,17 @@ export default function VouchersPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Vouchers</h1>
-          <p className="text-muted-foreground">Manage WiFi access vouchers and their usage</p>
+          <h1 className="text-2xl font-semibold">Vouchers</h1>
+          <p className="text-sm text-muted-foreground">{unusedCount} unused</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchVouchers} disabled={isLoading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchVouchers}
+            aria-label="Refresh"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <Loader className="size-4 animate-spin" />
             ) : (
@@ -259,53 +263,9 @@ export default function VouchersPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Vouchers</p>
-                <p className="text-2xl font-bold">{vouchers.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold">{activeCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Unused</p>
-                <p className="text-2xl font-bold">{unusedCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Expired</p>
-                <p className="text-2xl font-bold">{expiredCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -340,7 +300,7 @@ export default function VouchersPage() {
       {/* Vouchers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Voucher List</CardTitle>
+          <CardTitle>All vouchers</CardTitle>
           <CardDescription>{filteredVouchers.length} vouchers found</CardDescription>
         </CardHeader>
         <CardContent>
@@ -359,7 +319,7 @@ export default function VouchersPage() {
                 <TableHead>Code</TableHead>
                 <TableHead>Package</TableHead>
                 <TableHead>Venue</TableHead>
-                <TableHead>Data Usage</TableHead>
+                <TableHead>Data</TableHead>
                 <TableHead className="text-center">Price</TableHead>
                 <TableHead className="text-center">Duration</TableHead>
                 <TableHead className="text-center">Expires</TableHead>
@@ -405,6 +365,7 @@ export default function VouchersPage() {
                           <Button
                             variant="ghost"
                             size="icon-sm"
+                            aria-label="Copy voucher code"
                             onClick={() => copyCode(voucher.code)}
                           >
                             <Copy className="size-3" />
@@ -570,7 +531,7 @@ export default function VouchersPage() {
                   <p>TSH {Math.floor(selectedVoucher.price).toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Data Used</p>
+                  <p className="text-sm font-medium text-muted-foreground">Data used</p>
                   <p>
                     {selectedVoucher.dataLimit < 0
                       ? "Unlimited"

@@ -22,10 +22,13 @@ jobs. The look stays: `DESIGN.md`, teal and Figtree are kept, as the brand has i
 - [x] (2026-11-01) M1: setup runs in the background, with progress and a result stored on the router.
 - [x] (2026-11-01) M2: a router page holding the journey; the setup dialog removed.
 - [x] (2026-11-01) M3: the venue form cut to what is used; the unused columns, map and region data removed.
-- [ ] M4: list screens: the question first, named actions, phones reach the list.
+- [ ] M4 (vouchers, packages, devices, sessions, venues, routers done; dashboard and analytics open): list screens: the question first, named actions, phones reach the list.
 - [ ] M5: the remaining forms, in plain words.
 - [ ] M6: design-audit on the result; findings fixed; `DESIGN.md` and the runbooks updated.
 - [ ] Finish the production test with CHR: a voucher redeemed from the guest VM.
+
+Still open in M4 and M5: tables that scroll sideways on phones (vouchers, packages, devices,
+sessions), the packages icon row, the router edit form, dashboard and analytics, and M6's audit.
 
 ## Surprises & Discoveries
 
