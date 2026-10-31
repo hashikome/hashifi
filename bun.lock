@@ -44,6 +44,14 @@
         "typescript": "7.0.2",
       },
     },
+    "apps/tunnel": {
+      "name": "@hashifi/tunnel",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/bun": "1.4.4",
+        "typescript": "7.0.2",
+      },
+    },
     "apps/web": {
       "name": "@hashifi/web",
       "version": "0.1.0",
@@ -211,6 +219,8 @@
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
 
     "@hashifi/api": ["@hashifi/api@workspace:apps/api"],
+
+    "@hashifi/tunnel": ["@hashifi/tunnel@workspace:apps/tunnel"],
 
     "@hashifi/types": ["@hashifi/types@workspace:packages/types"],
 

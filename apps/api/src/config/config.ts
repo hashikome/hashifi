@@ -31,6 +31,8 @@ export interface AppConfig {
     from: string;
     outboxDir: string;
   };
+  /** What the tunnel service presents to read its peers; null turns that route off. */
+  tunnelSyncSecret: string | null;
   fakeProviders: boolean;
   /** What a venue can offer: each turns on when its provider's credentials are set. */
   features: { mobileMoney: boolean; sms: boolean };
@@ -121,6 +123,7 @@ const schema = z.object({
     .default(null),
   ROUTER_MANAGEMENT_URL: url.nullable().default(null),
   PORTAL_ORIGIN: url.nullable().default(null),
+  TUNNEL_SYNC_SECRET: z.string().min(32).nullable().default(null),
   TUNNEL_NETWORK: z
     .string()
     .regex(/^\d{1,3}(\.\d{1,3}){3}\/(?:[89]|1\d|2[0-9])$/, "must be an IPv4 CIDR from /8 to /29")
@@ -151,6 +154,7 @@ const SECRETS = [
   "SNIPPE_WEBHOOK_SECRET",
   "BRIQ_API_KEY",
   "BRIQ_WEBHOOK_SECRET",
+  "TUNNEL_SYNC_SECRET",
   "R2_ACCESS_KEY_ID",
   "R2_SECRET_ACCESS_KEY",
   "SENTRY_DSN",
@@ -218,6 +222,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     appUrl: c.APP_URL,
     auth: { secret: c.BETTER_AUTH_SECRET, trustedProxies },
     email: { resendApiKey: c.RESEND_API_KEY, from: c.EMAIL_FROM, outboxDir: c.EMAIL_OUTBOX_DIR },
+    tunnelSyncSecret: c.TUNNEL_SYNC_SECRET,
     fakeProviders: fake,
     features: {
       mobileMoney: fake || c.SNIPPE_API_KEY !== null,

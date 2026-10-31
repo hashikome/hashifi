@@ -27,6 +27,7 @@ import { backendSettings } from "./backend-settings.js";
 import { RoutersController } from "./routers.controller.js";
 import { RoutersService } from "./routers.service.js";
 import { TUNNEL_ALLOCATOR, TunnelAllocator } from "./tunnel-allocator.js";
+import { TunnelPeersController } from "./tunnel-peers.controller.js";
 
 const MINUTE = 60_000;
 
@@ -133,7 +134,7 @@ export class BackgroundJobs implements OnApplicationBootstrap, OnApplicationShut
     LiveHub,
     BackgroundJobs,
   ],
-  controllers: [RoutersController],
+  controllers: [RoutersController, TunnelPeersController],
   exports: [
     LiveHub,
     RouterAccess,

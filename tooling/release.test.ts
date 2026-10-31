@@ -8,6 +8,7 @@ const release: Release = {
   attempt: "12-1",
   apiImage: `ghcr.io/hashikome/hashifi/api:${revision}@${digest}`,
   webImage: `ghcr.io/hashikome/hashifi/web:${revision}@${digest}`,
+  tunnelImage: `ghcr.io/hashikome/hashifi/tunnel:${revision}@${digest}`,
   application: "app",
   migration: "migrate",
   registry: "registry",
@@ -23,6 +24,12 @@ EMAIL_FROM=HashiFi
 R2_ENDPOINT=https://x.r2.cloudflarestorage.com
 R2_BUCKET=hashifi
 ROUTER_MANAGEMENT_URL=http://10.88.0.1:8080
+TUNNEL_ADDRESS=10.88.0.1/16
+TUNNEL_NETWORK=10.88.0.0/16
+TUNNEL_PLATFORM_PUBLIC_KEY=key
+TUNNEL_ENDPOINT=host:51820
+TUNNEL_PRIVATE_KEY_SECRET=hashifi_tunnel_private_key
+TUNNEL_SYNC_SECRET_NAME=hashifi_tunnel_sync_secret
 DATABASE_URL_SECRET=hashifi_database_url
 ENCRYPTION_KEY_SECRET=hashifi_encryption_key
 AUTH_SECRET=hashifi_auth_secret

@@ -23,6 +23,7 @@ export interface Release {
   attempt: string;
   apiImage: string;
   webImage: string;
+  tunnelImage: string;
   application: string;
   migration: string;
   registry: string;
@@ -34,6 +35,7 @@ export function validateRelease(release: Release) {
   for (const [kind, image] of [
     ["api", release.apiImage],
     ["web", release.webImage],
+    ["tunnel", release.tunnelImage],
   ]) {
     if (
       !new RegExp(
@@ -53,6 +55,7 @@ export function environment(previous: string, release: Release, migration = fals
     "PUBLIC_HOST",
     "API_IMAGE",
     "WEB_IMAGE",
+    "TUNNEL_IMAGE",
     "APP_REPLICAS",
     "RELEASE_ATTEMPT",
     "RELEASE_SHA",
@@ -65,6 +68,12 @@ export function environment(previous: string, release: Release, migration = fals
     "R2_ENDPOINT",
     "R2_BUCKET",
     "ROUTER_MANAGEMENT_URL",
+    "TUNNEL_ADDRESS",
+    "TUNNEL_NETWORK",
+    "TUNNEL_PLATFORM_PUBLIC_KEY",
+    "TUNNEL_ENDPOINT",
+    "TUNNEL_PRIVATE_KEY_SECRET",
+    "TUNNEL_SYNC_SECRET_NAME",
     "DATABASE_URL_SECRET",
     "MIGRATION_DATABASE_URL_SECRET",
     "ENCRYPTION_KEY_SECRET",
@@ -84,6 +93,7 @@ export function environment(previous: string, release: Release, migration = fals
   Object.assign(values, {
     API_IMAGE: release.apiImage,
     WEB_IMAGE: release.webImage,
+    TUNNEL_IMAGE: release.tunnelImage,
     RELEASE_SHA: release.revision,
     RELEASE_ATTEMPT: release.attempt,
     APP_REPLICAS: "1",
@@ -183,8 +193,16 @@ async function waitFor(
           const service = name?.startsWith(`${target.appName}_`)
             ? name.slice(target.appName.length + 1)
             : "";
-          const expected = service === "web" ? release.webImage : release.apiImage;
-          if (!["api", "web"].includes(service ?? "") || container.Config?.Image !== expected) {
+          const expected =
+            service === "web"
+              ? release.webImage
+              : service === "tunnel"
+                ? release.tunnelImage
+                : release.apiImage;
+          if (
+            !["api", "web", "tunnel"].includes(service ?? "") ||
+            container.Config?.Image !== expected
+          ) {
             continue;
           }
           if (!container.Config.Env?.includes(`RELEASE_ATTEMPT=${release.attempt}`)) continue;
@@ -197,8 +215,8 @@ async function waitFor(
       if (migration && complete === 1) return;
       if (
         !migration &&
-        list.filter((item) => item.state === "running").length === 2 &&
-        ["api", "web"].every((service) => running.get(service) === 1)
+        list.filter((item) => item.state === "running").length === 3 &&
+        ["api", "web", "tunnel"].every((service) => running.get(service) === 1)
       )
         return;
     }
@@ -328,6 +346,7 @@ async function main() {
     attempt: `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`,
     apiImage: process.env.API_IMAGE ?? "",
     webImage: process.env.WEB_IMAGE ?? "",
+    tunnelImage: process.env.TUNNEL_IMAGE ?? "",
     registry: process.env.DOKPLOY_REGISTRY_ID ?? "",
   });
   console.log("HashiFi migration completed and the application converged. Check the live product.");

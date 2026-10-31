@@ -20,6 +20,7 @@ jobs:
     outputs:
       api: ${{ steps.inputs.outputs.api }}
       web: ${{ steps.inputs.outputs.web }}
+      tunnel: ${{ steps.inputs.outputs.tunnel }}
     permissions:
       contents: read
       packages: write
@@ -38,6 +39,7 @@ jobs:
         run: |
           echo "api=ghcr.io/${REPOSITORY,,}/api" >> "$GITHUB_OUTPUT"
           echo "web=ghcr.io/${REPOSITORY,,}/web" >> "$GITHUB_OUTPUT"
+          echo "tunnel=ghcr.io/${REPOSITORY,,}/tunnel" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         id: api
         with:
@@ -56,14 +58,24 @@ jobs:
           tags: ${{ steps.name.outputs.web }}:${{ github.sha }}
           provenance: true
           sbom: true
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        id: tunnel
+        with:
+          context: .
+          file: apps/tunnel/Dockerfile
+          push: true
+          tags: ${{ steps.name.outputs.tunnel }}:${{ github.sha }}
+          provenance: true
+          sbom: true
       - name: Record immutable release inputs
         id: inputs
         env:
           API_IMAGE: ${{ steps.name.outputs.api }}:${{ github.sha }}@${{ steps.api.outputs.digest }}
           WEB_IMAGE: ${{ steps.name.outputs.web }}:${{ github.sha }}@${{ steps.web.outputs.digest }}
+          TUNNEL_IMAGE: ${{ steps.name.outputs.tunnel }}:${{ github.sha }}@${{ steps.tunnel.outputs.digest }}
         run: |
-          printf 'API_IMAGE=%s\nWEB_IMAGE=%s\n' "$API_IMAGE" "$WEB_IMAGE" | tee -a "$GITHUB_STEP_SUMMARY"
-          printf 'api=%s\nweb=%s\n' "$API_IMAGE" "$WEB_IMAGE" >> "$GITHUB_OUTPUT"
+          printf 'API_IMAGE=%s\nWEB_IMAGE=%s\nTUNNEL_IMAGE=%s\n' "$API_IMAGE" "$WEB_IMAGE" "$TUNNEL_IMAGE" | tee -a "$GITHUB_STEP_SUMMARY"
+          printf 'api=%s\nweb=%s\ntunnel=%s\n' "$API_IMAGE" "$WEB_IMAGE" "$TUNNEL_IMAGE" >> "$GITHUB_OUTPUT"
   deploy:
     needs: image
     if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
@@ -79,6 +91,7 @@ jobs:
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           API_IMAGE: ${{ needs.image.outputs.api }}
           WEB_IMAGE: ${{ needs.image.outputs.web }}
+          TUNNEL_IMAGE: ${{ needs.image.outputs.tunnel }}
           DOKPLOY_REGISTRY_ID: ${{ vars.DOKPLOY_REGISTRY_ID }}
           DOKPLOY_APPLICATION: ${{ vars.DOKPLOY_APPLICATION }}
           DOKPLOY_MIGRATION: ${{ vars.DOKPLOY_MIGRATION }}

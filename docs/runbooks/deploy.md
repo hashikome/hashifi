@@ -37,11 +37,10 @@ and they turn on ([ADR-0010](../engineering-decisions/0010-payments-and-sms.md))
 
 ## The management tunnel
 
-Production cannot reach a venue's router until this exists
-([ADR-0006](../engineering-decisions/0006-router-management-tunnel.md)). The proposal, not yet built:
-
-WireGuard on the Docker host, on one public UDP port, at `10.88.0.1`. The API needs no capability:
-its traffic to `10.88.0.0/16` leaves through the host and is masqueraded on `wg0`, so a router
-sees `10.88.0.1`, the one address it accepts. Routers reach the API's pages through a port on that
-address alone. A timer on the host pulls the peer list from the API, so adding or deleting a
-router needs no shell. This changes the shared server, so it belongs in the infra repository.
+The `tunnel` service in the stack (`apps/tunnel`) is the platform's end of the routers' tunnels
+([ADR-0006](../engineering-decisions/0006-router-management-tunnel.md)). It runs on the host's
+network with `NET_ADMIN`, creates `wg0` at `10.88.0.1` and listens on UDP 51820, so the API needs
+no capability: its traffic to a router leaves through the host and is masqueraded on `wg0`, and the
+router sees the one address it accepts. Every 20 seconds it reads the peer list from
+`/api/internal/tunnel-peers`, so adding or deleting a router needs no shell. Routers fetch their
+portal pages from `10.88.0.1:8080`, which relays those paths and nothing else.

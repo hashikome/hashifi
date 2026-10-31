@@ -65,14 +65,9 @@ re-establishes the tunnel within about 45 seconds; a router switched between an 
 
 ## What remains open
 
-- **The production endpoint.** A public UDP port on the platform, and how the API's container
-  routes to the tunnel subnet under Docker Swarm (a capability such as `NET_ADMIN`, host
-  networking, or a userspace WireGuard sidecar). Cloudflare's proxy does not carry WireGuard.
-  This is shared-platform work owned by the infra repository; a tunnel concentrator may serve
-  other products.
-- **Peer registration.** The platform must add a router's public key as a peer (allowed IP:
-  its tunnel address) when the tunnel is allocated, and remove it when the router is deleted
-  (decision 5). Infra-owned, with the endpoint.
+- **The production endpoint** is built, not yet proved: the `tunnel` service
+  ([deploy runbook](../runbooks/deploy.md#the-management-tunnel)) runs WireGuard on the host's
+  network and reads its peers from the API, which also covers decision 5.
 - **Long router operations behind the proxy.** Setup takes about 17 seconds on the sim and
   completes over HTTP (a 25-second request was checked on Bun), but Cloudflare ends a proxied
   request at 100 seconds. If a real board approaches that, setup becomes a job whose progress

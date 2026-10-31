@@ -12,6 +12,7 @@ services:
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       BETTER_AUTH_SECRET_FILE: /run/secrets/auth_secret
       RESEND_API_KEY_FILE: /run/secrets/resend_key
+      TUNNEL_SYNC_SECRET_FILE: /run/secrets/tunnel_sync_secret
       R2_ACCESS_KEY_ID_FILE: /run/secrets/r2_access_key_id
       R2_SECRET_ACCESS_KEY_FILE: /run/secrets/r2_secret_access_key
       R2_ENDPOINT: ${R2_ENDPOINT:?R2_ENDPOINT_required}
@@ -22,6 +23,9 @@ services:
       PORTAL_ORIGIN: https://${PUBLIC_HOST}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:?TRUSTED_PROXIES_required}
       ROUTER_MANAGEMENT_URL: ${ROUTER_MANAGEMENT_URL:?ROUTER_MANAGEMENT_URL_required}
+      TUNNEL_NETWORK: ${TUNNEL_NETWORK:?TUNNEL_NETWORK_required}
+      TUNNEL_PLATFORM_PUBLIC_KEY: ${TUNNEL_PLATFORM_PUBLIC_KEY:?TUNNEL_PLATFORM_PUBLIC_KEY_required}
+      TUNNEL_ENDPOINT: ${TUNNEL_ENDPOINT:?TUNNEL_ENDPOINT_required}
     secrets:
       [
         database_url,
@@ -81,7 +85,31 @@ services:
         traefik.http.services.hashifi-web.loadbalancer.server.port: "3000"
         traefik.http.services.hashifi-web.loadbalancer.healthcheck.path: /portal/login
         traefik.http.services.hashifi-web.loadbalancer.healthcheck.interval: 15s
+  # The routers' management tunnel (ADR-0006): on the host's network, so the API reaches a router
+  # through wg0 and the router sees the platform's address.
+  tunnel:
+    image: ${TUNNEL_IMAGE:?TUNNEL_IMAGE_required}
+    environment:
+      RELEASE_ATTEMPT: ${RELEASE_ATTEMPT}
+      PORTAL_ORIGIN: https://${PUBLIC_HOST}
+      TUNNEL_ADDRESS: ${TUNNEL_ADDRESS:?TUNNEL_ADDRESS_required}
+      TUNNEL_PRIVATE_KEY_FILE: /run/secrets/tunnel_private_key
+      TUNNEL_SYNC_SECRET_FILE: /run/secrets/tunnel_sync_secret
+    secrets: [tunnel_private_key, tunnel_sync_secret]
+    cap_add: [NET_ADMIN]
+    networks: [hostnet]
+    read_only: true
+    tmpfs: [/tmp]
+    deploy:
+      replicas: ${APP_REPLICAS:-0}
+      resources:
+        limits: { cpus: "0.25", memory: 128M }
+      restart_policy: { condition: any, delay: 5s }
+      update_config: { parallelism: 1, order: stop-first, failure_action: rollback }
 networks:
+  hostnet:
+    external: true
+    name: host
   frontend:
     driver: overlay
     internal: true
@@ -102,3 +130,7 @@ secrets:
     { external: true, name: "${R2_ACCESS_KEY_ID_SECRET:?R2_ACCESS_KEY_ID_SECRET_required}" }
   r2_secret_access_key:
     { external: true, name: "${R2_SECRET_ACCESS_KEY_SECRET:?R2_SECRET_ACCESS_KEY_SECRET_required}" }
+  tunnel_private_key:
+    { external: true, name: "${TUNNEL_PRIVATE_KEY_SECRET:?TUNNEL_PRIVATE_KEY_SECRET_required}" }
+  tunnel_sync_secret:
+    { external: true, name: "${TUNNEL_SYNC_SECRET_NAME:?TUNNEL_SYNC_SECRET_NAME_required}" }
