@@ -19,6 +19,7 @@ const portalOrigin = required("PORTAL_ORIGIN");
 const address = required("TUNNEL_ADDRESS");
 const keyFile = required("TUNNEL_PRIVATE_KEY_FILE");
 const syncSecret = readFileSync(required("TUNNEL_SYNC_SECRET_FILE"), "utf8").trim();
+if (syncSecret === "") throw new Error("TUNNEL_SYNC_SECRET_FILE points to an empty secret file");
 const port = process.env.TUNNEL_PORT ?? "51820";
 
 function run(...command: string[]): string {

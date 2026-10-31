@@ -20,7 +20,7 @@ From the repository root (`bun run verify` runs everything CI runs), or here:
 | `bun run db:seed` | Seeds invented staff, a venue and packages |
 | `bun run staff:add` | Adds a person who can sign in; the first admin is made this way |
 
-Copy `.env.example` to `.env` and set `ENCRYPTION_KEY` and `BETTER_AUTH_SECRET`.
+Copy the root `.env.example` to `apps/api/.env` and set `ENCRYPTION_KEY` and `BETTER_AUTH_SECRET`.
 `ENCRYPTION_KEY` seals router credentials at rest: changing it makes them unreadable.
 
 ## Layout

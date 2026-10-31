@@ -13,7 +13,7 @@ bun run db:deploy     # apply every migration
 bun run db:seed       # invented data: admin@example.com, a venue, packages; safe to repeat
 ```
 
-`apps/api/.env` holds `DATABASE_URL` and `ENCRYPTION_KEY` (see `.env.example`). Prisma does not
+`apps/api/.env` holds `DATABASE_URL` and `ENCRYPTION_KEY` (see the root `.env.example`). Prisma does not
 read `.env` itself; `prisma.config.ts` loads it, and set variables win.
 
 ## Changing the schema

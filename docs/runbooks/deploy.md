@@ -23,12 +23,12 @@ Once, before setting `DEPLOY_ENABLED`:
 
 - Two Dokploy Stacks, raw source with auto-deploy off: `hashifi-xxxxxx` (`deploy/docker-stack.prod.yml`)
   and `hashifi-release-xxxxxx` (`deploy/docker-stack.migrate.yml`), each with the inputs in
-  `deploy/production.env.example`.
-- A database and roles on the shared PostgreSQL, and the Docker secrets that example names.
+  the stack section of `.env.example`.
+- A database and roles on the shared PostgreSQL, and the Docker secrets it names.
 - DNS: `hashifi.hashikome.com` proxied, and `wg.hashikome.com` DNS-only, since Cloudflare's proxy
   does not carry WireGuard.
 - Email sends from `no-reply@notify.hashikome.com` with the shared Hashikome Resend key, as Soko
-  does; `hashifi_resend_key` is HashiFi's own Docker secret holding it.
+  does; HashiFi holds it as its own Docker secret.
 - In GitHub: an environment `production` with the secret `DOKPLOY_API_KEY`, and the variables
   `DOKPLOY_APPLICATION`, `DOKPLOY_MIGRATION`, `DOKPLOY_REGISTRY_ID` and `DEPLOY_ENABLED`.
 - Uptime Kuma monitors on `/api/health` and `/portal/login`.

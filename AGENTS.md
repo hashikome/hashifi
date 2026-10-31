@@ -98,7 +98,7 @@ or discard user data without explicit approval.
 - **Personal data:** real people's data stays out of the repository, `ref/` and logs.
   Development uses seeded, invented data only.
 - **Secrets**: Docker secrets (`<NAME>_FILE`) for sensitive values, an env file for the rest
-  (each app's `.env.example` lists its keys); the application starts from these alone, in its own scope
+  (`.env.example` lists each key); the application starts from these alone, in its own scope
   ([docs/SECURITY.md](docs/SECURITY.md#credentials)).
 - `ref/` is for disposable, git-ignored references and handoffs
   ([docs/runbooks/reference-context.md](docs/runbooks/reference-context.md)); never secrets,

@@ -46,7 +46,7 @@ Requirements: [Bun](https://bun.sh) and Docker (for local PostgreSQL).
 
 ```bash
 bun install
-cp apps/api/.env.example apps/api/.env          # then set ENCRYPTION_KEY and BETTER_AUTH_SECRET
+cp .env.example apps/api/.env                   # then set ENCRYPTION_KEY and BETTER_AUTH_SECRET
                                                 # (openssl rand -hex 32 for each)
 cp apps/web/.env.example apps/web/.env.local
 bun run infra:up                                # PostgreSQL 18 on 127.0.0.1:5437

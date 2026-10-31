@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Errors and wide events reach Sentry in production, each marked with its release.
+- One `.env.example` at the repository root replaces the API's and the deployment's, and an empty
+  secret file now stops the start.
 - The credentials standard: HashiFi starts from its own env values and Docker secrets alone, and
   no document names a password manager.
 - The management tunnel: a `tunnel` service runs the platform's end of the routers' WireGuard

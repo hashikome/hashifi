@@ -30,6 +30,12 @@ describe("readSecret", () => {
     ).toThrow();
   });
 
+  test("an empty _FILE secret fails loudly instead of counting as a value", () => {
+    const empty = join(dir, "empty");
+    writeFileSync(empty, " \n");
+    expect(() => readSecret("DATABASE_URL", { DATABASE_URL_FILE: empty })).toThrow(/empty/);
+  });
+
   test("requireSecret names what to set", () => {
     expect(() => requireSecret("ENCRYPTION_KEY", {})).toThrow(/ENCRYPTION_KEY_FILE/);
   });

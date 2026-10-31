@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 /**
  * Reads a secret by the deployment contract (docs/SECURITY.md, Credentials): `<NAME>_FILE`
  * (a Docker secret, e.g. /run/secrets/x) wins, and its trimmed content is the value; a set
- * path that cannot be read fails at startup. Otherwise the plain variable is used. Returns null
+ * path that cannot be read, or holds nothing, fails at startup. Otherwise the plain variable is used. Returns null
  * when neither is set. No password manager is involved.
  */
 export function readSecret(
@@ -11,7 +11,11 @@ export function readSecret(
   env: Record<string, string | undefined> = process.env,
 ): string | null {
   const path = env[`${name}_FILE`];
-  if (path) return readFileSync(path, "utf8").trim();
+  if (path) {
+    const secret = readFileSync(path, "utf8").trim();
+    if (secret === "") throw new Error(`${name}_FILE points to an empty secret file.`);
+    return secret;
+  }
   const value = env[name]?.trim();
   return value ? value : null;
 }

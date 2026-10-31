@@ -80,17 +80,26 @@ Secrets never enter the repository, `ref/` or logs. The application gets its con
 two ways and needs nothing else to start:
 
 - **Docker secrets** for values that should not sit even in an env file (database URLs,
-  signing and encryption keys, provider keys): mounted by the stack at `/run/secrets/<name>`
-  and passed as `<NAME>_FILE`. A set `<NAME>_FILE` wins; if it cannot be read, the API fails
-  at startup.
-- **Environment variables** from a private env file for everything else, and for local
-  development (each app's `.env.example` lists its keys).
+  signing and encryption keys, provider keys, error-reporting DSNs): external to the stack,
+  mounted at `/run/secrets/<name>` and passed as `<NAME>_FILE`. A set `<NAME>_FILE` wins; if it
+  cannot be read or is empty, the API fails at startup, not at first use. The stack receives each
+  secret's versioned name (`<NAME>_SECRET=hashifi_<name>_YYYYMMDD_vN`), never its value.
+- **Environment variables** from an env file for everything else, including local development.
+
+There is one template, `.env.example` at the repository root, listing each key; the web, its own
+app, keeps `apps/web/.env.example`. It is never named for an environment, as env files are used
+wherever the code runs: copy it, fill in the values that fit that environment, and keep the copy
+out of the repository.
 
 Each product stands alone: a credential shared between products still reaches this one as its own
 Docker secret, and the application never reads another product's configuration. Where an operator
 keeps these values is their own concern, so no document, script or application code names a
-password manager or a path on someone's machine. The running application never receives migrator
+password manager or a path on someone's machine. Whatever holds them, the service ends up with an
+env file whose values fit its environment. The running application never receives migrator
 or administrator database credentials; migrations get their own `DATABASE_URL_FILE`.
+
+To move a value to a Docker secret, first release an image that reads `<NAME>_FILE`, then change the
+stack. The other way round, the image ignores the file and the feature stops without an error.
 
 Router API passwords and tunnel private keys are encrypted at rest with AES-256-GCM
 (`SecretBox`) under `ENCRYPTION_KEY`, which the API requires at start; a tampered value fails

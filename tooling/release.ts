@@ -73,7 +73,8 @@ export function environment(previous: string, release: Release, migration = fals
     "TUNNEL_PLATFORM_PUBLIC_KEY",
     "TUNNEL_ENDPOINT",
     "TUNNEL_PRIVATE_KEY_SECRET",
-    "TUNNEL_SYNC_SECRET_NAME",
+    "TUNNEL_SYNC_SECRET",
+    "SENTRY_DSN_SECRET",
     "DATABASE_URL_SECRET",
     "MIGRATION_DATABASE_URL_SECRET",
     "ENCRYPTION_KEY_SECRET",
@@ -111,10 +112,7 @@ export function environment(previous: string, release: Release, migration = fals
   for (const name of required) {
     if (!values[name] || values[name].includes("SET_") || /[\r\n$`]/.test(values[name]))
       throw new Error(`Missing or unresolved deployment input: ${name}`);
-    if (
-      (name.endsWith("_SECRET") || name.endsWith("_SECRET_NAME")) &&
-      !/^[a-zA-Z0-9_.-]+$/.test(values[name])
-    )
+    if (name.endsWith("_SECRET") && !/^[a-zA-Z0-9_.-]+$/.test(values[name]))
       throw new Error(`Expected a secret name: ${name}`);
   }
   if (

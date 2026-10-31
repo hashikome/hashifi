@@ -12,6 +12,8 @@ services:
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       BETTER_AUTH_SECRET_FILE: /run/secrets/auth_secret
       RESEND_API_KEY_FILE: /run/secrets/resend_key
+      SENTRY_DSN_FILE: /run/secrets/sentry_dsn
+      SENTRY_RELEASE: ${RELEASE_SHA:?RELEASE_SHA_required}
       TUNNEL_SYNC_SECRET_FILE: /run/secrets/tunnel_sync_secret
       R2_ACCESS_KEY_ID_FILE: /run/secrets/r2_access_key_id
       R2_SECRET_ACCESS_KEY_FILE: /run/secrets/r2_secret_access_key
@@ -35,6 +37,7 @@ services:
         r2_access_key_id,
         r2_secret_access_key,
         tunnel_sync_secret,
+        sentry_dsn,
       ]
     networks: [ingress, backend, frontend]
     read_only: true
@@ -133,5 +136,5 @@ secrets:
     { external: true, name: "${R2_SECRET_ACCESS_KEY_SECRET:?R2_SECRET_ACCESS_KEY_SECRET_required}" }
   tunnel_private_key:
     { external: true, name: "${TUNNEL_PRIVATE_KEY_SECRET:?TUNNEL_PRIVATE_KEY_SECRET_required}" }
-  tunnel_sync_secret:
-    { external: true, name: "${TUNNEL_SYNC_SECRET_NAME:?TUNNEL_SYNC_SECRET_NAME_required}" }
+  tunnel_sync_secret: { external: true, name: "${TUNNEL_SYNC_SECRET:?TUNNEL_SYNC_SECRET_required}" }
+  sentry_dsn: { external: true, name: "${SENTRY_DSN_SECRET:?SENTRY_DSN_SECRET_required}" }
