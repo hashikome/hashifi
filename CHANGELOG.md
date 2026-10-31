@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Services carry the product in their names (`hashifi-api`, `hashifi-web`, `hashifi-tunnel`).
 - Errors and wide events reach Sentry in production, each marked with its release.
 - One `.env.example` at the repository root replaces the API's and the deployment's, and an empty
   secret file now stops the start.

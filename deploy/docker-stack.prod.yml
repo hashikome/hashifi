@@ -1,7 +1,7 @@
 version: "3.8"
 # One host: Traefik sends the API's paths to `api` and everything else to `web`.
 services:
-  api:
+  hashifi-api:
     # A full SHA tag and digest, supplied at release.
     image: ${API_IMAGE:?API_IMAGE_required}
     environment:
@@ -62,7 +62,7 @@ services:
         traefik.http.services.hashifi-api.loadbalancer.server.port: "8080"
         traefik.http.services.hashifi-api.loadbalancer.healthcheck.path: /api/health
         traefik.http.services.hashifi-api.loadbalancer.healthcheck.interval: 15s
-  web:
+  hashifi-web:
     image: ${WEB_IMAGE:?WEB_IMAGE_required}
     environment:
       NODE_ENV: production
@@ -91,7 +91,7 @@ services:
         traefik.http.services.hashifi-web.loadbalancer.healthcheck.interval: 15s
   # The routers' management tunnel (ADR-0006): on the host's network, so the API reaches a router
   # through wg0 and the router sees the platform's address.
-  tunnel:
+  hashifi-tunnel:
     image: ${TUNNEL_IMAGE:?TUNNEL_IMAGE_required}
     environment:
       RELEASE_ATTEMPT: ${RELEASE_ATTEMPT}
@@ -128,7 +128,7 @@ secrets:
   database_url: { external: true, name: "${DATABASE_URL_SECRET:?DATABASE_URL_SECRET_required}" }
   encryption_key:
     { external: true, name: "${ENCRYPTION_KEY_SECRET:?ENCRYPTION_KEY_SECRET_required}" }
-  auth_secret: { external: true, name: "${AUTH_SECRET:?AUTH_SECRET_required}" }
+  auth_secret: { external: true, name: "${AUTH_KEY_SECRET:?AUTH_KEY_SECRET_required}" }
   resend_key: { external: true, name: "${RESEND_KEY_SECRET:?RESEND_KEY_SECRET_required}" }
   r2_access_key_id:
     { external: true, name: "${R2_ACCESS_KEY_ID_SECRET:?R2_ACCESS_KEY_ID_SECRET_required}" }

@@ -2,8 +2,8 @@
 
 Time-bound, device-limited WiFi access sold as vouchers through a captive portal, for a home
 and for venues with their own MikroTik routers. A cloud backend configures the routers,
-issues vouchers and tracks sessions. Private until HashiFi is ready to deploy, then public
-(FSL-1.1-ALv2); production domain not yet chosen.
+issues vouchers and tracks sessions. Public repository (FSL-1.1-ALv2), in production at
+`hashifi.hashikome.com`.
 
 This repository is the source of truth for the HashiFi product and engineering decisions.
 External documents are references only. Keep this file short: it is a map, not a manual.
@@ -100,6 +100,10 @@ or discard user data without explicit approval.
 - **Secrets**: Docker secrets (`<NAME>_FILE`) for sensitive values, an env file for the rest
   (`.env.example` lists each key); the application starts from these alone, in its own scope
   ([docs/SECURITY.md](docs/SECURITY.md#credentials)).
+- **Service names carry the product:** `hashifi-api`, `hashifi-web`, read in Swarm as
+  `<stack>_hashifi-api`, and a stack is named after its product when it is created. A service key is
+  also its hostname on the network, so a bare `api` is too broad: every product has one, and it
+  would be ambiguous on a single attachable network shared between them.
 - `ref/` is for disposable, git-ignored references and handoffs
   ([docs/runbooks/reference-context.md](docs/runbooks/reference-context.md)); never secrets,
   personal data or the only copy of a decision.

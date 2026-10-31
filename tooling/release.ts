@@ -29,6 +29,8 @@ export interface Release {
   registry: string;
 }
 
+const SERVICES = ["hashifi-api", "hashifi-web", "hashifi-tunnel"];
+
 export function validateRelease(release: Release) {
   if (!/^[a-f0-9]{40}$/.test(release.revision) || !/^\d+-\d+$/.test(release.attempt))
     throw new Error("A full revision and GitHub run-attempt identity are required.");
@@ -78,7 +80,7 @@ export function environment(previous: string, release: Release, migration = fals
     "DATABASE_URL_SECRET",
     "MIGRATION_DATABASE_URL_SECRET",
     "ENCRYPTION_KEY_SECRET",
-    "AUTH_SECRET",
+    "AUTH_KEY_SECRET",
     "RESEND_KEY_SECRET",
     "R2_ACCESS_KEY_ID_SECRET",
     "R2_SECRET_ACCESS_KEY_SECRET",
@@ -132,7 +134,8 @@ function inspect(value: unknown): Container {
 
 export function migrationState(container: Container, appName: string, release: Release) {
   if (
-    container.Config?.Labels?.["com.docker.swarm.service.name"] !== `${appName}_migration` ||
+    container.Config?.Labels?.["com.docker.swarm.service.name"] !==
+      `${appName}_hashifi-migration` ||
     !container.Config.Labels["com.docker.swarm.task.id"] ||
     container.Config.Image !== release.apiImage ||
     !container.Config.Env?.includes(`RELEASE_ATTEMPT=${release.attempt}`)
@@ -192,15 +195,12 @@ async function waitFor(
             ? name.slice(target.appName.length + 1)
             : "";
           const expected =
-            service === "web"
+            service === "hashifi-web"
               ? release.webImage
-              : service === "tunnel"
+              : service === "hashifi-tunnel"
                 ? release.tunnelImage
                 : release.apiImage;
-          if (
-            !["api", "web", "tunnel"].includes(service ?? "") ||
-            container.Config?.Image !== expected
-          ) {
+          if (!SERVICES.includes(service ?? "") || container.Config?.Image !== expected) {
             continue;
           }
           if (!container.Config.Env?.includes(`RELEASE_ATTEMPT=${release.attempt}`)) continue;
@@ -214,7 +214,7 @@ async function waitFor(
       if (
         !migration &&
         list.filter((item) => item.state === "running").length === 3 &&
-        ["api", "web", "tunnel"].every((service) => running.get(service) === 1)
+        SERVICES.every((service) => running.get(service) === 1)
       )
         return;
     }

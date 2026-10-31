@@ -33,7 +33,7 @@ TUNNEL_SYNC_SECRET=hashifi_tunnel_sync_20261031_v1
 SENTRY_DSN_SECRET=hashifi_sentry_dsn_20261031_v1
 DATABASE_URL_SECRET=hashifi_database_url
 ENCRYPTION_KEY_SECRET=hashifi_encryption_key
-AUTH_SECRET=hashifi_auth_secret
+AUTH_KEY_SECRET=hashifi_auth_secret
 RESEND_KEY_SECRET=hashifi_resend_key
 R2_ACCESS_KEY_ID_SECRET=hashifi_r2_access_key_id
 R2_SECRET_ACCESS_KEY_SECRET=hashifi_r2_secret_access_key
@@ -65,7 +65,10 @@ describe("release", () => {
         Image: release.apiImage,
         Env: ["RELEASE_ATTEMPT=12-1"],
         Cmd: ["bun", "--bun", "prisma", "migrate", "deploy"],
-        Labels: { "com.docker.swarm.service.name": "x_migration", "com.docker.swarm.task.id": "t" },
+        Labels: {
+          "com.docker.swarm.service.name": "x_hashifi-migration",
+          "com.docker.swarm.task.id": "t",
+        },
       },
       State: { Status: status, ExitCode: exit },
     });

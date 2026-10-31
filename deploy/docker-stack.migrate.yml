@@ -2,7 +2,7 @@ version: "3.8"
 # A separate stack for the one-shot migration: its task must exit 0 before the application stack
 # gets APP_REPLICAS=1.
 services:
-  migration:
+  hashifi-migration:
     image: ${API_IMAGE:?API_IMAGE_required}
     command: [bun, --bun, prisma, migrate, deploy]
     environment:

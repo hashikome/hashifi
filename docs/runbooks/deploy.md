@@ -6,7 +6,7 @@ development. To make it manual, replace `push` with `workflow_dispatch` in
 
 Production is `hashifi.hashikome.com`: one host, on the shared Dokploy platform
 ([infra](https://github.com/hashikome/infra/blob/main/docs/dokploy-release.md)). Traefik sends
-`/api/`, `/ws/`, `/webhooks/` and `/portal/hotspot-files/` to `api`, and the rest to `web`.
+`/api/`, `/ws/`, `/webhooks/` and `/portal/hotspot-files/` to `hashifi-api`, and the rest to `web`.
 
 ## What a release does
 
@@ -40,7 +40,7 @@ and they turn on ([ADR-0010](../engineering-decisions/0010-payments-and-sms.md))
 
 ## The management tunnel
 
-The `tunnel` service in the stack (`apps/tunnel`) is the platform's end of the routers' tunnels
+The `hashifi-tunnel` service in the stack (`apps/tunnel`) is the platform's end of the routers' tunnels
 ([ADR-0006](../engineering-decisions/0006-router-management-tunnel.md)). It runs on the host's
 network with `NET_ADMIN`, creates `wg0` at `10.88.0.1` and listens on `wg.hashikome.com:51820`, so the API needs
 no capability: its traffic to a router leaves through the host and is masqueraded on `wg0`, and the
