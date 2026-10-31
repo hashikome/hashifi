@@ -282,20 +282,8 @@ model Venue {
   id           String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
   operatorId   String?     @map("operator_id") @db.Uuid
   name         String      @db.VarChar(180)
-  description  String?
   address      String?     @db.VarChar(255)
-  road         String?     @db.VarChar(120)
-  street       String?     @db.VarChar(120)
-  ward         String?     @db.VarChar(120)
-  district     String?     @db.VarChar(120)
   city         String      @db.VarChar(120)
-  region       String?     @db.VarChar(120)
-  country      String      @default("Tanzania") @db.VarChar(120)
-  postalCode   String?     @map("postal_code") @db.VarChar(30)
-  contactPhone String?     @map("contact_phone") @db.VarChar(32)
-  contactEmail String?     @map("contact_email") @db.VarChar(255)
-  latitude     Decimal?    @db.Decimal(10, 7)
-  longitude    Decimal?    @db.Decimal(10, 7)
   status       VenueStatus @default(active)
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)

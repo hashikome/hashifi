@@ -21,7 +21,7 @@ jobs. The look stays: `DESIGN.md`, teal and Figtree are kept, as the brand has i
 - [x] (2026-11-01) Fix: setup and verify always answered 400 (`0da36cc`).
 - [x] (2026-11-01) M1: setup runs in the background, with progress and a result stored on the router.
 - [x] (2026-11-01) M2: a router page holding the journey; the setup dialog removed.
-- [ ] M3: the venue form cut to what is used; the unused columns, map and region data removed.
+- [x] (2026-11-01) M3: the venue form cut to what is used; the unused columns, map and region data removed.
 - [ ] M4: list screens: the question first, named actions, phones reach the list.
 - [ ] M5: the remaining forms, in plain words.
 - [ ] M6: design-audit on the result; findings fixed; `DESIGN.md` and the runbooks updated.

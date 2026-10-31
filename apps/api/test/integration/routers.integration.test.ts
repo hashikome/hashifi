@@ -24,7 +24,7 @@ async function manager(email: string): Promise<{ client: Client; id: string }> {
 
 async function venue(operatorId: string | null = null) {
   return t.db.venue.create({
-    data: { name: "Home", city: "Dar es Salaam", region: "Dar es Salaam", operatorId },
+    data: { name: "Home", city: "Dar es Salaam", operatorId },
   });
 }
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A venue is now a name, a city or town and an optional address; the map and the other fields are gone.
 - Every router has its own page: connect, set up and serving, with progress and a result that
   survive a refresh. Setup runs in the background, and the setup dialog is gone.
 - Setting up and checking a router work: both always failed, as an absent query flag was refused.

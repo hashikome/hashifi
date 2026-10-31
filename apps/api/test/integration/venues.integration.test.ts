@@ -28,7 +28,7 @@ async function manager(email: string): Promise<{ client: Client; id: string }> {
   return { client, id };
 }
 
-const VENUE = { name: "Home", city: "Dar es Salaam", region: "Dar es Salaam" };
+const VENUE = { name: "Home", city: "Dar es Salaam" };
 
 describe("venues", () => {
   test("nobody signed in gets 401, and an admin without an authenticator 403", async () => {
@@ -56,19 +56,13 @@ describe("venues", () => {
     });
     const created = await c.request("POST", "/api/venues", {
       ...VENUE,
-      contactEmail: "Front@Example.com",
-      latitude: -6.7924,
-      longitude: 39.2083,
-      postalCode: "",
+      address: "",
     });
     expect(created.status).toBe(201);
     const venue = (created.body as { venue: Record<string, unknown> }).venue;
     expect(venue).toMatchObject({
       name: "Home",
-      country: "Tanzania",
-      contactEmail: "front@example.com",
-      latitude: "-6.7924",
-      postalCode: null,
+      address: null,
       operatorId: null,
       routerCount: 0,
     });
@@ -116,7 +110,6 @@ describe("venues", () => {
     const bad = await c.request("POST", "/api/venues", {
       name: "Line\nbreak",
       city: "",
-      latitude: 120,
     });
     expect(bad.status).toBe(400);
     expect(bad.body).toMatchObject({
@@ -124,8 +117,6 @@ describe("venues", () => {
       details: {
         name: "must be one line of text",
         city: "is required",
-        region: expect.any(String),
-        latitude: expect.any(String),
       },
     });
     expect((await c.request("GET", "/api/venues/not-a-uuid")).status).toBe(404);

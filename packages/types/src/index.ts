@@ -192,21 +192,8 @@ export type VenueStatus = "active" | "inactive" | "maintenance";
 export interface VenueRecord {
   id: string;
   name: string;
-  description: string | null;
   address: string | null;
-  road: string | null;
-  street: string | null;
-  ward: string | null;
-  district: string | null;
   city: string;
-  region: string | null;
-  country: string;
-  postalCode: string | null;
-  contactPhone: string | null;
-  contactEmail: string | null;
-  /** Decimal degrees, as strings. */
-  latitude: DecimalString | null;
-  longitude: DecimalString | null;
   /** The manager who runs it. */
   operatorId: string | null;
   status: VenueStatus;

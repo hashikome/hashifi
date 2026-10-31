@@ -22,30 +22,8 @@ const optionalLine = (max: number) =>
  */
 export const venueInput = z.object({
   name: line(180).min(1, "is required"),
-  description: z
-    .string()
-    .trim()
-    .max(2000)
-    .nullable()
-    .default(null)
-    .transform((value) => (value === "" ? null : value)),
   address: optionalLine(255),
-  road: optionalLine(120),
-  street: optionalLine(120),
-  ward: optionalLine(120),
-  district: optionalLine(120),
   city: line(120).min(1, "is required"),
-  region: line(120).min(1, "is required"),
-  country: line(120).min(1, "is required").default("Tanzania"),
-  postalCode: optionalLine(30),
-  contactPhone: optionalLine(32),
-  contactEmail: z
-    .union([z.literal(""), z.email().max(255)])
-    .nullable()
-    .default(null)
-    .transform((value) => (value === "" || value === null ? null : value.toLowerCase())),
-  latitude: z.number().min(-90).max(90).nullable().default(null),
-  longitude: z.number().min(-180).max(180).nullable().default(null),
   status: z.enum(["active", "inactive", "maintenance"]).default("active"),
 });
 
