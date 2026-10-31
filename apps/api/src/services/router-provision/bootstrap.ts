@@ -22,6 +22,7 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { DEFAULT_DNS } from "./context.js";
 import { intToIpv4, ipv4ToInt } from "./ipv4.js";
 import { type ManagementTunnel, tunnelLines } from "./tunnel.js";
 
@@ -287,6 +288,8 @@ export function buildBootstrapScript(input: BootstrapInput): BootstrapScript {
       ? [
           `# 7. Management tunnel. The router dials the platform, so no port is opened at the`,
           `#    venue; the API is then reachable only from the platform, through the tunnel.`,
+          `#    A reset router has no DNS servers, and the endpoint is a host name.`,
+          `/ip dns set servers=${DEFAULT_DNS}`,
           ...tunnelLines(input.tunnel),
           ``,
         ]

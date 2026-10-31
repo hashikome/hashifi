@@ -357,6 +357,36 @@ class SerialConsole {
 
 // ── Onboarding (docs/runbooks/router-onboarding.md) ─────────────────
 
+/** Step 1: reset to no defaults, as the onboarding procedure requires, then log back in. */
+async function resetToNoDefaults(serial: SerialConsole, adminPassword: string): Promise<void> {
+  await serial.login([adminPassword, ""], adminPassword);
+  serial.send("/system reset-configuration no-defaults=yes skip-backup=yes\r");
+  await serial.waitFor(/\[y\/N\]:\s*$/, 30_000);
+  serial.send("y");
+  await serial.waitFor(/Login:\s*$/, 180_000);
+  await serial.login(["", adminPassword], adminPassword);
+}
+
+/**
+ * Onboards the sim from a script downloaded from a real HashiFi, as an operator would paste it.
+ * The script holds the router's credentials and tunnel key, so nothing from it is printed.
+ */
+async function importScript(): Promise<void> {
+  const path = args[0];
+  if (!path) throw new Error("Usage: bun run router-sim import <bootstrap .rsc>");
+  const statements = readFileSync(path, "utf8")
+    .split("\n")
+    .filter((line) => line.trim() !== "" && !line.trimStart().startsWith("#"));
+  const state = readState();
+  const adminPassword = state.adminPassword ?? randomPassword(20);
+  const serial = await SerialConsole.open();
+  await resetToNoDefaults(serial, adminPassword);
+  for (const statement of statements) await serial.exec(statement);
+  serial.close();
+  writeState({ ...state, adminPassword });
+  console.log(`Imported ${statements.length} statements.`);
+}
+
 async function bootstrap(): Promise<void> {
   const state = readState();
   const tunnel = args.includes("--tunnel")
@@ -368,16 +398,9 @@ async function bootstrap(): Promise<void> {
   const adminPassword = state.adminPassword ?? randomPassword(20);
   const apiPassword = randomPassword(24);
   const serial = await SerialConsole.open();
-
-  // Step 1: reset to no defaults, as the onboarding procedure requires.
-  await serial.login([adminPassword, ""], adminPassword);
-  serial.send("/system reset-configuration no-defaults=yes skip-backup=yes\r");
-  await serial.waitFor(/\[y\/N\]:\s*$/, 30_000);
-  serial.send("y");
-  await serial.waitFor(/Login:\s*$/, 180_000);
+  await resetToNoDefaults(serial, adminPassword);
 
   // Step 2: paste the generated bootstrap script, one statement at a time.
-  await serial.login(["", adminPassword], adminPassword);
   const { script, resolved } = buildBootstrapScript({
     routerName: "hashifi-sim",
     ipAddress: LAN.routerIp,
@@ -1388,6 +1411,7 @@ const commands: Record<string, () => Promise<void> | void> = {
   "guest-test": guestTest,
   "guest-run": guestRun,
   bootstrap,
+  import: importScript,
   setup,
   verify,
 };

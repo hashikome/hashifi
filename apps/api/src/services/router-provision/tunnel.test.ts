@@ -58,6 +58,12 @@ describe("the bootstrap brings the management tunnel up", () => {
     expect(script).toContain("persistent-keepalive=25s");
   });
 
+  test("gives the router DNS before the tunnel, as the endpoint is a host name", () => {
+    const dns = script.indexOf("/ip dns set servers=");
+    expect(dns).toBeGreaterThan(-1);
+    expect(dns).toBeLessThan(script.indexOf("/interface wireguard"));
+  });
+
   test("accepts API connections only from the platform's tunnel address", () => {
     expect(script).toContain("/ip service set api disabled=no port=8728 address=10.88.0.1/32");
   });

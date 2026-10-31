@@ -45,6 +45,7 @@ target*). CHR has no radio, so the hotspot runs on `ether2`, a point-to-point UD
 ```bash
 bun run router-sim up          # boot (a copy-on-write overlay over the pristine image)
 bun run router-sim bootstrap   # onboarding steps 1-2: reset with no defaults, paste the bootstrap script
+bun run router-sim import <file>   # as `bootstrap`, from a script downloaded from a real HashiFi; prints none of it
 bun run router-sim setup       # step 4: the real setupRouter pipeline (probe, readiness, apply, verify, self-test)
 bun run router-sim verify      # the readiness checks alone
 bun run router-sim console '<RouterOS statement>'
