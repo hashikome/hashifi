@@ -40,7 +40,7 @@ jobs:
           echo "api=ghcr.io/${REPOSITORY,,}/api" >> "$GITHUB_OUTPUT"
           echo "web=ghcr.io/${REPOSITORY,,}/web" >> "$GITHUB_OUTPUT"
           echo "tunnel=ghcr.io/${REPOSITORY,,}/tunnel" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: api
         with:
           context: .
@@ -49,7 +49,7 @@ jobs:
           tags: ${{ steps.name.outputs.api }}:${{ github.sha }}
           provenance: true
           sbom: true
-      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: web
         with:
           context: .
@@ -58,7 +58,7 @@ jobs:
           tags: ${{ steps.name.outputs.web }}:${{ github.sha }}
           provenance: true
           sbom: true
-      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: tunnel
         with:
           context: .
