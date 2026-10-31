@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Releases run through the shared `hashikome/actions` workflow, configured by `deploy/release.json`.
 - Services carry the product in their names (`hashifi-api`, `hashifi-web`, `hashifi-tunnel`).
 - Errors and wide events reach Sentry in production, each marked with its release.
 - One `.env.example` at the repository root replaces the API's and the deployment's, and an empty

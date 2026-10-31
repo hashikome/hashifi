@@ -12,9 +12,10 @@ Production is `hashifi.hashikome.com`: one host, on the shared Dokploy platform
 
 1. `verify.yml`: formatting, lint, types, tests, builds, integration tests.
 2. Images to GHCR, named by commit and digest.
-3. `tooling/release.ts`, only when the repository variable `DEPLOY_ENABLED` is `true`: runs the
-   migration stack, waits for it to exit 0, then updates the application stack and waits until
-   both services are healthy on exactly these images. A failed migration leaves the application as
+3. The shared [`dokploy-release`](https://github.com/hashikome/actions/tree/main/dokploy-release)
+   action, only when the repository variable `DEPLOY_ENABLED` is `true`, configured by
+   `deploy/release.json`: runs the migration stack, waits for it to exit 0, then updates the
+   application stack and waits until every service is healthy on exactly these images. A failed migration leaves the application as
    it was. A revision that has been superseded is refused.
 
 ## Preparing production
@@ -22,7 +23,8 @@ Production is `hashifi.hashikome.com`: one host, on the shared Dokploy platform
 Once, before setting `DEPLOY_ENABLED`:
 
 - Two Dokploy Stacks, raw source with auto-deploy off: `hashifi-xxxxxx` (`deploy/docker-stack.prod.yml`)
-  and `hashifi-release-xxxxxx` (`deploy/docker-stack.migrate.yml`), each with the inputs in
+  and `hashifi-release-xxxxxx` (`deploy/docker-stack.migrate.yml`), named in `deploy/release.json`,
+  each with the inputs in
   the stack section of `.env.example`.
 - A database and roles on the shared PostgreSQL, and the Docker secrets it names.
 - DNS: `hashifi.hashikome.com` proxied, and `wg.hashikome.com` DNS-only, since Cloudflare's proxy
@@ -30,7 +32,7 @@ Once, before setting `DEPLOY_ENABLED`:
 - Email sends from `no-reply@notify.hashikome.com` with the shared Hashikome Resend key, as Soko
   does; HashiFi holds it as its own Docker secret.
 - In GitHub: an environment `production` with the secret `DOKPLOY_API_KEY`, and the variables
-  `DOKPLOY_APPLICATION`, `DOKPLOY_MIGRATION`, `DOKPLOY_REGISTRY_ID` and `DEPLOY_ENABLED`.
+  `DOKPLOY_REGISTRY_ID` and `DEPLOY_ENABLED`.
 - Uptime Kuma monitors on `/api/health` and `/portal/login`.
 
 The first admin is added with `bun run staff:add` in the API image.
