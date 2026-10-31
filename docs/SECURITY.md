@@ -76,8 +76,8 @@ repository, `ref/` or logs.
 
 ## Credentials
 
-Secrets never enter the repository, `ref/` or logs. They reach the application in one of
-two ways, and the application works with either and depends on no password manager:
+Secrets never enter the repository, `ref/` or logs. The application gets its configuration in
+two ways and needs nothing else to start:
 
 - **Docker secrets** for values that should not sit even in an env file (database URLs,
   signing and encryption keys, provider keys): mounted by the stack at `/run/secrets/<name>`
@@ -86,10 +86,11 @@ two ways, and the application works with either and depends on no password manag
 - **Environment variables** from a private env file for everything else, and for local
   development (each app's `.env.example` lists its keys).
 
-A password manager such as 1Password is an optional adapter around the process
-(`op run --env-file=... -- <command>` filling the same variables or secret files); no script
-or application code calls it. The running application never receives migrator or
-administrator database credentials; migrations get their own `DATABASE_URL_FILE`.
+Each product stands alone: a credential shared between products still reaches this one as its own
+Docker secret, and the application never reads another product's configuration. Where an operator
+keeps these values is their own concern, so no document, script or application code names a
+password manager or a path on someone's machine. The running application never receives migrator
+or administrator database credentials; migrations get their own `DATABASE_URL_FILE`.
 
 Router API passwords and tunnel private keys are encrypted at rest with AES-256-GCM
 (`SecretBox`) under `ENCRYPTION_KEY`, which the API requires at start; a tampered value fails

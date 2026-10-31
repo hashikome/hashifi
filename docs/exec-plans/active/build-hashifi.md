@@ -744,7 +744,7 @@ access is granted. Printed vouchers sold for cash stay a supported path alongsid
 
 Dockerfiles, `verify` and `release` workflows copied from ntumie. and adapted; images in
 GHCR; the stack's sensitive values as external Docker secrets, the rest in a private env
-file, with an optional 1Password `op run` adapter that the application does not depend on; a database and role on the shared PostgreSQL through the infra repository; Dokploy
+file; a database and role on the shared PostgreSQL through the infra repository; Dokploy
 deployment; Uptime Kuma monitors. The production domain is chosen here.
 
 ### M8 Live acceptance on a physical router

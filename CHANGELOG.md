@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The credentials standard: HashiFi starts from its own env values and Docker secrets alone, and
+  no document names a password manager.
 - The management tunnel: a `tunnel` service runs the platform's end of the routers' WireGuard
   tunnels, keeps its peers in step with the API, and relays the pages routers fetch during setup.
 - Release pipeline: images, Docker stacks and CI, with every push to `main` deploying once
