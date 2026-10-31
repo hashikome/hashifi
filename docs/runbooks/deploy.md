@@ -25,7 +25,10 @@ Once, before setting `DEPLOY_ENABLED`:
   and `hashifi-release-xxxxxx` (`deploy/docker-stack.migrate.yml`), each with the inputs in
   `deploy/production.env.example`.
 - A database and roles on the shared PostgreSQL, and the Docker secrets that example names.
-- A DNS record for `hashifi.hashikome.com`.
+- DNS: `hashifi.hashikome.com` proxied, and `wg.hashikome.com` DNS-only, since Cloudflare's proxy
+  does not carry WireGuard.
+- Email sends from `no-reply@notify.hashikome.com` with the shared Hashikome Resend key, as Soko
+  does; `hashifi_resend_key` is HashiFi's own Docker secret holding it.
 - In GitHub: an environment `production` with the secret `DOKPLOY_API_KEY`, and the variables
   `DOKPLOY_APPLICATION`, `DOKPLOY_MIGRATION`, `DOKPLOY_REGISTRY_ID` and `DEPLOY_ENABLED`.
 - Uptime Kuma monitors on `/api/health` and `/portal/login`.
@@ -39,7 +42,7 @@ and they turn on ([ADR-0010](../engineering-decisions/0010-payments-and-sms.md))
 
 The `tunnel` service in the stack (`apps/tunnel`) is the platform's end of the routers' tunnels
 ([ADR-0006](../engineering-decisions/0006-router-management-tunnel.md)). It runs on the host's
-network with `NET_ADMIN`, creates `wg0` at `10.88.0.1` and listens on UDP 51820, so the API needs
+network with `NET_ADMIN`, creates `wg0` at `10.88.0.1` and listens on `wg.hashikome.com:51820`, so the API needs
 no capability: its traffic to a router leaves through the host and is masqueraded on `wg0`, and the
 router sees the one address it accepts. Every 20 seconds it reads the peer list from
 `/api/internal/tunnel-peers`, so adding or deleting a router needs no shell. Routers fetch their

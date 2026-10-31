@@ -511,6 +511,8 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
 - Decision: production is `hashifi.hashikome.com`, one host for staff and guests, matching
   `soko.hashikome.com`. It goes into printed QR codes and router allowed lists, so it stays.
   Date/Author: 2026-10-31 / Paul
+- Decision: routers reach the platform at `wg.hashikome.com:51820`, a name not tied to one product.
+  Date/Author: 2026-10-31 / Paul
 - Decision: every push to `main` deploys while HashiFi is in development; releases can be made
   manual later. Deploying starts once `DEPLOY_ENABLED` is set.
   Date/Author: 2026-10-31 / Paul
