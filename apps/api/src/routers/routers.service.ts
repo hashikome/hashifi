@@ -1,7 +1,13 @@
-import type { BootstrapScriptResponse, ProvisioningBacklog, RouterRecord } from "@hashifi/types";
+import type {
+  BootstrapScriptResponse,
+  ProvisioningBacklog,
+  RouterJourney,
+  RouterRecord,
+} from "@hashifi/types";
 import {
   BadGatewayException,
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -14,6 +20,7 @@ import type { AppConfig } from "../config/config.js";
 import { APP_CONFIG } from "../config/config.module.js";
 import { toJsonValue } from "../database/json.js";
 import { PrismaService } from "../database/prisma.service.js";
+import type { Prisma } from "../generated/prisma/client.js";
 import { apiError } from "../http/error-envelope.js";
 import { captureFailure } from "../observability/telemetry.js";
 import { routerRecord } from "../serializers/records.js";
@@ -39,6 +46,7 @@ import type { RequestOrigin } from "../venues/venues.service.js";
 import { VoucherReconciler } from "../vouchers/voucher-reconciler.js";
 import { backendSettings } from "./backend-settings.js";
 import type { bootstrapInput, RouterInput, testConnectionInput } from "./router-input.js";
+import { routerJourney, SETUP_STALE_MS, type StoredSetup } from "./router-journey.js";
 import { TUNNEL_ALLOCATOR, type TunnelAllocator } from "./tunnel-allocator.js";
 
 const withVenue = { venue: { select: { name: true } } } as const;
@@ -55,6 +63,20 @@ export interface ProbeResult {
   planError: string | null;
   readiness: ReadinessReport | null;
   log: readonly unknown[];
+}
+
+function storedSetup(report: SetupReport): StoredSetup {
+  return {
+    ok: report.ok,
+    phases: report.phases,
+    blockers: report.blockers.map((b) => ({ reason: b.reason, fix: b.fix ?? null })),
+  };
+}
+
+/** A run that threw before its phases could report. */
+function stoppedSetup(err: unknown): StoredSetup {
+  const reason = err instanceof RouterError ? err.message : "Setup stopped unexpectedly.";
+  return { ok: false, phases: [], blockers: [{ reason, fix: null }] };
 }
 
 @Injectable()
@@ -338,9 +360,42 @@ export class RoutersService {
   }
 
   /** Probe, readiness, dry run, provision, re-check and self-test, in one run. */
-  async setup(staff: StaffPrincipal, id: string, force: boolean): Promise<SetupReport> {
+  async journey(staff: StaffPrincipal, id: string): Promise<RouterJourney> {
+    const row = await this.row(staff, id);
+    return routerJourney(row, row.lastSetup as StoredSetup | null);
+  }
+
+  /** Starts a setup and answers at once: it outlasts a request, and its state is on the row. */
+  async startSetup(staff: StaffPrincipal, id: string, force: boolean): Promise<RouterJourney> {
     await this.row(staff, id);
-    return setupRouter(id, this.store, { force });
+    const stale = new Date(Date.now() - SETUP_STALE_MS);
+    const { count } = await this.db.router.updateMany({
+      where: { id, OR: [{ setupStartedAt: null }, { setupStartedAt: { lt: stale } }] },
+      data: { setupStartedAt: new Date(), setupPhase: null },
+    });
+    if (count === 0) {
+      throw new ConflictException(apiError("ROUTER_SETUP_RUNNING", "Setup is already running."));
+    }
+    void this.runSetup(id, force);
+    return this.journey(staff, id);
+  }
+
+  private async runSetup(id: string, force: boolean): Promise<void> {
+    const outcome = await setupRouter(id, this.store, {
+      force,
+      onPhase: async (setupPhase) => {
+        await this.db.router.update({ where: { id }, data: { setupPhase } });
+      },
+    }).then(storedSetup, stoppedSetup);
+    await this.db.router.update({
+      where: { id },
+      data: {
+        lastSetup: outcome as unknown as Prisma.InputJsonValue,
+        lastSetupAt: new Date(),
+        setupStartedAt: null,
+        setupPhase: null,
+      },
+    });
   }
 
   async provision(staff: StaffPrincipal, id: string, dryRun: boolean): Promise<ProvisionReport> {

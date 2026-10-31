@@ -138,13 +138,18 @@ export class RoutersController {
 
   @Post(":id/setup")
   @Roles("admin")
-  @HttpCode(200)
+  @HttpCode(202)
   setup(
     @CurrentStaff() staff: StaffPrincipal,
     @Param("id", idParam()) id: string,
     @Query("force") force: unknown,
   ) {
-    return this.routers.setup(staff, id, flagOf(force));
+    return this.routers.startSetup(staff, id, flagOf(force));
+  }
+
+  @Get(":id/journey")
+  journey(@CurrentStaff() staff: StaffPrincipal, @Param("id", idParam()) id: string) {
+    return this.routers.journey(staff, id);
   }
 
   @Post(":id/provision")

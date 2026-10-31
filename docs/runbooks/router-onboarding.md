@@ -53,8 +53,8 @@ A reset **keeps installed packages**, so a hotspot `.npk` you installed once sur
 
 ## Step 2 — Bootstrap
 
-Open **Admin → Routers → Add Router**, fill in the router name, IP address and API username,
-then press **Bootstrap script**. Do not save yet — you stay on this form for Step 3.
+Open **Admin → Routers → Add router**, fill in the router name, IP address and API username, and
+save. You land on the router's page: press **Get setup script**.
 
 Copy what it gives you, reconnect with MAC-WinBox (user `admin`, blank password), and paste it
 into a **New Terminal** (not the WinBox command bar). Or use **Download .rsc** and `/import`.
@@ -136,7 +136,8 @@ Saving pushes every existing voucher for that venue. That works before provision
 
 ## Step 4 — Set up
 
-Routers list → the **wand icon** → **Set up router** (click twice to confirm).
+Open the router's page and press **Set up router**. Setup runs in the background: the page shows each
+phase as it finishes, a refresh keeps it, and the result stays until the next run.
 
 Six phases run in order and stop at the first thing that would make the result wrong, listing
 what to fix and how:

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { RouterJourney } from "@hashifi/types";
 import { addStaff } from "../../src/staff/add-staff.js";
 import { browser, type Client, enrollAuthenticatorFor, signInWithCode, useApi } from "./api.js";
 import { useTestDatabase } from "./harness.js";
@@ -33,7 +34,7 @@ type Body = Record<string, unknown>;
 const routerOf = (reply: { body: unknown }) => (reply.body as { router: Body }).router;
 
 describe("routers", () => {
-  test("setup, verify and provision need no query flag: they try the router", async () => {
+  test("setup runs in the background, and its failure stays on the router", async () => {
     const client = await admin();
     const { id: venueId } = await venue();
     const created = await client.request("POST", "/api/routers", {
@@ -42,7 +43,34 @@ describe("routers", () => {
       apiPassword: "router-password",
     });
     const { id } = routerOf(created) as { id: string };
-    for (const path of ["setup", "verify", "provision"]) {
+
+    const started = await client.request("POST", `/api/routers/${id}/setup`);
+    expect(started.status).toBe(202);
+    expect((started.body as RouterJourney).running).toBe(true);
+    const again = await client.request("POST", `/api/routers/${id}/setup`);
+    expect(again.status).toBe(409);
+
+    let journey = started.body as RouterJourney;
+    for (let i = 0; i < 100 && journey.running; i++) {
+      await Bun.sleep(200);
+      journey = (await client.request("GET", `/api/routers/${id}/journey`)).body as RouterJourney;
+    }
+    expect(journey.running).toBe(false);
+    expect(journey.ok).toBe(false);
+    expect(journey.stage).toBe("connect");
+    expect(journey.phases.length + journey.blockers.length).toBeGreaterThan(0);
+  }, 30_000);
+
+  test("verify and provision need no query flag: they try the router", async () => {
+    const client = await admin();
+    const { id: venueId } = await venue();
+    const created = await client.request("POST", "/api/routers", {
+      ...ROUTER,
+      venueId,
+      apiPassword: "router-password",
+    });
+    const { id } = routerOf(created) as { id: string };
+    for (const path of ["verify", "provision"]) {
       const reply = await client.request("POST", `/api/routers/${id}/${path}`);
       expect(reply.status === 400 ? reply.body : null).toBeNull();
     }

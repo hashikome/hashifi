@@ -347,6 +347,12 @@ model Router {
   architecture              String?      @db.VarChar(32)
   capabilities              Json?
   lastProvisionReport       Json?        @map("last_provision_report")
+  /// Set while a setup runs; a run this old with no finish was interrupted by a restart.
+  setupStartedAt            DateTime?    @map("setup_started_at") @db.Timestamptz(3)
+  setupPhase                String?      @map("setup_phase") @db.VarChar(20)
+  /// The last finished setup: its phases and what blocked it.
+  lastSetup                 Json?        @map("last_setup")
+  lastSetupAt               DateTime?    @map("last_setup_at") @db.Timestamptz(3)
   lastSeenAt                DateTime?    @map("last_seen_at") @db.Timestamptz(3)
   uptimeSeconds             Int          @default(0) @map("uptime_seconds")
   connectedDevices          Int          @default(0) @map("connected_devices")

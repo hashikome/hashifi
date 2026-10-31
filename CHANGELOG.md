@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Every router has its own page: connect, set up and serving, with progress and a result that
+  survive a refresh. Setup runs in the background, and the setup dialog is gone.
 - Setting up and checking a router work: both always failed, as an absent query flag was refused.
 - A router's bootstrap sets DNS before its tunnel: on a reset router the tunnel never connected,
   as its endpoint is a host name.

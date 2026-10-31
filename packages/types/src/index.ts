@@ -261,8 +261,38 @@ export interface RouterRecord {
   uptimeSeconds: number;
   connectedDevices: number;
   status: RouterStatus;
+  /** What the owner does next with this router. */
+  stage: RouterStage;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+/** Where a router stands in the owner's journey: what to do next. */
+export type RouterStage = "connect" | "set-up" | "serving";
+
+export type RouterSetupPhaseStatus = "pending" | "running" | "pass" | "warn" | "fail" | "skipped";
+
+export interface RouterSetupPhase {
+  id: string;
+  title: string;
+  status: RouterSetupPhaseStatus;
+  detail: string | null;
+}
+
+/** `GET /api/routers/:id/journey`, and the answer to starting a setup. */
+export interface RouterJourney {
+  stage: RouterStage;
+  /** Whether the API has reached the router recently. */
+  connected: boolean;
+  running: boolean;
+  /** A run stopped by a restart, not by the router. */
+  interrupted: boolean;
+  /** The last finished run's outcome, or null before the first. */
+  ok: boolean | null;
+  finishedAt: Timestamp | null;
+  phases: RouterSetupPhase[];
+  /** What stopped the last run, and how to fix it. */
+  blockers: { reason: string; fix: string | null }[];
 }
 
 /** `GET /api/routers`. */

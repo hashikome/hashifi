@@ -81,9 +81,11 @@ export interface SetupOptions {
   /** Proceed past failing readiness checks. The operator has read them and accepted them. */
   force?: boolean;
   logger?: RouterLogger;
+  /** Told as each phase starts, so a run's progress can be stored. */
+  onPhase?: (id: SetupPhaseId) => Promise<void>;
 }
 
-const PHASE_TITLES: Record<SetupPhaseId, string> = {
+export const PHASE_TITLES: Record<SetupPhaseId, string> = {
   probe: "Identify the board and confirm it can run a hotspot",
   readiness: "Check the site is ready",
   "dry-run": "Preview every change",
@@ -195,6 +197,7 @@ export async function setupRouter(
   // ── 1. Probe ──────────────────────────────────────────────────────────────
   {
     const t = Date.now();
+    await opts.onPhase?.("probe");
     logger.info("▶ 1/6 · Identifying the board");
     try {
       // Merged, never raw: this profile is what phase 6's dialect is built from, and taking the
@@ -235,6 +238,7 @@ export async function setupRouter(
   // ── 2. Readiness ──────────────────────────────────────────────────────────
   {
     const t = Date.now();
+    await opts.onPhase?.("readiness");
     logger.info("▶ 2/6 · Checking the site is ready");
 
     let planError: string | null = null;
@@ -306,6 +310,7 @@ export async function setupRouter(
   // ── 3. Dry run ────────────────────────────────────────────────────────────
   {
     const t = Date.now();
+    await opts.onPhase?.("dry-run");
     logger.info("▶ 3/6 · Previewing changes");
     dryRun = await provisionRouter(routerId, store, { dryRun: true, logger });
 
@@ -337,6 +342,7 @@ export async function setupRouter(
   // ── 4. Provision ──────────────────────────────────────────────────────────
   {
     const t = Date.now();
+    await opts.onPhase?.("provision");
     logger.info("▶ 4/6 · Applying the configuration");
     provision = await provisionRouter(routerId, store, { dryRun: false, logger });
 
@@ -371,6 +377,7 @@ export async function setupRouter(
   // ── 5. Verify idempotency ─────────────────────────────────────────────────
   {
     const t = Date.now();
+    await opts.onPhase?.("verify");
     logger.info("▶ 5/6 · Confirming the configuration reads back correctly");
     verify = await provisionRouter(routerId, store, { dryRun: true, logger });
 
@@ -404,6 +411,7 @@ export async function setupRouter(
   // useful question: would a paying customer actually get online?
   {
     const t = Date.now();
+    await opts.onPhase?.("self-test");
     logger.info("▶ 6/6 · Confirming the hotspot is actually serving");
 
     if (!plan) {

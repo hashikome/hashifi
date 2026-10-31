@@ -14,6 +14,7 @@ import type {
   Voucher,
   WifiSession,
 } from "../generated/prisma/client.js";
+import { routerJourney, type StoredSetup } from "../routers/router-journey.js";
 
 /**
  * The only place database rows become API records (`@hashifi/types`): decimals as strings,
@@ -152,6 +153,7 @@ export function routerRecord(
     uptimeSeconds: row.uptimeSeconds,
     connectedDevices: row.connectedDevices,
     status: row.status,
+    stage: routerJourney(row, row.lastSetup as StoredSetup | null).stage,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };

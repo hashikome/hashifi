@@ -118,7 +118,7 @@ export default function CreateRouterPage() {
       toast.success("Router added. Now paste its script into the router.");
       setFormData(INITIAL_FORM);
       createSuccess = true;
-      setTimeout(() => router.push(`/admin/routers/${saved.id}/edit?bootstrap=1`), 300);
+      setTimeout(() => router.push(`/admin/routers/${saved.id}`), 300);
     } catch (err) {
       toast.error(errorMessage(err, "An error occurred"));
     } finally {
