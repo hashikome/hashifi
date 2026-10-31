@@ -279,6 +279,11 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   `router-sim guest-test` 14/14 through the real API, sign-in back 48 s after an unblock; the page
   in headless Chrome at phone width, wrong code, handoff to the router page and its POST,
   a scanned card going round, a hostile `link-orig` inert, nothing fetched from another host.
+- [ ] M7 Release pipeline and deployment (`docs/runbooks/deploy.md`).
+  - [x] (2026-10-31) Images, stacks, CI and automatic release, ported from ntumie. Acceptance: both
+    images built and run in production mode, read-only and as a non-root user, the migration
+    applied, health, portal, font and the guest proxy answering; `tooling/release.test.ts`.
+  - [ ] The platform side: Dokploy stacks, database, secrets, DNS, and the management tunnel.
 - [ ] M6 Mobile-money payments and customers (ADR-0010). Built and accepted on test doubles, and
   held behind credentials: HashiFi launches on printed vouchers.
   - [x] (2026-10-31) Self-service purchase, the paying device signed in, the code shown to that
@@ -503,6 +508,12 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Date/Author: 2026-10-28 / Paul
 - Decision: the repository goes public when HashiFi is ready to deploy, not when M5 lands.
   Date/Author: 2026-10-30 / Paul
+- Decision: production is `hashifi.hashikome.com`, one host for staff and guests, matching
+  `soko.hashikome.com`. It goes into printed QR codes and router allowed lists, so it stays.
+  Date/Author: 2026-10-31 / Paul
+- Decision: every push to `main` deploys while HashiFi is in development; releases can be made
+  manual later. Deploying starts once `DEPLOY_ENABLED` is set.
+  Date/Author: 2026-10-31 / Paul
 - Decision: HashiFi launches on printed vouchers. Mobile money, assisted sales and SMS are held
   until Snippe and BRIQ credentials exist, and turn on with them, so production no longer needs
   either. Live acceptance on hardware waits for the MikroTik device.

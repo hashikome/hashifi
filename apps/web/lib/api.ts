@@ -2,6 +2,12 @@ import type { ApiError } from "@hashifi/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
+/** The live view's socket. An empty `API_URL` means the page's own origin, as in production. */
+export function liveSocketUrl(): string {
+  const origin = API_URL === "" ? window.location.origin : API_URL;
+  return `${origin.replace(/^http/, "ws")}/ws/live`;
+}
+
 /** A failed API call: its status, stable code, message, and any per-field problems. */
 export class ApiRequestError extends Error {
   constructor(

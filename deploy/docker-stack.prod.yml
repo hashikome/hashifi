@@ -1,0 +1,104 @@
+version: "3.8"
+# One host: Traefik sends the API's paths to `api` and everything else to `web`.
+services:
+  api:
+    # A full SHA tag and digest, supplied at release.
+    image: ${API_IMAGE:?API_IMAGE_required}
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      RELEASE_ATTEMPT: ${RELEASE_ATTEMPT:?RELEASE_ATTEMPT_required}
+      DATABASE_URL_FILE: /run/secrets/database_url
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+      BETTER_AUTH_SECRET_FILE: /run/secrets/auth_secret
+      RESEND_API_KEY_FILE: /run/secrets/resend_key
+      R2_ACCESS_KEY_ID_FILE: /run/secrets/r2_access_key_id
+      R2_SECRET_ACCESS_KEY_FILE: /run/secrets/r2_secret_access_key
+      R2_ENDPOINT: ${R2_ENDPOINT:?R2_ENDPOINT_required}
+      R2_BUCKET: ${R2_BUCKET:?R2_BUCKET_required}
+      EMAIL_FROM: ${EMAIL_FROM:?EMAIL_FROM_required}
+      FRONTEND_ORIGIN: https://${PUBLIC_HOST:?PUBLIC_HOST_required}
+      APP_URL: https://${PUBLIC_HOST}
+      PORTAL_ORIGIN: https://${PUBLIC_HOST}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:?TRUSTED_PROXIES_required}
+      ROUTER_MANAGEMENT_URL: ${ROUTER_MANAGEMENT_URL:?ROUTER_MANAGEMENT_URL_required}
+    secrets:
+      [
+        database_url,
+        encryption_key,
+        auth_secret,
+        resend_key,
+        r2_access_key_id,
+        r2_secret_access_key,
+      ]
+    networks: [ingress, backend, frontend]
+    read_only: true
+    tmpfs: [/tmp]
+    deploy:
+      # Background jobs run here, so one replica: two would poll routers twice.
+      replicas: ${APP_REPLICAS:-0}
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+        reservations: { memory: 128M }
+      restart_policy: { condition: on-failure, delay: 5s }
+      update_config: { parallelism: 1, order: stop-first, failure_action: rollback }
+      labels:
+        traefik.enable: "true"
+        traefik.swarm.network: ${INGRESS_NETWORK:?INGRESS_NETWORK_required}
+        traefik.http.routers.hashifi-api.rule: Host(`${PUBLIC_HOST}`) && (PathPrefix(`/api/`) || PathPrefix(`/ws/`) || PathPrefix(`/webhooks/`) || PathPrefix(`/portal/hotspot-files/`))
+        traefik.http.routers.hashifi-api.priority: "100"
+        traefik.http.routers.hashifi-api.service: hashifi-api
+        traefik.http.routers.hashifi-api.entrypoints: ${HTTPS_ENTRYPOINT:?HTTPS_ENTRYPOINT_required}
+        traefik.http.routers.hashifi-api.tls: "true"
+        traefik.http.routers.hashifi-api.tls.certresolver: ${TLS_RESOLVER:?TLS_RESOLVER_required}
+        traefik.http.services.hashifi-api.loadbalancer.server.port: "8080"
+        traefik.http.services.hashifi-api.loadbalancer.healthcheck.path: /api/health
+        traefik.http.services.hashifi-api.loadbalancer.healthcheck.interval: 15s
+  web:
+    image: ${WEB_IMAGE:?WEB_IMAGE_required}
+    environment:
+      NODE_ENV: production
+      RELEASE_ATTEMPT: ${RELEASE_ATTEMPT}
+    networks: [ingress, frontend]
+    read_only: true
+    tmpfs: [/tmp, /app/apps/web/.next/cache]
+    deploy:
+      replicas: ${APP_REPLICAS:-0}
+      resources:
+        limits: { cpus: "1.0", memory: 512M }
+        reservations: { memory: 128M }
+      restart_policy: { condition: on-failure, delay: 5s }
+      update_config: { parallelism: 1, order: start-first, failure_action: rollback }
+      labels:
+        traefik.enable: "true"
+        traefik.swarm.network: ${INGRESS_NETWORK}
+        traefik.http.routers.hashifi-web.rule: Host(`${PUBLIC_HOST}`)
+        traefik.http.routers.hashifi-web.priority: "10"
+        traefik.http.routers.hashifi-web.service: hashifi-web
+        traefik.http.routers.hashifi-web.entrypoints: ${HTTPS_ENTRYPOINT}
+        traefik.http.routers.hashifi-web.tls: "true"
+        traefik.http.routers.hashifi-web.tls.certresolver: ${TLS_RESOLVER}
+        traefik.http.services.hashifi-web.loadbalancer.server.port: "3000"
+        traefik.http.services.hashifi-web.loadbalancer.healthcheck.path: /portal/login
+        traefik.http.services.hashifi-web.loadbalancer.healthcheck.interval: 15s
+networks:
+  frontend:
+    driver: overlay
+    internal: true
+    attachable: false
+  ingress:
+    external: true
+    name: ${INGRESS_NETWORK}
+  backend:
+    external: true
+    name: ${BACKEND_NETWORK:?BACKEND_NETWORK_required}
+secrets:
+  database_url: { external: true, name: "${DATABASE_URL_SECRET:?DATABASE_URL_SECRET_required}" }
+  encryption_key:
+    { external: true, name: "${ENCRYPTION_KEY_SECRET:?ENCRYPTION_KEY_SECRET_required}" }
+  auth_secret: { external: true, name: "${AUTH_SECRET:?AUTH_SECRET_required}" }
+  resend_key: { external: true, name: "${RESEND_KEY_SECRET:?RESEND_KEY_SECRET_required}" }
+  r2_access_key_id:
+    { external: true, name: "${R2_ACCESS_KEY_ID_SECRET:?R2_ACCESS_KEY_ID_SECRET_required}" }
+  r2_secret_access_key:
+    { external: true, name: "${R2_SECRET_ACCESS_KEY_SECRET:?R2_SECRET_ACCESS_KEY_SECRET_required}" }

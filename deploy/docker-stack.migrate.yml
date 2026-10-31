@@ -1,0 +1,31 @@
+version: "3.8"
+# A separate stack for the one-shot migration: its task must exit 0 before the application stack
+# gets APP_REPLICAS=1.
+services:
+  migration:
+    image: ${API_IMAGE:?API_IMAGE_required}
+    command: [bun, --bun, prisma, migrate, deploy]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+      # Changes each attempt, so an earlier completed task cannot count.
+      RELEASE_ATTEMPT: ${RELEASE_ATTEMPT:?RELEASE_ATTEMPT_required}
+    secrets: [database_url]
+    networks: [backend]
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck: { disable: true }
+    deploy:
+      replicas: 1
+      restart_policy: { condition: none }
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+      labels:
+        traefik.enable: "false"
+networks:
+  backend:
+    external: true
+    name: ${BACKEND_NETWORK:?BACKEND_NETWORK_required}
+secrets:
+  database_url:
+    external: true
+    name: ${MIGRATION_DATABASE_URL_SECRET:?MIGRATION_DATABASE_URL_SECRET_required}

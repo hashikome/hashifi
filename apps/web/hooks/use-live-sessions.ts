@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { API_URL } from "@/lib/api";
+import { liveSocketUrl } from "@/lib/api";
 
 export interface LiveClient {
   id: string;
@@ -33,8 +33,7 @@ const RECONNECT_BASE_MS = 3_000;
 const RECONNECT_MAX_MS = 30_000;
 
 function getWsUrl(): string {
-  const apiUrl = API_URL;
-  return `${apiUrl.replace(/^http/, "ws")}/ws/live`;
+  return liveSocketUrl();
 }
 
 export function useLiveSessions() {

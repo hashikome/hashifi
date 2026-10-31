@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Release pipeline: images, Docker stacks and CI, with every push to `main` deploying once
+  production is prepared. Production is `hashifi.hashikome.com`.
 - HashiFi launches on printed vouchers. Mobile money, assisted sales and SMS turn on when their
   providers' credentials are set; until then guests see the voucher form and a price list.
 - Fixed: printed QR codes pointed at the API, which has no portal page, and printed cards told

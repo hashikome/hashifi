@@ -15,6 +15,7 @@ explains and links here.
 | --- | --- |
 | [backlog/](backlog/README.md) | What is truly planned but not yet ready to implement, ideas, and accepted technical debt |
 | [design-docs/](design-docs/README.md) | Detailed extensions of ARCHITECTURE.md: how each part of the system works |
+| [runbooks/deploy.md](runbooks/deploy.md) | How a release reaches production |
 | [engineering-decisions/](engineering-decisions/README.md) | Long-term decisions (ADRs): what was decided, why, and what would have to be re-evaluated to change it |
 | [exec-plans/](exec-plans/README.md) | Temporary implementation plans for work being built (format: [PLANS.md](../PLANS.md)); removed once folded into the docs |
 | [runbooks/](runbooks/README.md) | Repeatable procedures: local development, verification, release, operations |

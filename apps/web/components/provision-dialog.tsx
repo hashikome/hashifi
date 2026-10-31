@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { API_URL, api } from "@/lib/api";
+import { api, liveSocketUrl } from "@/lib/api";
 
 /**
  * A labelled group inside the dialog.
@@ -196,7 +196,7 @@ export function ProvisionDialog({
   useEffect(() => {
     if (!open) return;
 
-    const wsUrl = `${API_URL.replace(/^http/, "ws")}/ws/live`;
+    const wsUrl = liveSocketUrl();
     let socket: WebSocket | null = null;
 
     try {
