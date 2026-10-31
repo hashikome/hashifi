@@ -83,16 +83,13 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with: { bun-version: 1.4.4 }
       - name: Migrate, then promote the application images
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
-          API_IMAGE: ${{ needs.image.outputs.api }}
-          WEB_IMAGE: ${{ needs.image.outputs.web }}
-          TUNNEL_IMAGE: ${{ needs.image.outputs.tunnel }}
-          DOKPLOY_REGISTRY_ID: ${{ vars.DOKPLOY_REGISTRY_ID }}
-          DOKPLOY_APPLICATION: ${{ vars.DOKPLOY_APPLICATION }}
-          DOKPLOY_MIGRATION: ${{ vars.DOKPLOY_MIGRATION }}
-        run: bun tooling/release.ts
+        uses: hashikome/actions/dokploy-release@c339cd0953bcc78518689ba6733303d589b3a710 # v1.0.0
+        with:
+          images: |
+            API_IMAGE=${{ needs.image.outputs.api }}
+            WEB_IMAGE=${{ needs.image.outputs.web }}
+            TUNNEL_IMAGE=${{ needs.image.outputs.tunnel }}
+          dokploy-api-key: ${{ secrets.DOKPLOY_API_KEY }}
+          registry-id: ${{ vars.DOKPLOY_REGISTRY_ID }}
+          github-token: ${{ github.token }}

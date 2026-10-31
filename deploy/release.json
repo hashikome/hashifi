@@ -1,0 +1,64 @@
+{
+  "title": "HashiFi",
+  "dokployUrl": "https://dokploy.hashikome.com",
+  "application": {
+    "compose": "NOobVsQuzvyXWWpacldOH",
+    "stack": "hashifi-[a-z0-9]{6}",
+    "manifest": "deploy/docker-stack.prod.yml"
+  },
+  "migration": {
+    "compose": "vWLE0OTlJqbixqlSrRkx5",
+    "stack": "hashifi-release-[a-z0-9]{6}",
+    "manifest": "deploy/docker-stack.migrate.yml",
+    "service": "hashifi-migration",
+    "image": "API_IMAGE",
+    "command": ["bun", "--bun", "prisma", "migrate", "deploy"]
+  },
+  "services": {
+    "hashifi-api": {
+      "image": "API_IMAGE"
+    },
+    "hashifi-web": {
+      "image": "WEB_IMAGE"
+    },
+    "hashifi-tunnel": {
+      "image": "TUNNEL_IMAGE"
+    }
+  },
+  "images": {
+    "API_IMAGE": "ghcr.io/hashikome/hashifi/api",
+    "WEB_IMAGE": "ghcr.io/hashikome/hashifi/web",
+    "TUNNEL_IMAGE": "ghcr.io/hashikome/hashifi/tunnel"
+  },
+  "allowedInputs": [
+    "PUBLIC_HOST",
+    "INGRESS_NETWORK",
+    "BACKEND_NETWORK",
+    "HTTPS_ENTRYPOINT",
+    "TLS_RESOLVER",
+    "TRUSTED_PROXIES",
+    "EMAIL_FROM",
+    "R2_ENDPOINT",
+    "R2_BUCKET",
+    "ROUTER_MANAGEMENT_URL",
+    "TUNNEL_ADDRESS",
+    "TUNNEL_NETWORK",
+    "TUNNEL_PLATFORM_PUBLIC_KEY",
+    "TUNNEL_ENDPOINT",
+    "TUNNEL_PRIVATE_KEY_SECRET",
+    "TUNNEL_SYNC_SECRET",
+    "SENTRY_DSN_SECRET",
+    "DATABASE_URL_SECRET",
+    "MIGRATION_DATABASE_URL_SECRET",
+    "ENCRYPTION_KEY_SECRET",
+    "AUTH_KEY_SECRET",
+    "RESEND_KEY_SECRET",
+    "R2_ACCESS_KEY_ID_SECRET",
+    "R2_SECRET_ACCESS_KEY_SECRET"
+  ],
+  "requiredValues": {
+    "PUBLIC_HOST": "hashifi.hashikome.com",
+    "INGRESS_NETWORK": "dokploy-network"
+  },
+  "sharedInputs": ["BACKEND_NETWORK", "MIGRATION_DATABASE_URL_SECRET"]
+}
