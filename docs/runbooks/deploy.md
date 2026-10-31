@@ -48,6 +48,9 @@ router sees the one address it accepts. Every 20 seconds it reads the peer list 
 `/api/internal/tunnel-peers`, so adding or deleting a router needs no shell. Routers fetch their
 portal pages from `10.88.0.1:8080`, which relays those paths and nothing else.
 
-The host's firewall must allow the tunnel's port, once, by someone with `sudo`:
-`sudo ufw allow 51820/udp`. Until then WireGuard receives nothing: `wg show` on the service reports
-no handshake and 0 bytes received.
+The host's firewall needs two rules, set once by someone with `sudo`:
+
+- `sudo ufw allow 51820/udp`: without it WireGuard receives nothing, and `wg show` on the service
+  reports no handshake and 0 bytes received.
+- `sudo ufw allow in on wg0 to 10.88.0.1 port 8080 proto tcp`: without it the tunnel connects and
+  the API reaches routers, but routers time out fetching their pages from the relay.
