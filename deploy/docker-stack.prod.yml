@@ -34,6 +34,7 @@ services:
         resend_key,
         r2_access_key_id,
         r2_secret_access_key,
+        tunnel_sync_secret,
       ]
     networks: [ingress, backend, frontend]
     read_only: true
