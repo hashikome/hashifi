@@ -33,3 +33,15 @@ export function parsePeers(body: unknown): Peer[] {
 export function relayPath(path: string): boolean {
   return /^\/portal\/hotspot-files\/[0-9a-f-]{36}\/[a-z]+\.html$/.test(path);
 }
+
+/**
+ * What a router receives. `fetch` has already decompressed the body, so the upstream's
+ * `Content-Encoding` and `Content-Length` no longer describe it and must not be passed on.
+ */
+export async function relayResponse(upstream: Response): Promise<Response> {
+  const contentType = upstream.headers.get("Content-Type") ?? "application/octet-stream";
+  return new Response(await upstream.arrayBuffer(), {
+    status: upstream.status,
+    headers: { "Content-Type": contentType },
+  });
+}

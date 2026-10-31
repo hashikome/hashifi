@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { parsePeers, peerChanges, relayPath } from "./peers.js";
+import { parsePeers, peerChanges, relayPath, relayResponse } from "./peers.js";
 
 /**
  * The platform's end of the routers' management tunnel (ADR-0006). It runs on the host's network,
@@ -71,9 +71,10 @@ Bun.serve({
     if (request.method !== "GET" || !relayPath(pathname)) {
       return new Response(null, { status: 404 });
     }
-    return fetch(`${portalOrigin}${pathname}`, {
+    const upstream = await fetch(`${portalOrigin}${pathname}`, {
       signal: AbortSignal.timeout(20_000),
       headers: { "User-Agent": "hashifi-tunnel" },
     });
+    return relayResponse(upstream);
   },
 });

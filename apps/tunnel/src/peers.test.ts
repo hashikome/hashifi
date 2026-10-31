@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parsePeers, peerChanges, relayPath } from "./peers.js";
+import { parsePeers, peerChanges, relayPath, relayResponse } from "./peers.js";
 
 const key = (c: string) => `${c.repeat(43)}=`;
 
@@ -28,5 +28,15 @@ describe("the tunnel's peers", () => {
     expect(relayPath(`/portal/hotspot-files/${"a".repeat(36)}/login.html`)).toBe(true);
     expect(relayPath("/api/me")).toBe(false);
     expect(relayPath(`/portal/hotspot-files/${"a".repeat(36)}/../../api/me`)).toBe(false);
+  });
+
+  test("a decompressed page is not passed on labelled as compressed", async () => {
+    const upstream = new Response("<html>", {
+      headers: { "Content-Encoding": "zstd", "Content-Length": "99", "Content-Type": "text/html" },
+    });
+    const relayed = await relayResponse(upstream);
+    expect(relayed.headers.get("Content-Encoding")).toBeNull();
+    expect(relayed.headers.get("Content-Type")).toBe("text/html");
+    expect(await relayed.text()).toBe("<html>");
   });
 });
