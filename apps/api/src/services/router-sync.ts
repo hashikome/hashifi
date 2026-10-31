@@ -449,6 +449,11 @@ export class RouterSync {
     );
   }
 
+  /** Where the router sees a device now; null if it does not, or cannot be asked. */
+  async deviceAddress(router: Router, mac: string): Promise<string | null> {
+    return this.onRouter(router, (conn) => hotspotClientAddress(conn, mac));
+  }
+
   /** Signs a device in on this router; true only once the router reports it online. */
   async signInDevice(
     router: Router,

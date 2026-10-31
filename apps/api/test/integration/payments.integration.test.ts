@@ -26,7 +26,9 @@ let charges: { phone: string; amount: number }[] = [];
 let texts: { to: string; text: string }[] = [];
 let routerUp = true;
 let onNetwork: boolean | null = true;
+let deviceIp: string | null = "10.5.50.20";
 let signedIn = 0;
+let signedInAt = "";
 let smsFails = false;
 let remote: Awaited<ReturnType<MobileMoneyGateway["state"]>> = null;
 
@@ -35,6 +37,7 @@ beforeEach(() => {
   texts = [];
   routerUp = true;
   onNetwork = true;
+  deviceIp = "10.5.50.20";
   signedIn = 0;
   smsFails = false;
   remote = null;
@@ -52,13 +55,15 @@ beforeEach(() => {
   };
   const sync = api.app.get(RouterSync);
   sync.deviceOnNetwork = async () => onNetwork;
+  sync.deviceAddress = async () => deviceIp;
   sync.ensureVoucher = async () => ({
     attempted: 1,
     succeeded: routerUp ? 1 : 0,
     failures: routerUp ? [] : [{ router: "Lobby", error: "unreachable" }],
   });
-  sync.signInDevice = async () => {
+  sync.signInDevice = async (_router, client) => {
     signedIn += 1;
+    signedInAt = client.ip;
     return true;
   };
 });
@@ -289,6 +294,98 @@ describe("buying on the portal", () => {
     const seen = (await status(paymentId, secret)).body as Record<string, unknown>;
     expect(seen).toMatchObject({ online: true, sms: "failed" });
     expect(seen.code).toMatch(/^WIFI-/);
+  });
+});
+
+describe("when things take a while", () => {
+  test("a device whose address changed while approving is still let online", async () => {
+    const { paymentId } = await started();
+    deviceIp = "10.5.50.77";
+    await report(completed(paymentId));
+    await settled();
+    expect(signedInAt).toBe("10.5.50.77");
+    expect((await t.db.payment.findFirstOrThrow()).signedInAt).not.toBeNull();
+  });
+
+  test("a device that has left keeps its code", async () => {
+    const { paymentId, secret } = await started();
+    deviceIp = null;
+    await report(completed(paymentId));
+    await settled();
+    await t.db.payment.update({ where: { id: paymentId }, data: { lastCheckedAt: new Date() } });
+    const seen = (await status(paymentId, secret)).body;
+    expect(seen).toMatchObject({ state: "paid", online: false, owed: false, ended: false });
+    expect(seen.code).toMatch(/^WIFI-/);
+  });
+
+  test("when the voucher ends the purchase is over, and the code is gone", async () => {
+    const { paymentId, secret } = await started();
+    await report(completed(paymentId));
+    await settled();
+    await t.db.voucher.updateMany({ data: { expiresAt: new Date(Date.now() - 1000) } });
+    await t.db.payment.update({ where: { id: paymentId }, data: { lastCheckedAt: new Date() } });
+    expect((await status(paymentId, secret)).body).toMatchObject({
+      online: false,
+      ended: true,
+      code: null,
+    });
+  });
+
+  test("a prompt that nobody answers ends, whatever the provider says", async () => {
+    const { paymentId, secret } = await started();
+    await t.db.payment.update({
+      where: { id: paymentId },
+      data: {
+        createdAt: new Date(Date.now() - 120_000),
+        expiresAt: new Date(Date.now() - 1000),
+      },
+    });
+    remote = null;
+    await api.app.get(PaymentsService).reconcile();
+    await t.db.payment.update({ where: { id: paymentId }, data: { lastCheckedAt: new Date() } });
+    expect((await status(paymentId, secret)).body).toMatchObject({ state: "failed" });
+  });
+
+  test("stuck payments cannot crowd out a new one", async () => {
+    const { paymentId, venue, pkg } = await started();
+    const stuck = Array.from({ length: 60 }, (_, i) => ({
+      provider: "mobile_money" as const,
+      providerReference: `stuck-${i}`,
+      amountTsh: "2000",
+      packageId: pkg.id,
+      venueId: venue.id,
+      createdAt: new Date(Date.now() - 3_600_000),
+      lastCheckedAt: new Date(),
+      expiresAt: new Date(Date.now() + 3_600_000),
+    }));
+    await t.db.payment.createMany({ data: stuck });
+    await t.db.payment.update({
+      where: { id: paymentId },
+      data: { createdAt: new Date(Date.now() - 120_000) },
+    });
+    const gateway = api.app.get<MobileMoneyGateway>(MOBILE_MONEY, { strict: false });
+    gateway.state = async (reference) =>
+      reference.startsWith("stuck")
+        ? null
+        : { state: "completed", amount: 2000, failureReason: null };
+    await api.app.get(PaymentsService).reconcile();
+    expect(await t.db.payment.findUniqueOrThrow({ where: { id: paymentId } })).toMatchObject({
+      status: "paid",
+    });
+  });
+
+  test("a report with no ids touches no row", async () => {
+    const { paymentId } = await started();
+    await report(completed(paymentId));
+    await settled();
+    const raw = '{"id":"evt_x","event":"sms.delivered","data":{}}';
+    const signature = createHmac("sha256", SMS_SECRET).update(raw).digest("hex");
+    await fetch(`${api.url}/webhooks/briq`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Briq-Signature": `sha256=${signature}` },
+      body: raw,
+    });
+    expect((await t.db.smsMessage.findFirstOrThrow()).status).toBe("sent");
   });
 });
 

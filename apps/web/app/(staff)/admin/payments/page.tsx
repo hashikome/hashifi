@@ -360,7 +360,14 @@ export default function PaymentsPage() {
                       <td className="py-3 text-muted-foreground">
                         {p.sms === null ? "—" : SMS[p.sms]}
                       </td>
-                      <td className={`py-3 font-medium ${status.className}`}>{status.label}</td>
+                      <td className={`py-3 font-medium ${status.className}`}>
+                        {status.label}
+                        {p.provisionError !== null && (
+                          <span className="block max-w-56 truncate text-xs font-normal text-muted-foreground">
+                            {p.provisionError}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-3 text-right font-medium tabular-nums">
                         {money(p.amountTsh)}
                       </td>

@@ -27,7 +27,9 @@ holding a payment id.
    metadata holds the code. The browser keeps the secret in its tab, so a reload finds the receipt.
 4. **Nothing prompts a phone until everything is checked:** a registered router, a package on sale
    there, a payable price, a device not blocked, a device the router can see, and limits per
-   number, device and address. A router that cannot be asked does not stop a purchase: the
+   number, device and address. The address limit is high because a venue shares one public
+   address, and it relies on `TRUSTED_PROXIES`, which production requires: without it every guest
+   would look like the web proxy. A router that cannot be asked does not stop a purchase: the
    payment waits, as access owed.
 5. **Webhooks are proved over the exact bytes.** Payment reports are signed over the timestamp and
    body, and refused 300 seconds out. SMS reports have no timestamp, so the event id alone stops a
@@ -43,11 +45,14 @@ holding a payment id.
 
 ## Evidence
 
-`payments.integration.test.ts` (15 tests): checks before a prompt, limits, forged, unsigned, stale
+`payments.integration.test.ts` (21 tests): checks before a prompt, limits, forged, unsigned, stale
 and replayed reports, odd whitespace in a signed body, concurrent completion, wrong amounts, late
-failures, lost webhooks, a router that was down, failing SMS, another session, manager scope and
-revenue. `router-sim guest-test`: a purchase through the walled garden brings the paying device
-online. Walked in a browser: buy, approve, receipt, reload, a second session, a staff sale.
+failures, lost webhooks, a router that was down, failing SMS, another session, an address that moved
+during approval, a voucher that ended, stuck payments, manager scope and revenue. The real adapters
+run against stand-in servers (`mobile-money.test.ts`, `sms-sender.test.ts`), which pins what they
+send and read. `router-sim guest-test`: a purchase through the walled garden brings the paying device
+online. Walked in a browser on the fake gateway: buy, approve, receipt, reload, a second session, a
+missed prompt, a decline, buying again after a voucher ended, a staff sale.
 
 ## What remains open
 

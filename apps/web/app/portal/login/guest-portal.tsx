@@ -132,6 +132,14 @@ export function GuestPortal() {
   // Stops once there is nothing left to wait for.
   const finished =
     paymentStatus?.state === "failed" || (paymentStatus?.state === "paid" && paymentStatus.online);
+
+  // A purchase whose voucher has run out is over: back to buying.
+  useEffect(() => {
+    if (paymentStatus?.ended !== true) return;
+    holdPayment(null);
+    setPayment(null);
+    setPaymentStatus(null);
+  }, [paymentStatus]);
   useEffect(() => {
     if (payment === null || finished) return;
     const ask = () =>
@@ -236,14 +244,44 @@ export function GuestPortal() {
     setError(null);
   };
 
+  const connect = async (voucherCode: string) => {
+    if (screen.kind !== "ready") return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const { router, mac, ip, linkOrig } = screen.request;
+      const { expiresAt, dst } = await post<RedeemResult>("/api/guest/redeem", {
+        router,
+        mac,
+        ip,
+        linkOrig,
+        code: voucherCode,
+      });
+      setScreen({ kind: "online", context: screen.context, expiresAt });
+      if (dst !== null) window.setTimeout(() => window.location.replace(dst), 1200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (screen.kind === "ready" && payment !== null) {
     if (paymentStatus === null || paymentStatus.state === "pending") {
-      return <Approve context={screen.context} />;
+      return <Approve context={screen.context} onRestart={startOver} />;
     }
     if (paymentStatus.state === "failed") {
       return <PaymentFailed context={screen.context} onRetry={startOver} />;
     }
-    return <PaymentDone context={screen.context} status={paymentStatus} />;
+    return (
+      <PaymentDone
+        context={screen.context}
+        status={paymentStatus}
+        connectError={error}
+        isConnecting={isSubmitting}
+        onConnect={connect}
+      />
+    );
   }
 
   const pkg =

@@ -651,8 +651,10 @@ export interface GuestPaymentStatus {
   /** Until the voucher ends. */
   code: string | null;
   expiresAt: Timestamp | null;
-  /** The router reports this device online. */
+  /** The router reports this device online, on a voucher still running. */
   online: boolean;
+  /** The voucher has run out: this purchase is over, and the guest can buy again. */
+  ended: boolean;
   /** Paid, but the router has not confirmed yet: HashiFi keeps trying. */
   owed: boolean;
   sms: SmsDelivery | null;

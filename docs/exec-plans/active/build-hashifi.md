@@ -283,8 +283,8 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   acceptance waits on accounts.
   - [x] (2026-10-31) Self-service purchase, the paying device signed in, the code shown to that
     session and sent by SMS, signed webhooks, reconciliation, access owed, assisted sales, and
-    the Payments and Customers screens. Acceptance: `payments.integration.test.ts` (15 tests),
-    `router-sim guest-test` 18/18, a browser walk.
+    the Payments and Customers screens. Acceptance: `payments.integration.test.ts` (21 tests),
+    the real adapters against stand-in servers, `router-sim guest-test` 18/18, a browser walk.
   - [ ] Against the real providers: needs a Snippe key and webhook secret, a BRIQ developer app,
     key and webhook secret, and a TCRA-approved sender ID.
 - [x] (2026-10-31) Venue branding, ahead of M6 (ADR-0009): `venue_brands`, images in R2 or on disk

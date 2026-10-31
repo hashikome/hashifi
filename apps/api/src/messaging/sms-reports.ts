@@ -25,8 +25,8 @@ export class SmsReports {
     messageId: string | null;
   }): Promise<void> {
     const status = report.event === null ? null : (STATUS[report.event] ?? null);
-    if (report.id === null || status === null) return;
     const { id, jobId, messageId } = report;
+    if (id === null || status === null || (jobId === null && messageId === null)) return;
     await this.db.$transaction(async (tx) => {
       const { count } = await tx.webhookEvent.createMany({
         data: [{ provider: "sms", eventId: id }],

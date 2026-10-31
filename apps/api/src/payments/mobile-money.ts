@@ -91,10 +91,13 @@ export class SnippeGateway implements MobileMoneyGateway {
 /**
  * Development only, refused in production by the configuration: "approves" a few seconds after
  * the charge, so a whole purchase can be walked without a provider. A number ending in 0000
- * declines, to show that path.
+ * declines and one ending in 1111 never answers, to show those paths.
  */
 export class FakeGateway implements MobileMoneyGateway {
-  private readonly charges = new Map<string, { at: number; amount: number; declines: boolean }>();
+  private readonly charges = new Map<
+    string,
+    { at: number; amount: number; declines: boolean; silent: boolean }
+  >();
 
   constructor(private readonly approvalMs = 6_000) {}
 
@@ -104,6 +107,7 @@ export class FakeGateway implements MobileMoneyGateway {
       at: Date.now(),
       amount: request.amount,
       declines: request.phone.endsWith("0000"),
+      silent: request.phone.endsWith("1111"),
     });
     return { reference, expiresAt: new Date(Date.now() + 4 * 3_600_000) };
   }
@@ -111,7 +115,7 @@ export class FakeGateway implements MobileMoneyGateway {
   async state(reference: string): Promise<ChargeState | null> {
     const charge = this.charges.get(reference) ?? null;
     if (charge === null) return null;
-    if (Date.now() - charge.at < this.approvalMs) {
+    if (charge.silent || Date.now() - charge.at < this.approvalMs) {
       return { state: "pending", amount: charge.amount, failureReason: null };
     }
     return charge.declines

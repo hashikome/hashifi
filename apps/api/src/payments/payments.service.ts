@@ -43,7 +43,8 @@ const WINDOW_SECONDS = 600;
 /** Each attempt prompts a real phone, so these guard people, not only the provider's bill. */
 const PROMPTS_PER_PHONE = 3;
 const PROMPTS_PER_DEVICE = 5;
-const PROMPTS_PER_ADDRESS = 30;
+/** A venue's guests share one public address, so this has to allow a busy evening. */
+const PROMPTS_PER_ADDRESS = 120;
 /** How often a guest's waiting screen may ask the provider or the router. */
 const POLL_GAP_MS = 5_000;
 const RECONCILE_AFTER_MS = 60_000;
@@ -205,9 +206,9 @@ export class PaymentsService {
   private async check(row: PaymentRow): Promise<void> {
     if (row.providerReference === null) return;
     const remote = await this.gateway.state(row.providerReference);
-    if (remote === null) return;
-    await this.apply(row.id, remote, null);
-    if (remote.state === "pending" && row.expiresAt !== null && row.expiresAt < new Date()) {
+    if (remote !== null) await this.apply(row.id, remote, null);
+    // Whatever the provider says, or if it says nothing: money that arrives later still counts.
+    if (remote?.state !== "completed" && row.expiresAt !== null && row.expiresAt < new Date()) {
       await this.fail(row.id, "The payment was not approved in time", null);
     }
   }
@@ -226,6 +227,7 @@ export class PaymentsService {
 
   /** The payment a provider's report is about: by our id, since it can beat the reference. */
   async findForReport(paymentId: string | null, reference: string | null): Promise<string | null> {
+    if (paymentId === null && reference === null) return null;
     const row = await this.db.payment.findFirst({
       where: {
         OR: [
@@ -251,8 +253,12 @@ export class PaymentsService {
     const row = await this.db.payment.findUnique({ where: { id: paymentId }, include });
     if (row === null || row.status === "paid") return;
     if (amount !== null && amount !== Number(row.amountTsh)) {
-      // Never grant on a mismatch: this needs a person, and staff see it pending.
+      // Never grant on a mismatch: this needs a person, and staff see why it is stuck.
       enrichWideEvent({ "payment.id": paymentId, "error.message": "amount does not match" });
+      await this.db.payment.update({
+        where: { id: paymentId },
+        data: { provisionError: "The amount reported does not match this payment" },
+      });
       captureFailure(new Error(`Payment ${paymentId}: the amount reported does not match`));
       return;
     }
@@ -341,12 +347,14 @@ export class PaymentsService {
           data: { routerProvisionedAt: new Date(), provisionError: null },
         });
       }
-      if (row.signedInAt !== null || row.router === null) return;
-      if (row.macAddress === null || row.ipAddress === null) return;
+      if (row.signedInAt !== null || row.router === null || row.macAddress === null) return;
+      // Where the device is now: an address can change while a guest approves a payment.
+      const ip = await this.sync.deviceAddress(row.router, row.macAddress);
+      if (ip === null) return;
       const admitted = await this.guest
         .admit(row.router, row.voucher, row.package?.deviceLimit ?? 1, {
           mac: row.macAddress,
-          ip: row.ipAddress,
+          ip,
         })
         // The device has moved or left: its code still works, and it is on its screen.
         .then(() => true)
@@ -417,10 +425,17 @@ export class PaymentsService {
         createdAt: { lt: new Date(now - RECONCILE_AFTER_MS) },
       },
       include,
-      orderBy: { createdAt: "asc" },
+      // The longest unasked first, so stuck payments cannot crowd out new ones.
+      orderBy: { lastCheckedAt: { sort: "asc", nulls: "first" } },
       take: BATCH,
     });
-    for (const row of pending) await this.check(row);
+    for (const row of pending) {
+      await this.db.payment.update({
+        where: { id: row.id },
+        data: { lastCheckedAt: new Date() },
+      });
+      await this.check(row);
+    }
 
     const owed = await this.db.payment.findMany({
       where: {
@@ -591,12 +606,16 @@ function sameHash(a: string, b: string): boolean {
 
 function guestStatus(row: PaymentRow): GuestPaymentStatus {
   const voucher = row.voucher;
-  const expired = voucher?.expiresAt != null && voucher.expiresAt < new Date();
+  const ended =
+    voucher !== null &&
+    (["expired", "used", "revoked"].includes(voucher.status) ||
+      (voucher.expiresAt !== null && voucher.expiresAt < new Date()));
   return {
     state: row.status === "paid" ? "paid" : row.status === "pending" ? "pending" : "failed",
-    code: voucher === null || expired ? null : voucher.code,
+    code: voucher === null || ended ? null : voucher.code,
     expiresAt: voucher?.expiresAt?.toISOString() ?? null,
-    online: row.signedInAt !== null,
+    online: row.signedInAt !== null && !ended,
+    ended,
     owed: row.status === "paid" && row.routerProvisionedAt === null,
     sms: row.sms?.status ?? null,
     dst: row.destination,

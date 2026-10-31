@@ -91,13 +91,20 @@ export function PayForm({
 }
 
 /** Waiting for the guest to approve on their phone. */
-export function Approve({ context }: { context: GuestContext }) {
+export function Approve({ context, onRestart }: { context: GuestContext; onRestart: () => void }) {
   return (
     <Frame context={context}>
       <h1 className="text-2xl font-bold tracking-tight">Approve the payment on your phone</h1>
       <p className="mt-3 text-base leading-relaxed" role="status">
         Enter your PIN when the prompt appears. This page moves on by itself.
       </p>
+      <button
+        type="button"
+        onClick={onRestart}
+        className="mt-6 h-12 w-full font-semibold underline"
+      >
+        Didn&apos;t get the prompt? Start again
+      </button>
     </Frame>
   );
 }
@@ -132,19 +139,29 @@ const SMS_WORDS: Record<SmsDelivery, string> = {
 export function PaymentDone({
   context,
   status,
+  connectError,
+  isConnecting,
+  onConnect,
 }: {
   context: GuestContext;
   status: GuestPaymentStatus;
+  connectError: string | null;
+  isConnecting: boolean;
+  onConnect: (code: string) => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"yes" | "no" | null>(null);
   const { code } = status;
+  // The clipboard needs a secure page. If it is refused, say so rather than pretend.
   const copy = async () => {
     if (code === null) return;
-    const done = await navigator.clipboard?.writeText(code).then(
-      () => true,
-      () => false,
-    );
-    setCopied(done === true);
+    const done =
+      navigator.clipboard === undefined
+        ? false
+        : await navigator.clipboard.writeText(code).then(
+            () => true,
+            () => false,
+          );
+    setCopied(done ? "yes" : "no");
   };
   const heading = status.online
     ? "You're online"
@@ -170,8 +187,30 @@ export function PaymentDone({
           <h2 className="font-semibold">Your voucher code</h2>
           <p className="mt-2 text-2xl font-bold tracking-wide break-all select-all">{code}</p>
           <button type="button" onClick={copy} className={ACTION}>
-            {copied ? "Copied" : "Copy code"}
+            {copied === "yes" ? "Copied" : "Copy code"}
           </button>
+          {copied === "no" && (
+            <p className="mt-2 text-sm font-medium text-zinc-900">
+              This phone would not copy it. Press and hold the code to copy it.
+            </p>
+          )}
+          {!status.online && !status.owed && (
+            <>
+              <button
+                type="button"
+                disabled={isConnecting}
+                onClick={() => onConnect(code)}
+                className="mt-3 h-12 w-full rounded-lg border-2 border-zinc-500 font-semibold disabled:opacity-50"
+              >
+                {isConnecting ? "Connecting…" : "Connect with this code"}
+              </button>
+              {connectError && (
+                <p role="alert" className="mt-2 text-sm font-medium text-red-700">
+                  {connectError}
+                </p>
+              )}
+            </>
+          )}
           <p className="mt-3 text-sm leading-relaxed text-zinc-600">
             Use it to reconnect, or on another device.
           </p>

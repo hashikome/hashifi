@@ -1,7 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-/** Sends one text to one number. Resolves once accepted; delivery is reported separately. */
+/**
+ * Sends one text to one number. Resolves once accepted; delivery is reported separately. A null
+ * job means no report is coming, which is only the development outbox.
+ */
 export interface SmsSender {
   send(message: { to: string; text: string }): Promise<{ jobId: string | null }>;
 }
@@ -34,10 +37,11 @@ export class BriqSmsSender implements SmsSender {
       }),
     });
     const body = (await response.json()) as { success?: boolean; job_id?: string };
-    if (!response.ok || body.success !== true) {
+    // Without a job there is nothing a report could match, so it counts as not sent.
+    if (!response.ok || body.success !== true || typeof body.job_id !== "string") {
       throw new Error(`The SMS was refused (HTTP ${response.status})`);
     }
-    return { jobId: body.job_id ?? null };
+    return { jobId: body.job_id };
   }
 }
 
