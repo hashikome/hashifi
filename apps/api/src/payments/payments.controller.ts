@@ -1,4 +1,5 @@
 import type {
+  Capabilities,
   CustomerList,
   GuestPaymentStarted,
   GuestPaymentStatus,
@@ -41,6 +42,12 @@ export class GuestPaymentsController {
 @Controller("api")
 export class PaymentsController {
   constructor(private readonly payments: PaymentsService) {}
+
+  /** What this installation can offer, so the admin shows only what works. */
+  @Get("capabilities")
+  capabilities(): Capabilities {
+    return this.payments.capabilities();
+  }
 
   @Get("payments")
   async list(@CurrentStaff() staff: StaffPrincipal, @Query() query: unknown): Promise<PaymentList> {

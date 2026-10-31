@@ -52,6 +52,7 @@ import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { LOGO_SRC } from "@/lib/brand";
+import { useCapabilities } from "@/lib/capabilities";
 import { formatDuration } from "@/lib/duration";
 import { errorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -182,6 +183,7 @@ function ImageField({
 export default function PortalPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const capabilities = useCapabilities();
 
   // What is being edited: the HashiFi default, or one venue's brand.
   const [venues, setVenues] = useState<VenueRecord[]>([]);
@@ -277,6 +279,7 @@ export default function PortalPage() {
   /** The real page a guest gets, drawn from what is on this form right now. */
   const previewContext: GuestContext = {
     venueName: venues.find((v) => v.id === scope)?.name ?? "Your venue",
+    mobileMoney: capabilities?.mobileMoney === true,
     settings: { ...portal, logoUrl, backgroundUrl },
     packages: packages.map((p) => ({
       id: p.id,
@@ -784,29 +787,28 @@ export default function PortalPage() {
                   <ShieldCheck className="size-5" />
                   Access Methods
                 </CardTitle>
-                <CardDescription>
-                  Customers can buy a package or enter a voucher code. Choose any extra steps before
-                  they connect.
-                </CardDescription>
+                <CardDescription>Choose any extra steps before customers connect.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Always-on flows — informational */}
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
-                    <span
-                      className="flex size-9 shrink-0 items-center justify-center rounded-md text-white"
-                      style={{ backgroundColor: portal.primaryColor }}
-                    >
-                      <CreditCard className="size-4" />
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium">Buy a package</p>
-                      <p className="text-xs text-muted-foreground">
-                        Customer picks a plan, enters a mobile number, and confirms payment via
-                        USSD.
-                      </p>
+                  {capabilities?.mobileMoney === true && (
+                    <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
+                      <span
+                        className="flex size-9 shrink-0 items-center justify-center rounded-md text-white"
+                        style={{ backgroundColor: portal.primaryColor }}
+                      >
+                        <CreditCard className="size-4" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium">Buy a package</p>
+                        <p className="text-xs text-muted-foreground">
+                          Customer picks a plan, enters a mobile number, and confirms payment via
+                          USSD.
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
                     <span
                       className="flex size-9 shrink-0 items-center justify-center rounded-md text-white"
@@ -997,7 +999,9 @@ function VoucherPreview({
               <Separator className="my-4" />
 
               <div className="space-y-3">
-                <p className="text-sm leading-6 text-muted-foreground">{portal.voucherHelp}</p>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Or type this code on the page that opens.
+                </p>
                 <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
                   <span>{portal.ticketFooter}</span>
                   <span>

@@ -13,6 +13,7 @@ import {
 } from "../email/email-sender.js";
 import {
   BriqSmsSender,
+  NoSmsSender,
   OutboxSmsSender,
   SMS_SENDER,
   type SmsSender,
@@ -21,6 +22,7 @@ import {
   FakeGateway,
   MOBILE_MONEY,
   type MobileMoneyGateway,
+  NoGateway,
   SnippeGateway,
 } from "../payments/mobile-money.js";
 import type { AppConfig } from "./config.js";
@@ -48,16 +50,16 @@ export function configModule(config: AppConfig, email: EmailSender | null): Dyna
 
 function gatewayFor(config: AppConfig): MobileMoneyGateway {
   const { snippeApiKey } = config.payments;
-  return snippeApiKey === null
-    ? new FakeGateway()
-    : new SnippeGateway(snippeApiKey, `${config.appUrl}/webhooks/snippe`);
+  if (snippeApiKey !== null) {
+    return new SnippeGateway(snippeApiKey, `${config.appUrl}/webhooks/snippe`);
+  }
+  return config.fakeProviders ? new FakeGateway() : new NoGateway();
 }
 
 function smsSenderFor(config: AppConfig): SmsSender {
   const { briq, outboxDir } = config.sms;
-  return briq === null
-    ? new OutboxSmsSender(outboxDir)
-    : new BriqSmsSender(briq.apiKey, briq.appId, briq.senderId);
+  if (briq !== null) return new BriqSmsSender(briq.apiKey, briq.appId, briq.senderId);
+  return config.fakeProviders ? new OutboxSmsSender(outboxDir) : new NoSmsSender();
 }
 
 function brandStoreFor(config: AppConfig): BrandStore {

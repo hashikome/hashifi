@@ -31,13 +31,15 @@ export interface AppConfig {
     from: string;
     outboxDir: string;
   };
+  fakeProviders: boolean;
+  /** What a venue can offer: each turns on when its provider's credentials are set. */
+  features: { mobileMoney: boolean; sms: boolean };
   payments: {
-    /** Required in production. Unset elsewhere, a fake gateway approves every charge. */
     snippeApiKey: string | null;
     snippeWebhookSecret: string | null;
   };
   sms: {
-    /** BRIQ; required in production. Unset elsewhere, messages go to `outboxDir`. */
+    /** BRIQ. Unset, no text is sent; with `fakeProviders`, messages go to `outboxDir`. */
     briq: { apiKey: string; appId: string; senderId: string } | null;
     webhookSecret: string | null;
     outboxDir: string;
@@ -103,6 +105,8 @@ const schema = z.object({
   BRIQ_SENDER_ID: z.string().min(1).nullable().default(null),
   BRIQ_WEBHOOK_SECRET: z.string().min(1).nullable().default(null),
   SMS_OUTBOX_DIR: z.string().min(1).default(DEFAULT_SMS_DIR),
+  /** Stand-ins for mobile money and SMS, to walk those paths. Refused in production. */
+  FAKE_PROVIDERS: z.enum(["true", "false"]).default("false"),
   R2_ENDPOINT: url.nullable().default(null),
   R2_BUCKET: z.string().min(1).nullable().default(null),
   R2_ACCESS_KEY_ID: z.string().min(1).nullable().default(null),
@@ -172,15 +176,25 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const trustedProxies = c.TRUSTED_PROXIES.split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "");
+  const incomplete = [
+    ["SNIPPE_API_KEY", "SNIPPE_WEBHOOK_SECRET"],
+    ["BRIQ_API_KEY", "BRIQ_APP_ID", "BRIQ_SENDER_ID", "BRIQ_WEBHOOK_SECRET"],
+  ].flatMap((group) => {
+    const set = group.filter((key) => c[key as keyof typeof c] !== null);
+    return set.length > 0 && set.length < group.length ? group.filter((k) => !set.includes(k)) : [];
+  });
+  if (incomplete.length > 0) {
+    throw new Error(
+      `Invalid configuration:\n  ${incomplete.map((n) => `${n}: is also needed`).join("\n  ")}`,
+    );
+  }
+  const fake = c.FAKE_PROVIDERS === "true";
+  if (fake && c.NODE_ENV === "production") {
+    throw new Error("Invalid configuration:\n  FAKE_PROVIDERS: refused in production");
+  }
   if (c.NODE_ENV === "production") {
     const missing = [
       c.RESEND_API_KEY === null ? "RESEND_API_KEY" : null,
-      c.SNIPPE_API_KEY === null ? "SNIPPE_API_KEY" : null,
-      c.SNIPPE_WEBHOOK_SECRET === null ? "SNIPPE_WEBHOOK_SECRET" : null,
-      c.BRIQ_API_KEY === null ? "BRIQ_API_KEY" : null,
-      c.BRIQ_APP_ID === null ? "BRIQ_APP_ID" : null,
-      c.BRIQ_SENDER_ID === null ? "BRIQ_SENDER_ID" : null,
-      c.BRIQ_WEBHOOK_SECRET === null ? "BRIQ_WEBHOOK_SECRET" : null,
       c.R2_ENDPOINT === null ? "R2_ENDPOINT" : null,
       c.R2_BUCKET === null ? "R2_BUCKET" : null,
       c.R2_ACCESS_KEY_ID === null ? "R2_ACCESS_KEY_ID" : null,
@@ -204,6 +218,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     appUrl: c.APP_URL,
     auth: { secret: c.BETTER_AUTH_SECRET, trustedProxies },
     email: { resendApiKey: c.RESEND_API_KEY, from: c.EMAIL_FROM, outboxDir: c.EMAIL_OUTBOX_DIR },
+    fakeProviders: fake,
+    features: {
+      mobileMoney: fake || c.SNIPPE_API_KEY !== null,
+      sms: fake || c.BRIQ_API_KEY !== null,
+    },
     payments: { snippeApiKey: c.SNIPPE_API_KEY, snippeWebhookSecret: c.SNIPPE_WEBHOOK_SECRET },
     sms: {
       briq:

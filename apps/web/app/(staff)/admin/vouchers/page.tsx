@@ -50,9 +50,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { API_URL, api } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatDuration } from "@/lib/duration";
+import { portalOrigin } from "@/lib/portal-url";
 import { statusPill } from "@/lib/status-pill";
 import { formatDate } from "@/lib/utils";
 
@@ -63,11 +64,6 @@ interface VoucherRow extends VoucherListItem {
   /** Data used, in GB. */
   dataUsed: number;
 }
-
-// NEXT_PUBLIC_PORTAL_URL must be set to the IP/hostname users reach from the WiFi
-// network (e.g. http://192.168.1.15:8080). QR codes encode this URL so scanning
-// them opens the portal login with the voucher code pre-filled.
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || API_URL;
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -539,7 +535,7 @@ export default function VouchersPage() {
               {/* QR Code */}
               <div className="flex flex-col items-center gap-2 rounded-lg border bg-muted/30 py-4">
                 <QRCodeSVG
-                  value={`${PORTAL_URL}/portal/login#code=${selectedVoucher.code}`}
+                  value={`${portalOrigin()}/portal/login#code=${selectedVoucher.code}`}
                   size={120}
                   bgColor="transparent"
                   fgColor="currentColor"

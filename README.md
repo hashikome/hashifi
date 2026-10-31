@@ -11,7 +11,7 @@ disabling access and tracking MAC addresses by hand, sometimes late at night.
 
 > **Status:** in development. The plan is
 > [docs/exec-plans/active/build-hashifi.md](docs/exec-plans/active/build-hashifi.md).
-> The API, the admin web and the captive portal work together; real mobile money and SMS await provider accounts.
+> The API, the admin web and the captive portal work together; printed vouchers are the launch workflow, and mobile money and SMS are held until their providers are set up.
 
 ## How it works
 

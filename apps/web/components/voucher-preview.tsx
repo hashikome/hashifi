@@ -166,7 +166,9 @@ export function VoucherPreview({
               <Separator className="my-4" />
 
               <div className="space-y-3">
-                <p className="text-sm leading-6 text-muted-foreground">{portal.voucherHelp}</p>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Or type this code on the page that opens.
+                </p>
                 <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
                   <span>{portal.ticketFooter}</span>
                   <span>Support: {portal.brandName}</span>

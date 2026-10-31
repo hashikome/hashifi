@@ -17,7 +17,11 @@ const PHONE = "+255712345678";
 
 const t = useTestDatabase();
 const api = useApi({
+  SNIPPE_API_KEY: "key",
   SNIPPE_WEBHOOK_SECRET: PAY_SECRET,
+  BRIQ_API_KEY: "key",
+  BRIQ_APP_ID: "app",
+  BRIQ_SENDER_ID: "HASHIFI",
   BRIQ_WEBHOOK_SECRET: SMS_SECRET,
   SMS_OUTBOX_DIR: join(tmpdir(), `hashifi-sms-${Date.now()}`),
 });

@@ -44,6 +44,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/lib/auth-context";
 import { LOGO_SRC } from "@/lib/brand";
+import { useCapabilities } from "@/lib/capabilities";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -65,6 +66,7 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const capabilities = useCapabilities();
   const [isSignOutOpen, setIsSignOutOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [loadingRoute, setLoadingRoute] = useState<string | null>(null);
@@ -125,6 +127,7 @@ export function AdminSidebar() {
         <nav className="space-y-1">
           {navigation
             .filter((item) => !user || item.roles.includes(user.role))
+            .filter((item) => item.href !== "/admin/payments" || capabilities?.mobileMoney === true)
             .map((item) => {
               const isActive =
                 pathname === item.href ||

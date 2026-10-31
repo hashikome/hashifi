@@ -15,7 +15,6 @@ export type VoucherTicketSettings = Pick<
   | "radius"
   | "ticketFooter"
   | "ticketTitle"
-  | "voucherHelp"
 >;
 
 /** What a printed voucher shows about its package. */
@@ -115,7 +114,7 @@ export function PrintableVoucher({
         <div className="flex items-end gap-4">
           <div className="flex-1 space-y-1.5">
             <p className="text-[10px] leading-relaxed text-muted-foreground">
-              {settings.voucherHelp}
+              Or type this code on the page that opens.
             </p>
             <p className="text-[9px] text-muted-foreground/70">{settings.ticketFooter}</p>
           </div>

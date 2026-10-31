@@ -4,12 +4,15 @@ import {
   ForbiddenException,
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type { z } from "zod";
 import { BrandService } from "../brand/brand.service.js";
+import type { AppConfig } from "../config/config.js";
+import { APP_CONFIG } from "../config/config.module.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { Router, Voucher } from "../generated/prisma/client.js";
 import { apiError } from "../http/error-envelope.js";
@@ -54,6 +57,7 @@ export class GuestService {
     private readonly sync: RouterSync,
     private readonly brand: BrandService,
     private readonly packages: PackagesService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async context(input: z.infer<typeof contextInput>): Promise<GuestContext> {
@@ -65,6 +69,7 @@ export class GuestService {
     ]);
     return {
       venueName: venue.name,
+      mobileMoney: this.config.features.mobileMoney,
       settings: {
         brandName: settings.brandName,
         headline: settings.headline,

@@ -11,8 +11,8 @@ External documents are references only. Keep this file short: it is a map, not a
 ## Current state
 
 The [build plan](docs/exec-plans/active/build-hashifi.md) tracks the work: read
-it before changing anything under `apps/`. M1 to M5 are done, and M6 is built and awaits the real
-providers: `apps/api` is NestJS on Bun with Prisma on PostgreSQL 18, and `apps/web` runs on it
+it before changing anything under `apps/`. M1 to M5 are done. HashiFi launches on printed vouchers; M6
+(mobile money and SMS) is built and held until its providers' credentials exist: `apps/api` is NestJS on Bun with Prisma on PostgreSQL 18, and `apps/web` runs on it
 through `lib/api.ts` and `@hashifi/types`, including the captive portal and purchases.
 
 ## Map

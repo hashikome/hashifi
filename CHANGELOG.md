@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- HashiFi launches on printed vouchers. Mobile money, assisted sales and SMS turn on when their
+  providers' credentials are set; until then guests see the voucher form and a price list.
+- Fixed: printed QR codes pointed at the API, which has no portal page, and printed cards told
+  the holder to ask for a voucher.
 - Guests buy WiFi on the portal with mobile money: they approve on their phone, the voucher is
   issued, the router confirms it and the device goes online. The code is on their screen and sent
   by SMS. Staff record assisted sales, and Payments shows who paid and who is owed access.

@@ -1,7 +1,8 @@
 # ADR-0010: Payments, vouchers and SMS
 
-Status: accepted, 31 October 2026, as proved against test doubles and the router sim. Real mobile
-money and SMS have not run yet: neither provider's account exists.
+Status: accepted, 31 October 2026, as proved against test doubles and the router sim. Held: HashiFi
+launches on printed vouchers, and this turns on with the providers' credentials. Real mobile money
+and SMS have not run yet.
 
 ## Context
 
@@ -39,9 +40,14 @@ holding a payment id.
    stock until redeemed, then cash sales.
 7. **SMS cannot strand a guest.** A message is sent once per payment, and its text is not kept.
    One nobody reports on becomes `unconfirmed` at 10 minutes. The screen always has the code.
-8. **Providers sit behind interfaces** (`MobileMoneyGateway`, `SmsSender`). Without keys, a fake
-   gateway and an outbox stand in for development, and production refuses to start without the
-   real ones. No background queue: PostgreSQL holds the state, so `IntervalJob` is enough.
+8. **Providers sit behind interfaces** (`MobileMoneyGateway`, `SmsSender`). No background queue:
+   PostgreSQL holds the state, so `IntervalJob` is enough.
+9. **Held until set up.** Mobile money is on when Snippe's credentials are set, and SMS when BRIQ's
+   are; half a set-up stops startup. While off, guests see the voucher form and a price list, staff
+   see no Payments, and `POST /api/guest/payments` and `/api/sales` answer 503. Nothing here was
+   built as a fake door: a button that does nothing is the wrong thing to show someone trying to
+   get online. `FAKE_PROVIDERS` turns on stand-ins for development, and production refuses it, so
+   no real guest can ever reach the fake gateway.
 
 ## Evidence
 

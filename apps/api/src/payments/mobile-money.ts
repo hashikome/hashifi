@@ -88,6 +88,17 @@ export class SnippeGateway implements MobileMoneyGateway {
   }
 }
 
+/** With no provider set up: the feature is off, and nothing can reach this. */
+export class NoGateway implements MobileMoneyGateway {
+  async charge(): Promise<never> {
+    throw new Error("Mobile money is not set up");
+  }
+
+  async state(): Promise<null> {
+    return null;
+  }
+}
+
 /**
  * Development only, refused in production by the configuration: "approves" a few seconds after
  * the charge, so a whole purchase can be walked without a provider. A number ending in 0000

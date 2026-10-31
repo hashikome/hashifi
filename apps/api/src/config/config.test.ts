@@ -23,6 +23,22 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...BASE, DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL/);
   });
 
+  test("mobile money and SMS are off until set up, and half a set-up is refused", () => {
+    expect(loadConfig(BASE).features).toEqual({ mobileMoney: false, sms: false });
+    expect(
+      loadConfig({ ...BASE, SNIPPE_API_KEY: "key", SNIPPE_WEBHOOK_SECRET: "secret" }).features,
+    ).toEqual({ mobileMoney: true, sms: false });
+    expect(() => loadConfig({ ...BASE, SNIPPE_API_KEY: "key" })).toThrow(/SNIPPE_WEBHOOK_SECRET/);
+    expect(() => loadConfig({ ...BASE, BRIQ_API_KEY: "key" })).toThrow(/BRIQ_SENDER_ID/);
+  });
+
+  test("the stand-in providers can never run in production", () => {
+    expect(loadConfig({ ...BASE, FAKE_PROVIDERS: "true" }).features.mobileMoney).toBe(true);
+    expect(() => loadConfig({ ...BASE, NODE_ENV: "production", FAKE_PROVIDERS: "true" })).toThrow(
+      /FAKE_PROVIDERS: refused in production/,
+    );
+  });
+
   test("production requires email delivery and the trusted proxies", () => {
     const production = { ...BASE, NODE_ENV: "production" };
     expect(() => loadConfig(production)).toThrow(/RESEND_API_KEY: required in production/);
@@ -30,12 +46,6 @@ describe("loadConfig", () => {
     const config = loadConfig({
       ...production,
       RESEND_API_KEY: "re_test",
-      SNIPPE_API_KEY: "key",
-      SNIPPE_WEBHOOK_SECRET: "secret",
-      BRIQ_API_KEY: "key",
-      BRIQ_APP_ID: "app",
-      BRIQ_SENDER_ID: "HASHIFI",
-      BRIQ_WEBHOOK_SECRET: "secret",
       R2_ENDPOINT: "https://account.r2.cloudflarestorage.com",
       R2_BUCKET: "hashifi",
       R2_ACCESS_KEY_ID: "key",

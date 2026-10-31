@@ -798,6 +798,7 @@ async function guestRun(): Promise<void> {
 async function startApi(
   state: SimState,
   stableAuth = false,
+  fakeProviders = true,
 ): Promise<ReturnType<typeof Bun.spawn>> {
   const api = Bun.spawn(["bun", "apps/api/src/entrypoint.ts"], {
     cwd: ROOT,
@@ -807,6 +808,7 @@ async function startApi(
       PATH: process.env.PATH ?? "",
       NODE_ENV: "development",
       PORT: String(BACKEND_PORT),
+      FAKE_PROVIDERS: String(fakeProviders),
       DATABASE_URL: simDatabaseUrl(),
       ENCRYPTION_KEY: state.encryptionKey ?? "",
       // The demo's sign-ins and authenticators outlive a restart.
@@ -879,7 +881,8 @@ async function demo(): Promise<void> {
     }
   }
 
-  const api = await startApi(state, true);
+  // `demo payments` adds the stand-in providers; by default it is what launches: printed vouchers.
+  const api = await startApi(state, true, args[0] === "payments");
   const web = Bun.spawn(["bun", "run", "--filter", "@hashifi/web", "dev"], {
     cwd: ROOT,
     stdout: "ignore",

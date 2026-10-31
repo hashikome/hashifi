@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type {
+  Capabilities,
   CustomerRecord,
   GuestPaymentStarted,
   GuestPaymentStatus,
@@ -14,11 +15,14 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { AuditLog } from "../audit/audit-log.js";
 import type { StaffPrincipal } from "../auth/staff-guard.js";
 import { venueScope } from "../auth/venue-scope.js";
 import { BrandService } from "../brand/brand.service.js";
+import type { AppConfig } from "../config/config.js";
+import { APP_CONFIG } from "../config/config.module.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { Prisma } from "../generated/prisma/client.js";
 import { countFailure, isLimited } from "../guest/attempts.js";
@@ -93,10 +97,20 @@ export class PaymentsService {
     private readonly audit: AuditLog,
     @Inject(MOBILE_MONEY) private readonly gateway: MobileMoneyGateway,
     @Inject(SMS_SENDER) private readonly sms: SmsSender,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
+
+  /** Held until the provider's credentials are set; printed vouchers need none of this. */
+  private refuseWhileOff(): void {
+    if (this.config.features.mobileMoney) return;
+    throw new ServiceUnavailableException(
+      apiError("PAYMENTS_OFF", "Mobile money is not available here yet. Ask for a voucher."),
+    );
+  }
 
   /** Starts a purchase: every check comes before a prompt reaches anybody's phone. */
   async start(input: StartPaymentInput, address: string | null): Promise<GuestPaymentStarted> {
+    this.refuseWhileOff();
     const limits = [
       { key: `pay:address:${address ?? "unknown"}`, max: PROMPTS_PER_ADDRESS },
       { key: `pay:device:${input.mac}`, max: PROMPTS_PER_DEVICE },
@@ -380,7 +394,7 @@ export class PaymentsService {
 
   /** Once per payment: the unique row is the guard, so a repeat of `settle` sends nothing. */
   private async sendCode(row: PaymentRow): Promise<void> {
-    if (row.phone === null || row.voucher === null) return;
+    if (row.phone === null || row.voucher === null || !this.config.features.sms) return;
     const { count } = await this.db.smsMessage.createMany({
       data: [{ paymentId: row.id, confirmBy: new Date(Date.now() + SMS_CONFIRM_MS) }],
       skipDuplicates: true,
@@ -471,6 +485,7 @@ export class PaymentsService {
     input: SaleInput,
     origin: RequestOrigin,
   ): Promise<SaleResult> {
+    this.refuseWhileOff();
     const sold = await this.packages.soldAt(staff, input.venueId);
     const pkg = sold.packages.find((p) => p.id === input.packageId) ?? null;
     if (pkg === null) {
@@ -534,6 +549,10 @@ export class PaymentsService {
       routerConfirmed: row.routerProvisionedAt !== null,
       sms: row.sms?.status ?? null,
     };
+  }
+
+  capabilities(): Capabilities {
+    return this.config.features;
   }
 
   async list(staff: StaffPrincipal, input: PaymentListInput): Promise<PaymentRecord[]> {

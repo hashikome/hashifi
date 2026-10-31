@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
+import { useCapabilities } from "@/lib/capabilities";
 import { errorMessage } from "@/lib/errors";
 import { formatDate } from "@/lib/utils";
 
@@ -233,6 +234,7 @@ function SaleDialog({
 }
 
 export default function PaymentsPage() {
+  const capabilities = useCapabilities();
   const [view, setView] = useState<Filter | "customers">("all");
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
@@ -258,6 +260,21 @@ export default function PaymentsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  if (capabilities?.mobileMoney === false) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold text-foreground">Payments</h1>
+        <p className="text-muted-foreground">
+          Mobile money is not switched on yet. Sell printed vouchers from{" "}
+          <Link href="/admin/vouchers" className="text-primary hover:underline">
+            Vouchers
+          </Link>
+          ; each counts as a sale when it is redeemed.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

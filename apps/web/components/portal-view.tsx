@@ -28,6 +28,11 @@ export function themeOf({ settings }: GuestContext) {
   } as CSSProperties;
 }
 
+function detailsOf(pkg: GuestContext["packages"][number]): string {
+  const limit = pkg.dataLimitGb === null ? "" : `, ${pkg.dataLimitGb} GB`;
+  return `${formatDuration(pkg.durationMinutes)} at ${pkg.downloadSpeedMbps} Mbps${limit}`;
+}
+
 export const priceOf = (tsh: string) => `TSh ${Number(tsh).toLocaleString("en-US")}`;
 
 interface PortalViewProps {
@@ -84,7 +89,7 @@ export function PortalView({
             {settings.message}
           </p>
 
-          {context.packages.length > 0 && (
+          {context.mobileMoney && context.packages.length > 0 && (
             <section className="mt-6">
               <h2 className="text-lg font-semibold">Buy WiFi</h2>
               <ul className="mt-3 space-y-2">
@@ -98,10 +103,7 @@ export function PortalView({
                     >
                       <span className="min-w-0">
                         <span className="block font-semibold">{pkg.name}</span>
-                        <span className="block text-sm text-zinc-600">
-                          {formatDuration(pkg.durationMinutes)} at {pkg.downloadSpeedMbps} Mbps
-                          {pkg.dataLimitGb === null ? "" : `, ${pkg.dataLimitGb} GB`}
-                        </span>
+                        <span className="block text-sm text-zinc-600">{detailsOf(pkg)}</span>
                       </span>
                       <span className="shrink-0 font-semibold tabular-nums">
                         {priceOf(pkg.priceTsh)}
@@ -152,6 +154,25 @@ export function PortalView({
               </p>
             )}
           </form>
+
+          {!context.mobileMoney && context.packages.length > 0 && (
+            <section className="mt-8">
+              <h2 className="text-lg font-semibold">Vouchers sold here</h2>
+              <ul className="mt-3 space-y-3">
+                {context.packages.map((pkg) => (
+                  <li key={pkg.id} className="flex items-baseline justify-between gap-4">
+                    <span className="min-w-0">
+                      <span className="block font-medium">{pkg.name}</span>
+                      <span className="block text-sm text-(--portal-ink)/80">{detailsOf(pkg)}</span>
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums">
+                      {priceOf(pkg.priceTsh)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       </div>
     </main>

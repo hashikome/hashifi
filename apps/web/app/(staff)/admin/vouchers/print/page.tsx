@@ -14,17 +14,13 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import type { VoucherPackageSummary } from "@/components/printable-voucher";
 import { PrintableVoucher } from "@/components/printable-voucher";
 import { Button } from "@/components/ui/button";
-import { API_URL, api } from "@/lib/api";
+import { api } from "@/lib/api";
 import { initialPortalSettings } from "@/lib/portal-defaults";
+import { portalOrigin } from "@/lib/portal-url";
 
 interface PrintRow extends PrintableVoucherRecord {
   pkg: VoucherPackageSummary;
 }
-
-// The URL customers reach from the WiFi network — set NEXT_PUBLIC_PORTAL_URL in .env.local
-// to the backend's LAN address (e.g. http://192.168.1.15:8080).
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || API_URL;
-const PORTAL_URL_IS_LOCAL = PORTAL_URL.includes("localhost") || PORTAL_URL.includes("127.0.0.1");
 
 function PrintVouchersContent() {
   const searchParams = useSearchParams();
@@ -81,6 +77,9 @@ function PrintVouchersContent() {
     );
   }, [searchParams, fetchVouchers]);
 
+  const portalUrl = portalOrigin();
+  const portalIsLocal = /localhost|127\.0\.0\.1/.test(portalUrl);
+
   const handlePrint = () => {
     window.print();
   };
@@ -111,13 +110,13 @@ function PrintVouchersContent() {
   return (
     <div className="min-h-screen bg-muted/30 print:bg-white">
       {/* QR URL warning — shown when portal URL is localhost */}
-      {PORTAL_URL_IS_LOCAL && (
+      {portalIsLocal && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-start gap-3 print:hidden">
           <TriangleAlert className="size-4 text-amber-800 dark:text-amber-400 mt-0.5 shrink-0" />
           <p className="text-sm text-amber-800">
             <strong>QR codes point to localhost</strong> — set{" "}
             <code className="font-mono text-xs bg-amber-100 px-1 py-0.5 rounded">
-              NEXT_PUBLIC_PORTAL_URL=http://&lt;your-server-ip&gt;:8080
+              NEXT_PUBLIC_PORTAL_URL=http://&lt;portal-address&gt;
             </code>{" "}
             in{" "}
             <code className="font-mono text-xs bg-amber-100 px-1 py-0.5 rounded">.env.local</code>{" "}
@@ -158,7 +157,7 @@ function PrintVouchersContent() {
               pkg={voucher.pkg}
               settings={brands.get(voucher.venueId ?? "") ?? initialPortalSettings}
               venueName={voucher.venueName}
-              portalUrl={PORTAL_URL}
+              portalUrl={portalUrl}
             />
           ))}
         </div>

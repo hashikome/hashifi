@@ -74,7 +74,8 @@ guest link puts your browser in the guest's place, naming the VM's MAC and IP, s
 there really signs that device in, and it appears in Live Sessions. A browser cannot prove what a
 phone does: real captive sheets are for M8.
 
-Without provider keys, a fake gateway approves a purchase after about 6 seconds, a number
+`demo` shows what launches: printed vouchers, with mobile money held. `demo payments` adds the
+stand-ins (`FAKE_PROVIDERS`). A fake gateway then approves a purchase after about 6 seconds, a number
 ending 0000 declines, and one ending 1111 never answers. Texts land in `data/sms/`.
 
 ## Guest

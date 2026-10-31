@@ -88,6 +88,10 @@ Admin and manager roles; managers see only their venues. Sensitive actions are a
 
 ### 4.7 Selling access: three paths, one mechanism
 
+**At launch, printed vouchers are the way in.** Self-service and assisted sales are built and held:
+they turn on when the mobile money and SMS providers' credentials are set. Until then a guest sees
+the voucher form and what the venue sells, and buys a card from the venue.
+
 All three end in a voucher confirmed by the router before access starts, and all three record
 a sale for the venue's figures. They suit different places, and a venue can use all of them.
 

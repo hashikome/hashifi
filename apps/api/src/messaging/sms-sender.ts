@@ -45,6 +45,13 @@ export class BriqSmsSender implements SmsSender {
   }
 }
 
+/** With no provider set up: the feature is off, and nothing can reach this. */
+export class NoSmsSender implements SmsSender {
+  async send(): Promise<never> {
+    throw new Error("SMS is not set up");
+  }
+}
+
 /** Development and tests: one file per message under `data/sms/`, as email does. */
 export class OutboxSmsSender implements SmsSender {
   constructor(private readonly dir: string) {}

@@ -602,6 +602,8 @@ export type LiveMessage =
 /** What the portal page shows a guest: `POST /api/guest/context`. */
 export interface GuestContext {
   venueName: string;
+  /** Whether guests can buy here; until then the portal is for vouchers. */
+  mobileMoney: boolean;
   settings: Pick<
     BrandRecord,
     | "brandName"
@@ -635,6 +637,12 @@ export interface RedeemResult {
   /** Where to go now the device is online, when it was a safe web address. */
   dst: string | null;
   expiresAt: Timestamp | null;
+}
+
+/** `GET /api/capabilities`: each is on once its provider's credentials are set. */
+export interface Capabilities {
+  mobileMoney: boolean;
+  sms: boolean;
 }
 
 export type SmsDelivery = "sending" | "sent" | "delivered" | "failed" | "unconfirmed";
