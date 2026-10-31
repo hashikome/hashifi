@@ -24,4 +24,4 @@ A plan must make sense with `ref/` empty while it runs.
 
 | Plan | Status |
 | --- | --- |
-| [active/build-hashifi.md](active/build-hashifi.md) | M1 to M5 done; next: M6, mobile-money payments |
+| [active/build-hashifi.md](active/build-hashifi.md) | M1 to M5 done; M6 built, awaiting provider accounts |

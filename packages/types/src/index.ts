@@ -625,6 +625,8 @@ export interface GuestContext {
     priceTsh: DecimalString;
     downloadSpeedMbps: number;
     dataLimitGb: number | null;
+    /** Whether a guest can buy it here with mobile money. */
+    payable: boolean;
   }[];
 }
 
@@ -633,6 +635,69 @@ export interface RedeemResult {
   /** Where to go now the device is online, when it was a safe web address. */
   dst: string | null;
   expiresAt: Timestamp | null;
+}
+
+export type SmsDelivery = "sending" | "sent" | "delivered" | "failed" | "unconfirmed";
+
+/** `POST /api/guest/payments`: `secret` proves this session paid, and is shown nowhere else. */
+export interface GuestPaymentStarted {
+  paymentId: string;
+  secret: string;
+}
+
+/** `POST /api/guest/payments/status`: what the session that paid sees. */
+export interface GuestPaymentStatus {
+  state: "pending" | "paid" | "failed";
+  /** Until the voucher ends. */
+  code: string | null;
+  expiresAt: Timestamp | null;
+  /** The router reports this device online. */
+  online: boolean;
+  /** Paid, but the router has not confirmed yet: HashiFi keeps trying. */
+  owed: boolean;
+  sms: SmsDelivery | null;
+  dst: string | null;
+}
+
+/** `GET /api/payments`. */
+export interface PaymentRecord {
+  id: string;
+  phone: string | null;
+  amountTsh: DecimalString;
+  provider: "cash" | "mobile_money" | "card" | "manual";
+  status: "pending" | "paid" | "failed" | "refunded" | "cancelled";
+  packageName: string | null;
+  venueName: string | null;
+  createdAt: Timestamp;
+  paidAt: Timestamp | null;
+  owed: boolean;
+  provisionError: string | null;
+  sms: SmsDelivery | null;
+}
+
+export interface PaymentList {
+  payments: PaymentRecord[];
+}
+
+/** `GET /api/customers`: people who have paid, within the staff member's venues. */
+export interface CustomerRecord {
+  id: string;
+  phone: string;
+  payments: number;
+  totalTsh: DecimalString;
+  lastPaidAt: Timestamp | null;
+}
+
+export interface CustomerList {
+  customers: CustomerRecord[];
+}
+
+/** `POST /api/sales`: staff read this code out, or print it. */
+export interface SaleResult {
+  paymentId: string;
+  code: string;
+  routerConfirmed: boolean;
+  sms: SmsDelivery | null;
 }
 
 /** `POST /api/guest/session`: a device's time and data, for the router's status pages. */

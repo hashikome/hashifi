@@ -74,6 +74,9 @@ guest link puts your browser in the guest's place, naming the VM's MAC and IP, s
 there really signs that device in, and it appears in Live Sessions. A browser cannot prove what a
 phone does: real captive sheets are for M8.
 
+Without provider keys, a fake gateway approves a purchase after about 6 seconds, and a number
+ending 0000 declines. Texts land in `data/sms/`.
+
 ## Guest
 
 A guest VM stands in for a phone on the hotspot: Alpine Linux's `virt` ISO booted live, with

@@ -19,7 +19,8 @@ export class PortalService {
   ) {}
 
   async get(): Promise<PortalSettingsRecord> {
-    const row = await this.db.portalSetting.findUnique({ where: { singleton: true } });
+    // Not findUnique: Prisma batches concurrent ones into an `in`, which a boolean cannot take.
+    const row = await this.db.portalSetting.findFirst();
     return row === null ? DEFAULT_PORTAL_SETTINGS : portalSettingsRecord(row);
   }
 

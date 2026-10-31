@@ -1,9 +1,16 @@
 "use client";
 
-import type { ApiError, GuestContext, RedeemResult } from "@hashifi/types";
+import type {
+  ApiError,
+  GuestContext,
+  GuestPaymentStarted,
+  GuestPaymentStatus,
+  RedeemResult,
+} from "@hashifi/types";
 import { type FormEvent, useEffect, useState } from "react";
 import { PortalView, themeOf } from "@/components/portal-view";
 import { formatDate } from "@/lib/utils";
+import { Approve, PayForm, PaymentDone, PaymentFailed } from "./payment-screens";
 
 /** Any plain http address: the router intercepts it and sends the guest back here, with context. */
 const TRIGGER_URL = "http://neverssl.com/";
@@ -24,6 +31,30 @@ function holdCard(code: string | null): void {
     else sessionStorage.setItem(CARD_KEY, code);
   } catch {
     // Storage is refused in some browsers: the guest types the code.
+  }
+}
+
+/** Proof this tab paid: kept here so a reload still finds the code, and nowhere else. */
+const PAYMENT_KEY = "hashifi.payment";
+const POLL_MS = 3_000;
+
+type HeldPayment = GuestPaymentStarted;
+
+function heldPayment(): HeldPayment | null {
+  try {
+    const text = sessionStorage.getItem(PAYMENT_KEY);
+    return text === null ? null : (JSON.parse(text) as HeldPayment);
+  } catch {
+    return null;
+  }
+}
+
+function holdPayment(payment: HeldPayment | null): void {
+  try {
+    if (payment === null) sessionStorage.removeItem(PAYMENT_KEY);
+    else sessionStorage.setItem(PAYMENT_KEY, JSON.stringify(payment));
+  } catch {
+    // Storage is refused in some browsers: a reload then loses the screen, not the text.
   }
 }
 
@@ -58,6 +89,16 @@ function readFragment(): { fromRouter: FromRouter | null; code: string } {
   };
 }
 
+/** The API's refusal: `code` says what happened, `message` is written for the guest. */
+class Refused extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(path, {
     method: "POST",
@@ -67,8 +108,10 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   // A proxy in the way can answer with a page, not the API's JSON.
   const data: unknown = await response.json().catch(() => null);
   if (!response.ok || data === null) {
-    throw new Error(
-      (data as Partial<ApiError> | null)?.message ?? "Something went wrong. Try again.",
+    const refusal = data as Partial<ApiError> | null;
+    throw new Refused(
+      refusal?.code ?? "ERROR",
+      refusal?.message ?? "Something went wrong. Try again.",
     );
   }
   return data as T;
@@ -79,6 +122,28 @@ export function GuestPortal() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [payment, setPayment] = useState<HeldPayment | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<GuestPaymentStatus | null>(null);
+
+  // A reload finds a purchase already under way.
+  useEffect(() => setPayment(heldPayment()), []);
+
+  // Stops once there is nothing left to wait for.
+  const finished =
+    paymentStatus?.state === "failed" || (paymentStatus?.state === "paid" && paymentStatus.online);
+  useEffect(() => {
+    if (payment === null || finished) return;
+    const ask = () =>
+      post<GuestPaymentStatus>("/api/guest/payments/status", payment)
+        .then(setPaymentStatus)
+        .catch(() => {
+          // A dropped connection: the next poll asks again.
+        });
+    void ask();
+    const timer = window.setInterval(ask, POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [payment, finished]);
 
   useEffect(() => {
     const { fromRouter, code: scanned } = readFragment();
@@ -131,6 +196,73 @@ export function GuestPortal() {
       setIsSubmitting(false);
     }
   };
+
+  const pay = async (phone: string) => {
+    if (screen.kind !== "ready" || chosen === null) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const { router, mac, ip, linkOrig } = screen.request;
+      const started = await post<GuestPaymentStarted>("/api/guest/payments", {
+        router,
+        mac,
+        ip,
+        linkOrig,
+        packageId: chosen,
+        phone,
+      });
+      holdPayment(started);
+      setPaymentStatus(null);
+      setPayment(started);
+    } catch (err) {
+      const badNumber = err instanceof Refused && err.code === "VALIDATION_FAILED";
+      setError(
+        badNumber
+          ? "Enter a mobile number, like 0712 345 678."
+          : err instanceof Error
+            ? err.message
+            : "Something went wrong. Try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startOver = () => {
+    holdPayment(null);
+    setPayment(null);
+    setPaymentStatus(null);
+    setChosen(null);
+    setError(null);
+  };
+
+  if (screen.kind === "ready" && payment !== null) {
+    if (paymentStatus === null || paymentStatus.state === "pending") {
+      return <Approve context={screen.context} />;
+    }
+    if (paymentStatus.state === "failed") {
+      return <PaymentFailed context={screen.context} onRetry={startOver} />;
+    }
+    return <PaymentDone context={screen.context} status={paymentStatus} />;
+  }
+
+  const pkg =
+    screen.kind === "ready" ? (screen.context.packages.find((p) => p.id === chosen) ?? null) : null;
+  if (screen.kind === "ready" && pkg !== null) {
+    return (
+      <PayForm
+        context={screen.context}
+        pkg={pkg}
+        error={error}
+        isSubmitting={isSubmitting}
+        onPay={pay}
+        onBack={() => {
+          setChosen(null);
+          setError(null);
+        }}
+      />
+    );
+  }
 
   if (screen.kind === "online") {
     return (
@@ -187,6 +319,10 @@ export function GuestPortal() {
       isSubmitting={isSubmitting}
       onCodeChange={setCode}
       onSubmit={submit}
+      onBuy={(id) => {
+        setError(null);
+        setChosen(id);
+      }}
       fit="screen"
     />
   );

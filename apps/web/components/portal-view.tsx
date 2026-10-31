@@ -28,7 +28,7 @@ export function themeOf({ settings }: GuestContext) {
   } as CSSProperties;
 }
 
-const priceOf = (tsh: string) => `TSh ${Number(tsh).toLocaleString("en-US")}`;
+export const priceOf = (tsh: string) => `TSh ${Number(tsh).toLocaleString("en-US")}`;
 
 interface PortalViewProps {
   context: GuestContext;
@@ -37,6 +37,7 @@ interface PortalViewProps {
   isSubmitting: boolean;
   onCodeChange: (code: string) => void;
   onSubmit: (event: FormEvent) => void;
+  onBuy: (packageId: string) => void;
   /** `screen` fills a phone; `frame` fills the preview on Portal Pages. */
   fit: "screen" | "frame";
 }
@@ -52,6 +53,7 @@ export function PortalView({
   isSubmitting,
   onCodeChange,
   onSubmit,
+  onBuy,
   fit,
 }: PortalViewProps) {
   const { settings } = context;
@@ -81,6 +83,35 @@ export function PortalView({
           <p className="mt-3 text-base leading-relaxed text-(--portal-ink)/90">
             {settings.message}
           </p>
+
+          {context.packages.length > 0 && (
+            <section className="mt-6">
+              <h2 className="text-lg font-semibold">Buy WiFi</h2>
+              <ul className="mt-3 space-y-2">
+                {context.packages.map((pkg) => (
+                  <li key={pkg.id}>
+                    <button
+                      type="button"
+                      disabled={!pkg.payable}
+                      onClick={() => onBuy(pkg.id)}
+                      className="flex min-h-16 w-full items-center justify-between gap-4 rounded-(--portal-radius) bg-white px-4 py-3 text-left text-zinc-900 transition-opacity active:opacity-80 disabled:opacity-70"
+                    >
+                      <span className="min-w-0">
+                        <span className="block font-semibold">{pkg.name}</span>
+                        <span className="block text-sm text-zinc-600">
+                          {formatDuration(pkg.durationMinutes)} at {pkg.downloadSpeedMbps} Mbps
+                          {pkg.dataLimitGb === null ? "" : `, ${pkg.dataLimitGb} GB`}
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums">
+                        {priceOf(pkg.priceTsh)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <form
             onSubmit={onSubmit}
@@ -121,26 +152,6 @@ export function PortalView({
               </p>
             )}
           </form>
-
-          {context.packages.length > 0 && (
-            <section className="mt-8">
-              <h2 className="text-lg font-semibold">Vouchers sold here</h2>
-              <ul className="mt-3 space-y-3">
-                {context.packages.map((pkg) => (
-                  <li key={pkg.id} className="flex items-baseline justify-between gap-4">
-                    <span className="min-w-0">
-                      <span className="block font-medium">{pkg.name}</span>
-                      <span className="block text-sm text-(--portal-ink)/80">
-                        {formatDuration(pkg.durationMinutes)} at {pkg.downloadSpeedMbps} Mbps
-                        {pkg.dataLimitGb === null ? "" : `, ${pkg.dataLimitGb} GB`}
-                      </span>
-                    </span>
-                    <span className="shrink-0 font-semibold">{priceOf(pkg.priceTsh)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
       </div>
     </main>

@@ -279,6 +279,14 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   `router-sim guest-test` 14/14 through the real API, sign-in back 48 s after an unblock; the page
   in headless Chrome at phone width, wrong code, handoff to the router page and its POST,
   a scanned card going round, a hostile `link-orig` inert, nothing fetched from another host.
+- [ ] M6 Mobile-money payments and customers (ADR-0010). Built and accepted on test doubles; live
+  acceptance waits on accounts.
+  - [x] (2026-10-31) Self-service purchase, the paying device signed in, the code shown to that
+    session and sent by SMS, signed webhooks, reconciliation, access owed, assisted sales, and
+    the Payments and Customers screens. Acceptance: `payments.integration.test.ts` (15 tests),
+    `router-sim guest-test` 18/18, a browser walk.
+  - [ ] Against the real providers: needs a Snippe key and webhook secret, a BRIQ developer app,
+    key and webhook secret, and a TCRA-approved sender ID.
 - [x] (2026-10-31) Venue branding, ahead of M6 (ADR-0009): `venue_brands`, images in R2 or on disk
   in development, served from the portal's origin, the real portal as the Portal Pages preview,
   and printed cards and prefixes by venue. `backgroundStyle` is dropped.
@@ -495,6 +503,8 @@ and admin are presented by `apps/web`, and releases go GitHub CI → GHCR → Do
   Date/Author: 2026-10-28 / Paul
 - Decision: the repository goes public when HashiFi is ready to deploy, not when M5 lands.
   Date/Author: 2026-10-30 / Paul
+- Decision: an assisted sale records money already taken, and sends no prompt to a phone.
+  Date/Author: 2026-10-31 / Claude
 - Decision: venues brand themselves, with images in R2 (ADR-0009). This supersedes "no uploaded
   branding" below: Paul reversed it on seeing Portal Pages, because a guest should see the venue,
   not HashiFi. No logo or background returns to PostgreSQL.

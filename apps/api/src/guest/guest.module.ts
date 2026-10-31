@@ -13,5 +13,6 @@ import { GuestService } from "./guest.service.js";
   imports: [RoutersModule, PackagesModule, BrandModule],
   controllers: [GuestController, GuestBrandController, HotspotFilesController],
   providers: [GuestService],
+  exports: [GuestService],
 })
 export class GuestModule {}

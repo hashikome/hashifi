@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Guests buy WiFi on the portal with mobile money: they approve on their phone, the voucher is
+  issued, the router confirms it and the device goes online. The code is on their screen and sent
+  by SMS. Staff record assisted sales, and Payments shows who paid and who is owed access.
+- Fixed: two guests loading a portal at the same moment could crash its settings lookup.
 - Each venue has its own brand: name, logo, background, colours and wording, on its portal and
   printed vouchers, with HashiFi as the default. Images live in Cloudflare R2, and on disk in
   development. Portal Pages previews the real guest page.

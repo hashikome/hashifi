@@ -46,6 +46,9 @@ Reviewed 30 October 2026. Everything else requires a staff session.
 | `POST /api/guest/context` | The portal page | Registered router; read-only wording and prices |
 | `POST /api/guest/redeem` | Taking a voucher into use | Attempt limits, a lock on the voucher, its venue, blocked devices, the router seeing the device |
 | `POST /api/guest/session` | The router's status pages | Time and data only, never a code; any origin, no cookies |
+| `POST /api/guest/payments` | Buying on the portal | Every check before a prompt; limits per number, device and address |
+| `POST /api/guest/payments/status` | The paying session's receipt | Needs the session's secret; without it a payment does not exist |
+| `POST /webhooks/snippe`, `/webhooks/briq` | Provider reports | Signature over the exact bytes; each event once; bodies never logged |
 | `GET /api/guest/brand/:venueId/:file` | A venue's logo before login | Only names the API makes; re-encoded images, `nosniff`, no listing |
 | `GET /portal/hotspot-files/:routerId/:name` | Routers pull them while provisioned | Named files only; the portal's address and router id, no secret |
 | `/ws/live` | Not public: listed because guards do not cover it | Its upgrade signs in as a route would, and checks the origin |

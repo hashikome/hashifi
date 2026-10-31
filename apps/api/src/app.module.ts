@@ -9,6 +9,7 @@ import type { EmailSender } from "./email/email-sender.js";
 import { GuestModule } from "./guest/guest.module.js";
 import { HealthController } from "./health/health.controller.js";
 import { PackagesModule } from "./packages/packages.module.js";
+import { PaymentsModule } from "./payments/payments.module.js";
 import { PortalModule } from "./portal/portal.module.js";
 import { RoutersModule } from "./routers/routers.module.js";
 import { SessionsModule } from "./sessions/sessions.module.js";
@@ -36,6 +37,7 @@ export function appModule(config: AppConfig, email: EmailSender | null): Dynamic
       BrandModule,
       TeamModule,
       GuestModule,
+      PaymentsModule,
     ],
     controllers: [HealthController],
   };

@@ -285,6 +285,7 @@ export default function PortalPage() {
       priceTsh: p.priceTsh,
       downloadSpeedMbps: p.downloadSpeedMbps,
       dataLimitGb: p.dataLimitGb,
+      payable: Number(p.priceTsh) >= 500,
     })),
   };
 
@@ -672,6 +673,7 @@ export default function PortalPage() {
                         isSubmitting={false}
                         onCodeChange={() => {}}
                         onSubmit={(event) => event.preventDefault()}
+                        onBuy={() => {}}
                         fit="frame"
                       />
                     </div>

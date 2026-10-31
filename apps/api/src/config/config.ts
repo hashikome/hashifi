@@ -31,6 +31,17 @@ export interface AppConfig {
     from: string;
     outboxDir: string;
   };
+  payments: {
+    /** Required in production. Unset elsewhere, a fake gateway approves every charge. */
+    snippeApiKey: string | null;
+    snippeWebhookSecret: string | null;
+  };
+  sms: {
+    /** BRIQ; required in production. Unset elsewhere, messages go to `outboxDir`. */
+    briq: { apiKey: string; appId: string; senderId: string } | null;
+    webhookSecret: string | null;
+    outboxDir: string;
+  };
   brand: {
     /** Cloudflare R2; required in production. Unset elsewhere, images go to `storeDir`. */
     r2: { endpoint: string; bucket: string; accessKeyId: string; secretAccessKey: string } | null;
@@ -68,6 +79,7 @@ const url = z.url({ protocol: /^https?$/ });
 
 /** `data/email/` at the repository root (git-ignored), wherever the API is started from. */
 const DEFAULT_OUTBOX_DIR = fileURLToPath(new URL("../../../../data/email/", import.meta.url));
+const DEFAULT_SMS_DIR = fileURLToPath(new URL("../../../../data/sms/", import.meta.url));
 const DEFAULT_BRAND_DIR = fileURLToPath(new URL("../../../../data/brand/", import.meta.url));
 
 const schema = z.object({
@@ -84,6 +96,13 @@ const schema = z.object({
   RESEND_API_KEY: z.string().min(1).nullable().default(null),
   EMAIL_FROM: z.string().min(3).default("HashiFi <no-reply@hashikome.com>"),
   EMAIL_OUTBOX_DIR: z.string().min(1).default(DEFAULT_OUTBOX_DIR),
+  SNIPPE_API_KEY: z.string().min(1).nullable().default(null),
+  SNIPPE_WEBHOOK_SECRET: z.string().min(1).nullable().default(null),
+  BRIQ_API_KEY: z.string().min(1).nullable().default(null),
+  BRIQ_APP_ID: z.string().min(1).nullable().default(null),
+  BRIQ_SENDER_ID: z.string().min(1).nullable().default(null),
+  BRIQ_WEBHOOK_SECRET: z.string().min(1).nullable().default(null),
+  SMS_OUTBOX_DIR: z.string().min(1).default(DEFAULT_SMS_DIR),
   R2_ENDPOINT: url.nullable().default(null),
   R2_BUCKET: z.string().min(1).nullable().default(null),
   R2_ACCESS_KEY_ID: z.string().min(1).nullable().default(null),
@@ -124,6 +143,10 @@ const SECRETS = [
   "ENCRYPTION_KEY",
   "BETTER_AUTH_SECRET",
   "RESEND_API_KEY",
+  "SNIPPE_API_KEY",
+  "SNIPPE_WEBHOOK_SECRET",
+  "BRIQ_API_KEY",
+  "BRIQ_WEBHOOK_SECRET",
   "R2_ACCESS_KEY_ID",
   "R2_SECRET_ACCESS_KEY",
   "SENTRY_DSN",
@@ -152,6 +175,12 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (c.NODE_ENV === "production") {
     const missing = [
       c.RESEND_API_KEY === null ? "RESEND_API_KEY" : null,
+      c.SNIPPE_API_KEY === null ? "SNIPPE_API_KEY" : null,
+      c.SNIPPE_WEBHOOK_SECRET === null ? "SNIPPE_WEBHOOK_SECRET" : null,
+      c.BRIQ_API_KEY === null ? "BRIQ_API_KEY" : null,
+      c.BRIQ_APP_ID === null ? "BRIQ_APP_ID" : null,
+      c.BRIQ_SENDER_ID === null ? "BRIQ_SENDER_ID" : null,
+      c.BRIQ_WEBHOOK_SECRET === null ? "BRIQ_WEBHOOK_SECRET" : null,
       c.R2_ENDPOINT === null ? "R2_ENDPOINT" : null,
       c.R2_BUCKET === null ? "R2_BUCKET" : null,
       c.R2_ACCESS_KEY_ID === null ? "R2_ACCESS_KEY_ID" : null,
@@ -175,6 +204,15 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     appUrl: c.APP_URL,
     auth: { secret: c.BETTER_AUTH_SECRET, trustedProxies },
     email: { resendApiKey: c.RESEND_API_KEY, from: c.EMAIL_FROM, outboxDir: c.EMAIL_OUTBOX_DIR },
+    payments: { snippeApiKey: c.SNIPPE_API_KEY, snippeWebhookSecret: c.SNIPPE_WEBHOOK_SECRET },
+    sms: {
+      briq:
+        c.BRIQ_API_KEY !== null && c.BRIQ_APP_ID !== null && c.BRIQ_SENDER_ID !== null
+          ? { apiKey: c.BRIQ_API_KEY, appId: c.BRIQ_APP_ID, senderId: c.BRIQ_SENDER_ID }
+          : null,
+      webhookSecret: c.BRIQ_WEBHOOK_SECRET,
+      outboxDir: c.SMS_OUTBOX_DIR,
+    },
     brand: {
       r2:
         c.R2_ENDPOINT !== null &&

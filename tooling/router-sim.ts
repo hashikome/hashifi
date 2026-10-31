@@ -897,6 +897,12 @@ async function demo(): Promise<void> {
   const creds = services.access.credentials(services.router);
   if (!creds) throw new Error("The sim router has no usable credentials");
   const conn = await connectToRouter(creds);
+  // Start signed out: a device already online cannot redeem or buy.
+  for (const menu of ["/ip/hotspot/active", "/ip/hotspot/cookie"]) {
+    for (const row of toRows(await conn.write(`${menu}/print`))) {
+      await conn.write(`${menu}/remove`, [`=.id=${row.get(".id") ?? ""}`]);
+    }
+  }
   const leases = "/ip/dhcp-server/lease";
   for (const lease of toRows(await conn.write(`${leases}/print`, [`?mac-address=${GUEST_MAC}`]))) {
     await conn.write(`${leases}/remove`, [`=.id=${lease.get(".id") ?? ""}`]);
@@ -1221,6 +1227,33 @@ async function guestTest(): Promise<void> {
       "At expiry the router cuts the guest off",
       !expired.internet && expired.portal === `${portalOrigin}/portal/login`,
       describe(expired),
+    );
+    // A guest with no voucher buys one, through the walled garden, on the development gateway.
+    const pkg = await services.db.package.findFirstOrThrow({ where: { isActive: true } });
+    const started = await shell.run(
+      "wget -q -T 20 -O - --header 'Content-Type: application/json' --post-data " +
+        `'${JSON.stringify({ router: routerId, mac, ip, packageId: pkg.id, phone: "0712345678" })}' ` +
+        `'${portalOrigin}/api/guest/payments' 2>&1 | head -c 300`,
+      40_000,
+    );
+    const paymentId = started.output.match(/"paymentId":"([^"]+)"/)?.[1] ?? "";
+    const secret = started.output.match(/"secret":"([^"]+)"/)?.[1] ?? "";
+    let paid = "";
+    for (let attempt = 0; attempt < 12 && !paid.includes('"online":true'); attempt++) {
+      await Bun.sleep(3_000);
+      const polled = await shell.run(
+        "wget -q -T 20 -O - --header 'Content-Type: application/json' --post-data " +
+          `'${JSON.stringify({ paymentId, secret })}' ` +
+          `'${portalOrigin}/api/guest/payments/status' 2>&1 | head -c 300`,
+        40_000,
+      );
+      paid = polled.output;
+    }
+    const bought = await fetchPage("http://example.com/");
+    record(
+      "A guest buys a package on the portal and the paying device is online, with its code",
+      bought.internet && /"code":"[A-Z0-9-]+"/.test(paid),
+      describe(bought),
     );
   } finally {
     shell.close();

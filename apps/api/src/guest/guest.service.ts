@@ -25,6 +25,7 @@ const WINDOW_SECONDS = 600;
 const FAILURES_PER_ADDRESS = 60;
 const FAILURES_PER_DEVICE = 10;
 const GIB = 1_073_741_824;
+const MINIMUM_PAYMENT_TSH = 500;
 
 const refuse = (code: string, message: string) => new BadRequestException(apiError(code, message));
 
@@ -85,6 +86,7 @@ export class GuestService {
         priceTsh: p.priceTsh,
         downloadSpeedMbps: p.downloadSpeedMbps,
         dataLimitGb: p.dataLimitGb,
+        payable: isPayable(p.priceTsh),
       })),
     };
   }
@@ -111,10 +113,7 @@ export class GuestService {
     const router = await this.routerOf(input.router);
     enrichWideEvent({ "router.id": router.id, "venue.id": router.venueId });
 
-    const device = await this.db.device.findUnique({ where: { macAddress: input.mac } });
-    if (device?.status === "blocked") {
-      throw new ForbiddenException(apiError("DEVICE_BLOCKED", "This device cannot use this WiFi."));
-    }
+    await this.refuseBlocked(input.mac);
 
     const code = input.code.toUpperCase();
     const voucher = await this.db.voucher.findUnique({
@@ -128,9 +127,32 @@ export class GuestService {
     enrichWideEvent({ "voucher.id": voucher.id, "voucher.status": voucher.status });
     refuseIfFinished(voucher);
 
+    await this.admit(router, voucher, voucher.package?.deviceLimit ?? 1, input);
+    const { expiresAt } = await this.db.voucher.findUniqueOrThrow({ where: { id: voucher.id } });
+    return { dst: safeDestination(input.linkOrig), expiresAt: expiresAt?.toISOString() ?? null };
+  }
+
+  async refuseBlocked(mac: string): Promise<void> {
+    const device = await this.db.device.findUnique({ where: { macAddress: mac } });
+    if (device?.status === "blocked") {
+      throw new ForbiddenException(apiError("DEVICE_BLOCKED", "This device cannot use this WiFi."));
+    }
+  }
+
+  /**
+   * Lets a device online on a voucher: the one way in, whether the guest typed a code or paid.
+   * The router must see the device, then confirm the voucher, then report the device online,
+   * and only then is the voucher `active`. A failure here is an error a guest can retry.
+   */
+  async admit(
+    router: Router,
+    voucher: Voucher,
+    deviceLimit: number,
+    device: { mac: string; ip: string },
+  ): Promise<void> {
     // Asked only once a code is good, so the public route cannot be used to reach a router at will,
     // and before the claim, so the clock never starts for a device that is not here.
-    const present = await this.sync.deviceOnNetwork(router, { mac: input.mac, ip: input.ip });
+    const present = await this.sync.deviceOnNetwork(router, device);
     if (present === null) throw notConfirmed();
     if (!present) {
       throw refuse(
@@ -139,22 +161,20 @@ export class GuestService {
       );
     }
 
-    await this.claim(voucher, input, voucher.package?.deviceLimit ?? 1);
+    await this.claim(voucher, device, deviceLimit);
 
-    const outcome = await this.sync.ensureVoucher(router.venueId, code, router.id);
+    const outcome = await this.sync.ensureVoucher(router.venueId, voucher.code, router.id);
     if (!outcomeOk(outcome)) {
       enrichWideEvent({ "error.message": describeFailures(outcome) });
       throw notConfirmed();
     }
-    const client = { user: code, ip: input.ip, mac: input.mac };
+    const client = { user: voucher.code, ip: device.ip, mac: device.mac };
     if (!(await this.sync.signInDevice(router, client))) throw notConfirmed();
 
     await this.db.voucher.updateMany({
       where: { id: voucher.id, status: "pending_activation" },
       data: { status: "active" },
     });
-    const { expiresAt } = await this.db.voucher.findUniqueOrThrow({ where: { id: voucher.id } });
-    return { dst: safeDestination(input.linkOrig), expiresAt: expiresAt?.toISOString() ?? null };
   }
 
   /** An uploaded image, for the portal page. Null when there is none by that name. */
@@ -212,7 +232,7 @@ export class GuestService {
    */
   private async claim(
     voucher: Voucher,
-    input: z.infer<typeof redeemInput>,
+    input: { mac: string; ip: string },
     deviceLimit: number,
   ): Promise<void> {
     await this.db.$transaction(async (tx) => {
@@ -252,13 +272,19 @@ export class GuestService {
     });
   }
 
-  private async routerOf(id: string): Promise<Router> {
+  async routerOf(id: string): Promise<Router> {
     const router = await this.db.router.findUnique({ where: { id } });
     if (!router) {
       throw new NotFoundException(apiError("UNKNOWN_ROUTER", "This network is not recognised."));
     }
     return router;
   }
+}
+
+/** The provider takes whole TSH, from its minimum. */
+export function isPayable(priceTsh: string): boolean {
+  const amount = Number(priceTsh);
+  return Number.isInteger(amount) && amount >= MINIMUM_PAYMENT_TSH;
 }
 
 function refuseIfFinished(voucher: Pick<Voucher, "status" | "expiresAt">): void {
@@ -280,7 +306,7 @@ function expiryOf(voucher: Pick<Voucher, "expiresAt" | "durationMinutes">, now: 
 }
 
 /** Where to send the guest afterwards: a web address, or nowhere. */
-function safeDestination(linkOrig: string): string | null {
+export function safeDestination(linkOrig: string): string | null {
   if (!URL.canParse(linkOrig)) return null;
   const url = new URL(linkOrig);
   if (!["http:", "https:"].includes(url.protocol)) return null;

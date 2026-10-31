@@ -16,6 +16,7 @@ function isManagerAllowedRoute(pathname: string) {
     "/admin/routers",
     "/admin/sessions",
     "/admin/vouchers",
+    "/admin/payments",
     "/admin/packages",
     "/admin/analytics",
     "/admin/settings",

@@ -30,6 +30,12 @@ describe("loadConfig", () => {
     const config = loadConfig({
       ...production,
       RESEND_API_KEY: "re_test",
+      SNIPPE_API_KEY: "key",
+      SNIPPE_WEBHOOK_SECRET: "secret",
+      BRIQ_API_KEY: "key",
+      BRIQ_APP_ID: "app",
+      BRIQ_SENDER_ID: "HASHIFI",
+      BRIQ_WEBHOOK_SECRET: "secret",
       R2_ENDPOINT: "https://account.r2.cloudflarestorage.com",
       R2_BUCKET: "hashifi",
       R2_ACCESS_KEY_ID: "key",

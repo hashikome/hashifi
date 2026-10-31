@@ -105,6 +105,16 @@ enum PaymentProvider {
   @@map("payment_provider")
 }
 
+enum SmsStatus {
+  sending
+  sent
+  delivered
+  failed
+  unconfirmed
+
+  @@map("sms_status")
+}
+
 enum ThemePreference {
   light
   dark
@@ -242,11 +252,12 @@ model Staff {
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user           User             @relation(fields: [id], references: [id], onDelete: Cascade)
-  preference     StaffPreference?
-  venues         Venue[]
-  voucherBatches VoucherBatch[]
-  auditLogs      AuditLog[]
+  user             User             @relation(fields: [id], references: [id], onDelete: Cascade)
+  preference       StaffPreference?
+  venues           Venue[]
+  voucherBatches   VoucherBatch[]
+  auditLogs        AuditLog[]
+  recordedPayments Payment[]
 
   @@index([role])
   @@map("staff")
@@ -345,6 +356,7 @@ model Router {
 
   venue    Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
   sessions WifiSession[]
+  payments Payment[]
 
   @@index([venueId])
   @@index([status])
@@ -502,8 +514,8 @@ model VoucherDevice {
 
 model Payment {
   id                  String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  /// The device that paid, when the payment was made on the portal. The paying person is a
-  /// customer, added with payments in M6.
+  /// The device that paid, when the payment was made on the portal. The paying person is the
+  /// customer.
   deviceId            String?         @map("device_id") @db.Uuid
   voucherId           String?         @map("voucher_id") @db.Uuid
   packageId           String?         @map("package_id") @db.Uuid
@@ -518,20 +530,87 @@ model Payment {
   /// does not exist. Access waits on this, not on `status = paid`.
   routerProvisionedAt DateTime?       @map("router_provisioned_at") @db.Timestamptz(3)
   provisionError      String?         @map("provision_error")
+  /// The paying device's portal session: only the hash, so the database cannot show a code.
+  sessionSecretHash   String?         @map("session_secret_hash") @db.VarChar(64)
+  idempotencyKey      String?         @unique @map("idempotency_key") @db.VarChar(30)
+  customerId          String?         @map("customer_id") @db.Uuid
+  routerId            String?         @map("router_id") @db.Uuid
+  macAddress          String?         @map("mac_address") @db.VarChar(32)
+  ipAddress           String?         @map("ip_address") @db.VarChar(45)
+  /// Where the guest was going, for after they are online.
+  destination         String?
+  recordedById        String?         @map("recorded_by_id") @db.Uuid
+  /// When the provider stops waiting for the guest to approve.
+  expiresAt           DateTime?       @map("expires_at") @db.Timestamptz(3)
+  lastCheckedAt       DateTime?       @map("last_checked_at") @db.Timestamptz(3)
+  /// When the router reported the paying device online.
+  signedInAt          DateTime?       @map("signed_in_at") @db.Timestamptz(3)
   metadata            Json?
   createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  device  Device?  @relation(fields: [deviceId], references: [id], onDelete: SetNull)
-  voucher Voucher? @relation(fields: [voucherId], references: [id], onDelete: SetNull)
-  package Package? @relation(fields: [packageId], references: [id], onDelete: SetNull)
-  venue   Venue?   @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  device     Device?     @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  voucher    Voucher?    @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+  package    Package?    @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  venue      Venue?      @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  customer   Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  router     Router?     @relation(fields: [routerId], references: [id], onDelete: SetNull)
+  recordedBy Staff?      @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  sms        SmsMessage?
 
   @@index([deviceId])
   @@index([voucherId])
   @@index([status])
   @@index([providerReference])
+  @@index([customerId])
   @@map("payments")
+}
+
+/// Who pays: a mobile number, the only personal data, shown to admins and to managers for
+/// their venues. A guest's device is a `Device`, and one customer can be several.
+model Customer {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  /// E.164, as `+255...`.
+  phone     String   @unique @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  payments Payment[]
+
+  @@map("customers")
+}
+
+/// A provider's event, once. The row is written in the transaction that acts on the event, so
+/// a repeat or a race does nothing.
+model WebhookEvent {
+  provider   String   @db.VarChar(20)
+  eventId    String   @map("event_id") @db.VarChar(120)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  @@id([provider, eventId])
+  @@map("webhook_events")
+}
+
+/// A code sent to a phone. The text is not kept: it holds the code.
+model SmsMessage {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  paymentId     String    @unique @map("payment_id") @db.Uuid
+  status        SmsStatus @default(sending)
+  jobId         String?   @map("job_id") @db.VarChar(120)
+  messageId     String?   @map("message_id") @db.VarChar(120)
+  failureReason String?   @map("failure_reason") @db.VarChar(255)
+  /// Past this without a report, the screen says it was not confirmed.
+  confirmBy     DateTime  @map("confirm_by") @db.Timestamptz(3)
+  deliveredAt   DateTime? @map("delivered_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([messageId])
+  @@index([status])
+  @@map("sms_messages")
 }
 
 model WifiSession {
@@ -595,25 +674,25 @@ model SessionUsageSample {
 /// The captive portal's wording, colours and voucher defaults: one row (`singleton`, true by
 /// CHECK), so saving is an upsert. No images: HashiFi's logo ships with the web.
 model PortalSetting {
-  id              String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  singleton       Boolean               @unique @default(true)
-  brandName       String                @map("brand_name") @db.VarChar(160)
-  headline        String                @db.VarChar(180)
+  id              String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  singleton       Boolean  @unique @default(true)
+  brandName       String   @map("brand_name") @db.VarChar(160)
+  headline        String   @db.VarChar(180)
   message         String
-  primaryColor    String                @map("primary_color") @db.VarChar(16)
-  accentColor     String                @map("accent_color") @db.VarChar(16)
-  backgroundColor String                @map("background_color") @db.VarChar(16)
-  radius          Int                   @default(18)
-  voucherLabel    String                @map("voucher_label") @db.VarChar(100)
+  primaryColor    String   @map("primary_color") @db.VarChar(16)
+  accentColor     String   @map("accent_color") @db.VarChar(16)
+  backgroundColor String   @map("background_color") @db.VarChar(16)
+  radius          Int      @default(18)
+  voucherLabel    String   @map("voucher_label") @db.VarChar(100)
   /// Upper-case (CHECK), as voucher codes are.
-  voucherPrefix   String                @default("WIFI") @map("voucher_prefix") @db.VarChar(24)
-  voucherHelp     String                @map("voucher_help")
-  ticketTitle     String                @map("ticket_title") @db.VarChar(160)
-  ticketFooter    String                @map("ticket_footer") @db.VarChar(255)
-  requireTerms    Boolean               @default(true) @map("require_terms")
-  isActive        Boolean               @default(true) @map("is_active")
-  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  voucherPrefix   String   @default("WIFI") @map("voucher_prefix") @db.VarChar(24)
+  voucherHelp     String   @map("voucher_help")
+  ticketTitle     String   @map("ticket_title") @db.VarChar(160)
+  ticketFooter    String   @map("ticket_footer") @db.VarChar(255)
+  requireTerms    Boolean  @default(true) @map("require_terms")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("portal_settings")
 }

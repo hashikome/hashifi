@@ -11,9 +11,9 @@ External documents are references only. Keep this file short: it is a map, not a
 ## Current state
 
 The [build plan](docs/exec-plans/active/build-hashifi.md) tracks the work: read
-it before changing anything under `apps/`. M1 to M5 are done: `apps/api` is NestJS on Bun with
-Prisma on PostgreSQL 18, and `apps/web` runs on it through `lib/api.ts` and `@hashifi/types`,
-including the captive portal. Payments are M6.
+it before changing anything under `apps/`. M1 to M5 are done, and M6 is built and awaits the real
+providers: `apps/api` is NestJS on Bun with Prisma on PostgreSQL 18, and `apps/web` runs on it
+through `lib/api.ts` and `@hashifi/types`, including the captive portal and purchases.
 
 ## Map
 
@@ -89,8 +89,8 @@ or discard user data without explicit approval.
 - **Never assume what a MikroTik supports: probe, then branch.** Board and RouterOS
   differences belong only in the provisioning dialect
   (`apps/api/src/services/router-provision/dialect.ts` until the port moves it).
-- **A voucher code is a credential** (it is the hotspot username and password). No response
-  returns it, and it never goes to a page the router serves. Only the API signs a device in
+- **A voucher code is a credential** (it is the hotspot username and password). It goes only to
+  the session that paid, proved by a secret, or to staff; never to a page the router serves. Only the API signs a device in
   ([ADR-0008](docs/engineering-decisions/0008-captive-portal.md)): the router accepts no login
   from the network, so never enable an http login method.
 - **Time:** stored in UTC; business days are calculated in `Africa/Dar_es_Salaam`.
