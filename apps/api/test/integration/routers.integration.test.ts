@@ -33,6 +33,21 @@ type Body = Record<string, unknown>;
 const routerOf = (reply: { body: unknown }) => (reply.body as { router: Body }).router;
 
 describe("routers", () => {
+  test("setup, verify and provision need no query flag: they try the router", async () => {
+    const client = await admin();
+    const { id: venueId } = await venue();
+    const created = await client.request("POST", "/api/routers", {
+      ...ROUTER,
+      venueId,
+      apiPassword: "router-password",
+    });
+    const { id } = routerOf(created) as { id: string };
+    for (const path of ["setup", "verify", "provision"]) {
+      const reply = await client.request("POST", `/api/routers/${id}/${path}`);
+      expect(reply.status === 400 ? reply.body : null).toBeNull();
+    }
+  }, 30_000);
+
   test("an admin adds, reads, replaces and deletes a router; no secret leaves", async () => {
     const c = await admin();
     const v = await venue();

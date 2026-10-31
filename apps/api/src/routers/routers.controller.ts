@@ -25,11 +25,9 @@ import { bootstrapInput, routerInput, testConnectionInput } from "./router-input
 import { RoutersService } from "./routers.service.js";
 
 const listQuery = z.object({ venueId: z.uuid().nullable().default(null) });
-const flag = z
-  .enum(["1", "true", "0", "false"])
-  .nullable()
-  .default(null)
-  .transform((v) => v === "1" || v === "true");
+const flag = z.enum(["1", "true", "0", "false"]).transform((v) => v === "1" || v === "true");
+/** A query flag; absent means off. */
+const flagOf = (value: unknown) => parseInput(flag, value ?? "0");
 
 @Controller("api/routers")
 export class RoutersController {
@@ -135,7 +133,7 @@ export class RoutersController {
     @Param("id", idParam()) id: string,
     @Query("skipWriteTest") skipWriteTest: unknown,
   ) {
-    return this.routers.verify(staff, id, !parseInput(flag, skipWriteTest ?? null));
+    return this.routers.verify(staff, id, !flagOf(skipWriteTest));
   }
 
   @Post(":id/setup")
@@ -146,7 +144,7 @@ export class RoutersController {
     @Param("id", idParam()) id: string,
     @Query("force") force: unknown,
   ) {
-    return this.routers.setup(staff, id, parseInput(flag, force ?? null));
+    return this.routers.setup(staff, id, flagOf(force));
   }
 
   @Post(":id/provision")
@@ -157,7 +155,7 @@ export class RoutersController {
     @Param("id", idParam()) id: string,
     @Query("dryRun") dryRun: unknown,
   ) {
-    return this.routers.provision(staff, id, parseInput(flag, dryRun ?? null));
+    return this.routers.provision(staff, id, flagOf(dryRun));
   }
 
   @Get(":id/provision/latest")

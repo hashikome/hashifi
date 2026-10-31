@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Setting up and checking a router work: both always failed, as an absent query flag was refused.
 - A router's bootstrap sets DNS before its tunnel: on a reset router the tunnel never connected,
   as its endpoint is a host name.
 - Releases run through the shared `hashikome/actions` workflow, configured by `deploy/release.json`.
