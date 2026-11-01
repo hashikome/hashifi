@@ -244,6 +244,8 @@ describe("the guest portal", () => {
   test("a router's pages carry its id and the portal's address, and nothing secret", async () => {
     const { router } = await setting();
     const page = await fetch(`${api.url}/portal/hotspot-files/${router.id}/login.html`);
+    // Cloudflare adds a script to text/html, which would break the router's byte-exact check.
+    expect(page.headers.get("content-type")).not.toContain("html");
     expect(page.status).toBe(200);
     const html = await page.text();
     expect(html).toContain(`/portal/login#router=${router.id}`);

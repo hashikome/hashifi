@@ -103,6 +103,11 @@ export class HotspotFilesController {
     }
     const { portal } = resolveBackendEndpoints(router.ipAddress, backendSettings(this.config));
     const page = await renderPortalFile(name as PortalFileName, portal.origin, routerId);
-    response.type("html").send(page);
+    // Not text/html: the file reaches the router through Cloudflare, which adds its bot-detection
+    // script to HTML, and the router's file must match this render byte for byte.
+    response
+      .type("application/octet-stream")
+      .set("Cache-Control", "no-store, no-transform")
+      .send(Buffer.from(page, "utf8"));
   }
 }

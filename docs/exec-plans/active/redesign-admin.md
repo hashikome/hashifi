@@ -36,6 +36,10 @@ sessions), the packages icon row, the router edit form, dashboard and analytics,
   Evidence: three 400s in 7-23ms in the production logs; `parseInput` turned an absent flag into `{}`.
 - Observation: a reset router has no DNS, so a tunnel to a host name never connected.
   Evidence: `failure: dns server failure` on CHR; fixed in `aec19d9`.
+- Observation: Cloudflare adds a bot-detection script and a hidden link to any text/html it serves,
+  so a router's portal page arrived about 1.1 KB larger than rendered and setup refused it.
+  Evidence: 8,057 bytes rendered, 9,171 on the router; `__CF$cv$params` in the body. Guests' pages on
+  `hashifi.hashikome.com` get the same treatment, which the walled garden must be checked against.
 - Observation: seven venue fields are read only by the form and its serializer.
   Evidence: road, street, ward, district, postal code, latitude and longitude, by search of the code.
 
