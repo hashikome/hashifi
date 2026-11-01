@@ -283,6 +283,8 @@ model Venue {
   operatorId   String?     @map("operator_id") @db.Uuid
   name         String      @db.VarChar(180)
   address      String?     @db.VarChar(255)
+  /// Host names guests can open before paying, such as the venue's own website.
+  allowedSites String[]    @default([]) @map("allowed_sites")
   city         String      @db.VarChar(120)
   status       VenueStatus @default(active)
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)

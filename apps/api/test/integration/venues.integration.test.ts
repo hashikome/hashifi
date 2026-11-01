@@ -105,6 +105,23 @@ describe("venues", () => {
     expect((await own.client.request("POST", "/api/venues", VENUE)).status).toBe(403);
   });
 
+  test("allowed sites keep only the host name, and anything else is refused", async () => {
+    const c = await admin();
+    const created = await c.request("POST", "/api/venues", {
+      ...VENUE,
+      allowedSites: ["https://Hotel.co.tz/rooms?x=1", "hotel.co.tz", "www.hotel.co.tz"],
+    });
+    expect(created.status).toBe(201);
+    expect((created.body as { venue: { allowedSites: string[] } }).venue.allowedSites).toEqual([
+      "hotel.co.tz",
+      "www.hotel.co.tz",
+    ]);
+    for (const site of ["*.hotel.co.tz", "10.0.0.1", "hotel", "a b.com"]) {
+      const bad = await c.request("POST", "/api/venues", { ...VENUE, allowedSites: [site] });
+      expect(bad.status).toBe(400);
+    }
+  });
+
   test("bad input names each field; ids that are not UUIDs are not found", async () => {
     const c = await admin();
     const bad = await c.request("POST", "/api/venues", {

@@ -583,6 +583,42 @@ const walledGarden: ProvisionStep = {
   },
 };
 
+const ALLOWED_SITE = "allowed-site:";
+
+/** Sites the venue lets guests open before paying, kept equal to its list. */
+const venueAllowedSites: ProvisionStep = {
+  id: "venue-allowed-sites",
+  title: "Walled garden — the venue's allowed sites",
+  critical: false,
+  appliesTo: (ctx) => ctx.profile.capabilities.hotspot,
+  async check({ ros, ctx }) {
+    const onRouter = await allowedSiteRows(ros);
+    const wanted = ctx.router.venue.allowedSites;
+    return (
+      onRouter.length === wanted.length &&
+      wanted.every((host) => onRouter.some((row) => row.get("dst-host") === host))
+    );
+  },
+  async apply({ ros, ctx }) {
+    const menu = "/ip/hotspot/walled-garden/ip";
+    const wanted = ctx.router.venue.allowedSites;
+    for (const row of await allowedSiteRows(ros)) {
+      if (!wanted.includes(row.get("dst-host") ?? "")) await ros.remove(menu, rowId(row));
+    }
+    for (const host of wanted) {
+      await ensureTaggedRule(ros, menu, `${ALLOWED_SITE}${host}`, [
+        `=dst-host=${host}`,
+        "=action=accept",
+      ]);
+    }
+  },
+};
+
+async function allowedSiteRows(ros: RosClient) {
+  const rows = await ros.print("/ip/hotspot/walled-garden/ip");
+  return rows.filter((row) => row.get("comment")?.startsWith(tagFor(ALLOWED_SITE)));
+}
+
 const firewallForward: ProvisionStep = {
   id: "firewall-forward-backend",
   title: "Firewall — hotspot clients → backend (§5)",
@@ -789,6 +825,7 @@ export const PROVISION_STEPS: ProvisionStep[] = [
   hotspotProfile,
   hotspotServer,
   walledGarden,
+  venueAllowedSites,
   firewallForward,
   firewallInput,
   natMasquerade,

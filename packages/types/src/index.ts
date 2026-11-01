@@ -193,6 +193,8 @@ export interface VenueRecord {
   id: string;
   name: string;
   address: string | null;
+  /** Host names guests can open before paying. */
+  allowedSites: string[];
   city: string;
   /** The manager who runs it. */
   operatorId: string | null;

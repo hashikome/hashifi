@@ -263,3 +263,54 @@ describe("changing the portal origin", () => {
     ).toBe(true);
   });
 });
+
+describe("a venue's allowed sites", () => {
+  const found = PROVISION_STEPS.find((s) => s.id === "venue-allowed-sites");
+  if (!found) throw new Error("no step");
+  const step = found;
+  const backend = {
+    ".id": "*1",
+    "dst-host": "portal.example.com",
+    comment: "wbs:walled-garden-backend",
+  };
+  const site = (host: string, id: string) => ({
+    ".id": id,
+    "dst-host": host,
+    comment: `wbs:allowed-site:${host}`,
+  });
+  const ctx = (allowedSites: string[]) =>
+    ({ router: { venue: { allowedSites } } }) as unknown as ProvisionContext;
+
+  function ros(rows: Record<string, string>[]) {
+    const calls: string[] = [];
+    const client = {
+      print: async () => toRows(rows),
+      findByTag: async () => null,
+      remove: async (_menu: string, id: string) => {
+        calls.push(`remove ${id}`);
+      },
+      add: async (_menu: string, params: string[]) => {
+        calls.push(`add ${params.join(" ")}`);
+        return null;
+      },
+    } as unknown as RosClient;
+    return { ros: client, calls };
+  }
+
+  test("matches the list exactly, and HashiFi's own rule does not count", async () => {
+    const rows = [backend, site("hotel.co.tz", "*2")];
+    expect(await step.check({ ...ros(rows), ctx: ctx(["hotel.co.tz"]) })).toBe(true);
+    expect(await step.check({ ...ros(rows), ctx: ctx([]) })).toBe(false);
+    expect(await step.check({ ...ros([backend]), ctx: ctx([]) })).toBe(true);
+    expect(await step.check({ ...ros([backend]), ctx: ctx(["hotel.co.tz"]) })).toBe(false);
+  });
+
+  test("adds what is new and removes what was taken off, leaving HashiFi's rule", async () => {
+    const fake = ros([backend, site("old.co.tz", "*2")]);
+    await step.apply({ ros: fake.ros, ctx: ctx(["hotel.co.tz"]) });
+    expect(fake.calls[0]).toBe("remove *2");
+    expect(fake.calls[1]).toContain("=dst-host=hotel.co.tz");
+    expect(fake.calls[1]).toContain("=comment=wbs:allowed-site:hotel.co.tz");
+    expect(fake.calls).toHaveLength(2);
+  });
+});

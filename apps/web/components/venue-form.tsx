@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import { api } from "@/lib/api";
@@ -27,15 +28,23 @@ interface VenueFormData {
   name: string;
   city: string;
   address: string;
+  allowedSites: string;
   status: VenueStatus;
 }
 
-const EMPTY: VenueFormData = { name: "", city: "", address: "", status: "active" };
+const EMPTY: VenueFormData = {
+  name: "",
+  city: "",
+  address: "",
+  allowedSites: "",
+  status: "active",
+};
 
 const fromVenue = (venue: VenueRecord): VenueFormData => ({
   name: venue.name,
   city: venue.city,
   address: venue.address ?? "",
+  allowedSites: venue.allowedSites.join("\n"),
   status: venue.status,
 });
 
@@ -70,7 +79,11 @@ export function VenueForm({ mode, venueId }: { mode: "create" | "edit"; venueId?
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    const body = { ...form, address: form.address || null };
+    const body = {
+      ...form,
+      address: form.address || null,
+      allowedSites: form.allowedSites.split(/\s+/).filter(Boolean),
+    };
     try {
       if (isEdit) await api.put(`/api/venues/${venueId}`, body);
       else await api.post("/api/venues", body);
@@ -140,6 +153,19 @@ export function VenueForm({ mode, venueId }: { mode: "create" | "edit"; venueId?
                 value={form.address}
                 onChange={(e) => set("address", e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="allowedSites">Sites guests can open before paying (optional)</Label>
+              <Textarea
+                id="allowedSites"
+                value={form.allowedSites}
+                onChange={(e) => set("allowedSites", e.target.value)}
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                One address per line, such as your own website. Run setup again on this venue's
+                routers to apply a change.
+              </p>
             </div>
             {isEdit && (
               <div className="space-y-2">

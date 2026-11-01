@@ -379,7 +379,7 @@ export default function PortalPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-foreground">Portal Pages</h1>
+              <h1 className="text-2xl font-bold text-foreground">Captive portal</h1>
               <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary">
                 <Sparkles className="size-3" />
                 Live preview

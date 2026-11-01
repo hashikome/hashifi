@@ -15,7 +15,10 @@ export class PrismaRouterStore implements RouterStore {
   ) {}
 
   load(routerId: string) {
-    return this.db.router.findUnique({ where: { id: routerId } });
+    return this.db.router.findUnique({
+      where: { id: routerId },
+      include: { venue: { select: { allowedSites: true } } },
+    });
   }
 
   credentials(router: Parameters<RouterStore["credentials"]>[0]) {

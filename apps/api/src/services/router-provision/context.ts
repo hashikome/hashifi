@@ -49,7 +49,7 @@ export interface HotspotPlan {
 }
 
 export interface ProvisionContext {
-  router: RouterRow;
+  router: RouterRow & { venue: { allowedSites: string[] } };
   profile: RouterProfile;
   dialect: Dialect;
   endpoints: BackendEndpoints;
@@ -344,7 +344,7 @@ export function buildHotspotPlan(router: HotspotPlanInput, profile: RouterProfil
 }
 
 export function buildContext(
-  router: RouterRow,
+  router: ProvisionContext["router"],
   profile: RouterProfile,
   dialect: Dialect,
   dryRun: boolean,

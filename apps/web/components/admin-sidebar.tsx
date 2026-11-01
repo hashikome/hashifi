@@ -56,7 +56,7 @@ const navigation = [
   { name: "Venues", href: "/admin/venues", icon: Building2, roles: ["admin", "manager"] },
   { name: "Routers", href: "/admin/routers", icon: Router, roles: ["admin", "manager"] },
   { name: "Devices", href: "/admin/users", icon: Users, roles: ["admin"] },
-  { name: "WiFi page", href: "/admin/portal", icon: Smartphone, roles: ["admin"] },
+  { name: "Captive portal", href: "/admin/portal", icon: Smartphone, roles: ["admin"] },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3, roles: ["admin", "manager"] },
   { name: "Revenue", href: "/admin/revenue", icon: DollarSign, roles: ["admin"] },
   { name: "Team", href: "/admin/team", icon: Users2, roles: ["admin"] },

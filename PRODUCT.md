@@ -48,6 +48,8 @@ Admins create venues and add routers to them. Adding a router generates a bootst
 script for a freshly reset MikroTik. HashiFi then configures the hotspot automatically and
 safely repeatably, and a readiness checklist shows what is working.
 
+A venue can list sites guests may open before paying, such as its own website.
+
 Acceptance: a reset router becomes a working hotspot through the bootstrap script and the
 automated setup alone, and the checklist reports each check's real state.
 

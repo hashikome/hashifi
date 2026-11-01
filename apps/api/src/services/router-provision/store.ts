@@ -3,7 +3,7 @@ import type { RouterCredentials } from "../mikrotik.js";
 import type { BackendSettings } from "./context.js";
 import type { RouterCapabilities, RouterProfile } from "./probe.js";
 
-export type RouterRow = Router;
+export type RouterRow = Router & { venue: { allowedSites: string[] } };
 
 /** What a finished, non-dry provisioning run records about the router. */
 export interface ProvisionOutcome {

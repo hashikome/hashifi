@@ -304,7 +304,7 @@ export default function CreateVoucherPage() {
                           href="/admin/portal"
                           className="text-primary underline-offset-4 hover:underline"
                         >
-                          Portal Pages
+                          Captive portal
                         </Link>
                         . Change it here for this batch.
                       </p>

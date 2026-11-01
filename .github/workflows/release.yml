@@ -83,8 +83,15 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Create missing Docker secrets
+        uses: hashikome/actions/docker-secrets@v1.1.0
+        with:
+          values: ${{ toJSON(secrets) }}
+          ssh-key: ${{ secrets.SERVER_SSH_KEY }}
+          ssh-target: ${{ vars.SERVER_SSH_TARGET }}
+          ssh-host-key: ${{ vars.SERVER_HOST_KEY }}
       - name: Migrate, then promote the application images
-        uses: hashikome/actions/dokploy-release@c339cd0953bcc78518689ba6733303d589b3a710 # v1.0.0
+        uses: hashikome/actions/dokploy-release@v1.1.0
         with:
           images: |
             API_IMAGE=${{ needs.image.outputs.api }}
