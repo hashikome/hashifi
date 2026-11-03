@@ -8,13 +8,6 @@ const line = (max: number) =>
     .max(max)
     .regex(/^[^\p{Cc}]*$/u, "must be one line of text");
 
-/** Optional text: absent, null and empty all mean "none". */
-const optionalLine = (max: number) =>
-  line(max)
-    .nullable()
-    .default(null)
-    .transform((value) => (value === "" ? null : value));
-
 /**
  * A venue as the admin enters it, for create and for update alike: the form always sends the
  * whole venue, so an absent optional field is cleared rather than left as it was. Who operates

@@ -39,9 +39,9 @@ MikroTik hAP Lite  (192.168.0.161 on bridgeLocal)
 Phone (WiFi client, gets 10.5.50.x)
     │
     ▼  MikroTik intercepts HTTP, serves login.html
-    │  login.html redirects → http://192.168.0.15:8080/portal/login
+    │  login.html redirects → http://192.168.0.15:8086/portal/login
     ▼
-Express backend (192.168.0.15:8080)
+Express backend (192.168.0.15:8086)
     │ /portal/login renders captive portal page
     │ /portal/validate-voucher validates voucher in MySQL
     │ Backend calls RouterOS API → creates hotspot user on MikroTik
@@ -66,10 +66,10 @@ and returns the credentials. MikroTik does the final authentication check itself
 
 - MikroTik router with hotspot license
 - **RouterOS 7: the `hotspot` package must be installed — see below. It is NOT in the core build.**
-- Laptop running the backend (`bun run dev`) on port **8080**
+- Laptop running the backend (`bun run dev`) on port **8086**
 - Laptop and MikroTik on the same LAN (e.g. 192.168.0.0/24)
 - Laptop IP **must be static** (see §1) — hotspot clients route through MikroTik to reach it
-- Backend `.env` has `PORT=8080`
+- Backend `.env` has `PORT=8086`
 - Backend listens on `0.0.0.0` (not `127.0.0.1`) — Express default is already correct
 
 ---
@@ -358,7 +358,7 @@ Save as `login.html` (or edit `C:\Users\Patrick\Desktop\login.html`):
   <body>
     <script>
       window.location.replace(
-        "http://192.168.0.15:8080/portal/login" +
+        "http://192.168.0.15:8086/portal/login" +
           "?mac=$(mac)" +
           "&ip=$(ip)" +
           "&link-login=$(link-login-only)" +
@@ -580,7 +580,7 @@ Replace `WIFI-XMZET0` with the actual active voucher code from your database.
 
 1. **Connect your phone to the hotspot WiFi** (the SSID served by MikroTik)
 2. Open any http:// URL in the phone browser (not https — HTTPS bypasses captive portal detection on some devices; try `http://example.com`)
-3. You should be redirected to `http://192.168.0.15:8080/portal/login`
+3. You should be redirected to `http://192.168.0.15:8086/portal/login`
 4. Enter a voucher code that exists in **both** the MySQL database AND MikroTik's user list
 5. Tap "Connect"
 6. If successful, MikroTik grants internet access and the browser navigates to the original URL
@@ -706,7 +706,7 @@ will otherwise cost you an afternoon:
 | 5   | Firewall **forward** rule | `dst-address=192.168.0.15` (§10.3)                                                  |
 | 6   | Firewall **input** rule   | `src-address=192.168.0.15` (§10.4)                                                  |
 | 7   | Mac static IP + gateway   | `192.168.0.15` / gw `192.168.0.1` (gateway = home router)                           |
-| 8   | login.html redirect       | `http://192.168.0.15:8080/portal/login`, re-upload                                  |
+| 8   | login.html redirect       | `http://192.168.0.15:8086/portal/login`, re-upload                                  |
 | 9   | Backend `.env`            | `MIKROTIK_IP=192.168.0.161` + restart backend                                       |
 
 The dynamic (`D`-flagged) hotspot filter/NAT rules regenerate themselves and will briefly
@@ -1095,7 +1095,7 @@ rather than a login screen.
 | Admin terminates a session in dashboard but device still has internet         | Terminate endpoint only updated DB; never called MikroTik API                                  | `kickVoucherFromVenueRouters` fire-and-forget added to terminate endpoint                                      |
 | Session shows "connected" after device disconnects                            | Live monitor polled router but never reconciled DB sessions against active list                | Added reconciliation loop in `pollOnce` — marks DB "connected" sessions absent from MikroTik as "disconnected" |
 | Duration shows negative value (e.g. "-47m")                                   | `formatDuration` passed `durationSeconds = 0` or negative (race between endedAt and startedAt) | Added `if (seconds <= 0) return "0m"` guard; `Math.max(0, ...)` in terminate endpoint                          |
-| "10.5.50.254 refused to connect" when testing                                 | User was trying to open their phone's own IP in the browser, not the hotspot gateway           | The hotspot gateway/portal is at `192.168.0.15:8080`, not the phone's own IP                                   |
+| "10.5.50.254 refused to connect" when testing                                 | User was trying to open their phone's own IP in the browser, not the hotspot gateway           | The hotspot gateway/portal is at `192.168.0.15:8086`, not the phone's own IP                                   |
 | Backend server itself was intercepted by hotspot firewall                     | MikroTik treated backend server as an unauthenticated hotspot client                           | Add IP binding: `/ip hotspot ip-binding add address=192.168.0.15 type=bypassed` (§16.3)                        |
 | Duplicate masquerade rules in NAT                                             | Multiple hotspot setup/wizard attempts each added their own masquerade rule                    | Harmless but messy — remove duplicates with `/ip firewall nat remove <index>`                                  |
 | Bootstrap script applied everything **except** the radio, with no visible error | The generated `§7` radio stanza was a single **1038-character** line; the RouterOS console truncates a pasted line at ~1024 bytes, so it became a syntax error whose message scrolled away with the session the bridge step had already dropped | One short, self-contained statement per menu — no line over 512 chars, no line depending on a `:local` another line set. `bootstrap.test.ts` enforces both. `/import` of the `.rsc` is unaffected by the limit |
