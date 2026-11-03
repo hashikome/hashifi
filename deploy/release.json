@@ -58,8 +58,8 @@
   ],
   "inputs": {
     "BACKEND_NETWORK": "hashikome-network",
-    "DATABASE_URL_SECRET": "hashifi_database_url_20261101_v1",
-    "MIGRATION_DATABASE_URL_SECRET": "hashifi_migration_database_url_20261101_v1"
+    "DATABASE_URL_SECRET": "hashifi_database_url_20261103_v1",
+    "MIGRATION_DATABASE_URL_SECRET": "hashifi_migration_database_url_20261103_v1"
   },
   "requiredValues": {
     "PUBLIC_HOST": "hashifi.hashikome.com",
