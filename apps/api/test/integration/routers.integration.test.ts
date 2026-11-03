@@ -212,7 +212,7 @@ describe("routers", () => {
       routerOf(await c.request("POST", "/api/routers", { ...ROUTER, venueId: v.id })).id,
     );
     const first = await c.requestWith("POST", `/api/routers/${id}/bootstrap-script`, "{}", {
-      Origin: "http://localhost:4000",
+      Origin: "http://localhost:3006",
       "Content-Type": "application/json",
     });
     expect(first.status).toBe(200);

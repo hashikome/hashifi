@@ -10,11 +10,11 @@ From the repository root (`bun run verify` runs everything CI runs), or here:
 
 | Command | What it does |
 | --- | --- |
-| `bun run dev` | Development server on port 4000 |
+| `bun run dev` | Development server on port 3006 |
 | `bun run build` | Production build, including the type check |
 | `bun run typecheck` | `tsc --noEmit` |
 
-Copy `.env.example` to `.env.local`. Port 4000 matches the API's default `FRONTEND_ORIGIN`
+Copy `.env.example` to `.env.local`. Port 3006 matches the API's default `FRONTEND_ORIGIN`
 for CORS.
 
 ## Conventions

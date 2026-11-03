@@ -36,7 +36,7 @@ const png = async (width = 600, alpha = 0) =>
 
 function upload(c: Client, id: string, kind: string, body: Uint8Array<ArrayBuffer>) {
   return c.requestWith("PUT", `/api/venues/${id}/brand/images/${kind}`, body, {
-    Origin: "http://localhost:4000",
+    Origin: "http://localhost:3006",
     "Content-Type": "application/octet-stream",
   });
 }

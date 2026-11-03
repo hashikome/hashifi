@@ -36,7 +36,7 @@ through `lib/api.ts` and `@hashifi/types`, including the captive portal and purc
 ## Commands
 
 - `bun install` (generates Prisma Client); `bun run infra:up` starts PostgreSQL 18 on
-  `127.0.0.1:5437`; `bun run db:deploy` and `bun run db:seed` prepare it; `bun run dev`.
+  `127.0.0.1:5438`; `bun run db:deploy` and `bun run db:seed` prepare it; `bun run dev`.
 - `bun run verify`: formatting, lint, typecheck, unit tests and builds. It must pass before a
   commit. `bun run test:integration` runs the database tests against `hashifi_test`.
 - Schema changes: edit `apps/api/prisma/schema.prisma`, then `bun run db:migrate` (creates and

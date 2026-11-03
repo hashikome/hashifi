@@ -564,7 +564,7 @@ Replace `WIFI-XMZET0` with the actual active voucher code from your database.
 
 ### 8.3 Generate fresh vouchers from the admin panel
 
-1. Open `http://localhost:4000/admin/vouchers` in the browser
+1. Open `http://localhost:3006/admin/vouchers` in the browser
 2. Click "Generate Vouchers"
 3. Select a package and quantity
 4. Note the generated codes

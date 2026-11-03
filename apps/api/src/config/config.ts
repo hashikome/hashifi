@@ -88,13 +88,13 @@ const DEFAULT_BRAND_DIR = fileURLToPath(new URL("../../../../data/brand/", impor
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().min(1).max(65535).default(8080),
+  PORT: z.coerce.number().int().min(1).max(65535).default(8086),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   ENCRYPTION_KEY: z
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, "must be 32 bytes as 64 hex characters (openssl rand -hex 32)"),
-  FRONTEND_ORIGIN: url.default("http://localhost:4000"),
-  APP_URL: url.default("http://localhost:8080"),
+  FRONTEND_ORIGIN: url.default("http://localhost:3006"),
+  APP_URL: url.default("http://localhost:8086"),
   BETTER_AUTH_SECRET: z.string().min(32, "must be at least 32 characters (openssl rand -hex 32)"),
   TRUSTED_PROXIES: z.string().default(""),
   RESEND_API_KEY: z.string().min(1).nullable().default(null),

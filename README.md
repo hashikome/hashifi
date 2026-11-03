@@ -49,7 +49,7 @@ bun install
 cp .env.example apps/api/.env                   # then set ENCRYPTION_KEY and BETTER_AUTH_SECRET
                                                 # (openssl rand -hex 32 for each)
 cp apps/web/.env.example apps/web/.env.local
-bun run infra:up                                # PostgreSQL 18 on 127.0.0.1:5437
+bun run infra:up                                # PostgreSQL 18 on 127.0.0.1:5438
 bun run db:deploy && bun run db:seed            # schema and invented data
 bun run dev
 ```

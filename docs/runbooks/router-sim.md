@@ -38,7 +38,7 @@ QEMU's user network is the venue LAN, with the host as the ISP router at `10.0.2
 API, forwarded to `127.0.0.1:18728`, is how the sim reaches the router (its *management
 target*). CHR has no radio, so the hotspot runs on `ether2`, a point-to-point UDP link to the guest VM
 (not multicast, which a host VPN such as Cloudflare WARP can swallow). During `setup`, the sim serves the portal pages the router fetches on
-`127.0.0.1:8080`, which the router reaches as `http://10.0.2.2:8080`.
+`127.0.0.1:8086`, which the router reaches as `http://10.0.2.2:8086`.
 
 ## Commands
 
@@ -70,7 +70,7 @@ bun run router-sim demo          # starts everything and prints the links
 bun run router-sim code          # the latest emailed sign-in code
 ```
 
-`demo` runs the router, the guest VM, the API on the sim database and the web on port 4000. The
+`demo` runs the router, the guest VM, the API on the sim database and the web on port 3006. The
 guest link puts your browser in the guest's place, naming the VM's MAC and IP, so redeeming a voucher
 there really signs that device in, and it appears in Live Sessions. A browser cannot prove what a
 phone does: real captive sheets are for M8.
@@ -103,7 +103,7 @@ device the router cannot see refused; a voucher redeemed through the walled gard
 signed in by the API; a session opened by the live monitor; a device kept on after a kick, and
 back by its MAC cookie after 135 seconds away; a disconnected device forgotten; a blocked device
 refused, and accepted again within 90 seconds of unblocking; and the guest cut off at expiry. It clears the router's sessions and cookies first. Run it in LAN mode,
-after `setup`, with or without `PORTAL_ORIGIN`; port 8080 must be free. The API reaches the
+after `setup`, with or without `PORTAL_ORIGIN`; port 8086 must be free. The API reaches the
 router through `MIKROTIK_TARGET_OVERRIDE`, which production configuration refuses. The page
 itself is not driven, since the guest has no browser. `bun run router-sim voucher [minutes]` creates a voucher on its own.
 

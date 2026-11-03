@@ -7,7 +7,7 @@ import { readSecret } from "./src/config/secret.js";
 // Variables already set win over the file.
 if (existsSync(".env")) process.loadEnvFile(".env");
 
-const LOCAL_DATABASE_URL = "postgresql://hashifi:hashifi@127.0.0.1:5437/hashifi";
+const LOCAL_DATABASE_URL = "postgresql://hashifi:hashifi@127.0.0.1:5438/hashifi";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

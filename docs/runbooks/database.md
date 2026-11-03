@@ -1,7 +1,7 @@
 # Database
 
 PostgreSQL 18, through Prisma 7. The schema is `apps/api/prisma/schema.prisma`; migrations
-are `apps/api/prisma/migrations/`. Locally, `compose.yml` runs PostgreSQL on `127.0.0.1:5437`
+are `apps/api/prisma/migrations/`. Locally, `compose.yml` runs PostgreSQL on `127.0.0.1:5438`
 with three databases: `hashifi` (development), `hashifi_test` (integration tests) and
 `hashifi_sim` (the router sim).
 

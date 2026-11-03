@@ -72,8 +72,8 @@ const LAN = { routerIp: "10.0.2.15", prefix: 24, gatewayIp: "10.0.2.2" } as cons
 const GUEST_LINK = { router: 18100, guest: 18101 } as const;
 /** Host ports forwarded to the router's RouterOS API, SSH and WinBox. */
 const FORWARD = { api: 18728, ssh: 18022, winbox: 18291 } as const;
-/** The host side of 10.0.2.2:8080, where the router fetches its portal pages. */
-const BACKEND_PORT = 8080;
+/** The host side of 10.0.2.2:8086, where the router fetches its portal pages. */
+const BACKEND_PORT = 8086;
 const BACKEND_URL = `http://${LAN.gatewayIp}:${BACKEND_PORT}`;
 const API_USER = "hashifi";
 /**
@@ -86,7 +86,7 @@ const COMPOSE_NETWORK = "hashifi_default";
 function simDatabaseUrl(): string {
   return IN_HUB
     ? `postgresql://hashifi:hashifi@hashifi-postgres:5432/${SIM_DATABASE}`
-    : `postgresql://hashifi:hashifi@127.0.0.1:5437/${SIM_DATABASE}`;
+    : `postgresql://hashifi:hashifi@127.0.0.1:5438/${SIM_DATABASE}`;
 }
 const API_PORT = 8728;
 /** The guest VM, fixed by a static lease while the demo runs. */
@@ -963,9 +963,9 @@ async function demo(): Promise<void> {
   console.log(`
 HashiFi is running. Stop with Ctrl-C.
 
-  Admin    http://localhost:4000
+  Admin    http://localhost:3006
            Sign in as ${email}. Get the emailed code with: bun run router-sim code
-  Guest    http://localhost:4000/portal/login#${fragment}
+  Guest    http://localhost:3006/portal/login#${fragment}
            A voucher to try: ${code}
 `);
   await new Promise(() => {});

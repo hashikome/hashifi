@@ -57,7 +57,7 @@ import { formatDuration } from "@/lib/duration";
 import { errorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 
-const PORTAL_LOGIN_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login";
+const PORTAL_LOGIN_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:3006/portal/login";
 const BRAND_PLACEHOLDER = "Your brand name";
 
 /** A package as this page's previews draw it. */

@@ -7,7 +7,7 @@ import { createPrismaClient, type PrismaClient } from "../../src/database/client
  * run with the real migrations, and emptied before each test. Run with `bun run test:integration`.
  */
 export const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ?? "postgresql://hashifi:hashifi@127.0.0.1:5437/hashifi_test";
+  process.env.TEST_DATABASE_URL ?? "postgresql://hashifi:hashifi@127.0.0.1:5438/hashifi_test";
 
 let migrated = false;
 

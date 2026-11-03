@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { loadConfig } from "./config.js";
 
 const BASE = {
-  DATABASE_URL: "postgresql://hashifi:hashifi@127.0.0.1:5437/hashifi",
+  DATABASE_URL: "postgresql://hashifi:hashifi@127.0.0.1:5438/hashifi",
   ENCRYPTION_KEY: "ab".repeat(32),
   BETTER_AUTH_SECRET: "cd".repeat(32),
 };
@@ -10,7 +10,7 @@ const BASE = {
 describe("loadConfig", () => {
   test("defaults fill everything optional", () => {
     const config = loadConfig(BASE);
-    expect(config.port).toBe(8080);
+    expect(config.port).toBe(8086);
     expect(config.encryptionKey).toHaveLength(32);
     expect(config.routerManagementUrl).toBeNull();
     expect(config.telemetry.sentryDsn).toBeNull();

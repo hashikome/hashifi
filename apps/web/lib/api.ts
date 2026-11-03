@@ -1,6 +1,6 @@
 import type { ApiError } from "@hashifi/types";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8086";
 
 /** The live view's socket. An empty `API_URL` means the page's own origin, as in production. */
 export function liveSocketUrl(): string {

@@ -12,7 +12,7 @@ From the repository root (`bun run verify` runs everything CI runs), or here:
 
 | Command | What it does |
 | --- | --- |
-| `bun run dev` | Watch mode on `src/entrypoint.ts` (port 8080) |
+| `bun run dev` | Watch mode on `src/entrypoint.ts` (port 8086) |
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run test` | The `*.test.ts` files beside the code |
 | `bun run test:integration` | Over HTTP against PostgreSQL (`test/integration/`) |

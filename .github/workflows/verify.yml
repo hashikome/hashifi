@@ -15,7 +15,7 @@ jobs:
           POSTGRES_USER: hashifi
           POSTGRES_PASSWORD: hashifi
           POSTGRES_DB: hashifi
-        ports: ["5437:5432"]
+        ports: ["5438:5432"]
         options: --health-cmd "pg_isready -U hashifi" --health-interval 5s --health-timeout 3s --health-retries 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -37,7 +37,7 @@ export function VoucherPreview({
 }: VoucherPreviewProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:4000/portal/login";
+  const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:3006/portal/login";
   const voucherCode = `${prefix || "WIFI"}-8K2F-2026`;
   const qrData = `${portalUrl}#code=${voucherCode}`;
 

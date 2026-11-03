@@ -6,7 +6,7 @@ import type { EmailMessage, EmailSender } from "../../src/email/email-sender.js"
 import { bootstrap } from "../../src/main.js";
 import { TEST_DATABASE_URL } from "./harness.js";
 
-export const FRONTEND_ORIGIN = "http://localhost:4000";
+export const FRONTEND_ORIGIN = "http://localhost:3006";
 
 /** Keeps every message instead of sending it. */
 export class CapturingEmailSender implements EmailSender {

@@ -1,5 +1,5 @@
 const apiOrigin =
-  process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8086";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
