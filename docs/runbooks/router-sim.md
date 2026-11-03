@@ -38,7 +38,7 @@ QEMU's user network is the venue LAN, with the host as the ISP router at `10.0.2
 API, forwarded to `127.0.0.1:18728`, is how the sim reaches the router (its *management
 target*). CHR has no radio, so the hotspot runs on `ether2`, a point-to-point UDP link to the guest VM
 (not multicast, which a host VPN such as Cloudflare WARP can swallow). During `setup`, the sim serves the portal pages the router fetches on
-`127.0.0.1:8086`, which the router reaches as `http://10.0.2.2:8086`.
+`127.0.0.1:4006`, which the router reaches as `http://10.0.2.2:4006`.
 
 ## Commands
 
@@ -103,7 +103,7 @@ device the router cannot see refused; a voucher redeemed through the walled gard
 signed in by the API; a session opened by the live monitor; a device kept on after a kick, and
 back by its MAC cookie after 135 seconds away; a disconnected device forgotten; a blocked device
 refused, and accepted again within 90 seconds of unblocking; and the guest cut off at expiry. It clears the router's sessions and cookies first. Run it in LAN mode,
-after `setup`, with or without `PORTAL_ORIGIN`; port 8086 must be free. The API reaches the
+after `setup`, with or without `PORTAL_ORIGIN`; port 4006 must be free. The API reaches the
 router through `MIKROTIK_TARGET_OVERRIDE`, which production configuration refuses. The page
 itself is not driven, since the guest has no browser. `bun run router-sim voucher [minutes]` creates a voucher on its own.
 

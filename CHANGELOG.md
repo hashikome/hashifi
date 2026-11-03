@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Local development uses HashiFi's own ports: PostgreSQL 5438, API 8086 and web 3006. The
-  database had taken 5437, the ZanLIS processor's. A hand-built router lab points at 8086 too.
+- Local development uses HashiFi's own ports, each service's default plus HashiFi's +6 offset:
+  PostgreSQL 5438, API 4006 and web 3006. The database had taken 5437, the ZanLIS processor's. A
+  hand-built router lab points at 4006 too.
   Production ports are unchanged.
 - Adding a router asks four plain questions, and list screens lead with their list: the same counts
   as a line under the title, named actions, and Devices for what Users listed.

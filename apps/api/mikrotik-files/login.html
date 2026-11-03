@@ -7,7 +7,7 @@
     <style>
       @font-face {
         font-family: "Figtree";
-        src: url("http://192.168.0.15:8086/fonts/figtree-latin-wght-normal.woff2") format("woff2");
+        src: url("http://192.168.0.15:4006/fonts/figtree-latin-wght-normal.woff2") format("woff2");
         font-weight: 300 900;
         font-display: swap;
       }
@@ -284,7 +284,7 @@
       // Goes to the portal, naming this router. The -esc variable is URL-encoded, so a guest's URL
       // cannot break out of the string. Written as ES5: the oldest phones run this page.
       window.location.replace(
-        "http://192.168.0.15:8086/portal/login#router=__ROUTER_ID__" +
+        "http://192.168.0.15:4006/portal/login#router=__ROUTER_ID__" +
           "&mac=$(mac)" +
           "&ip=$(ip)" +
           "&link-orig=$(link-orig-esc)"

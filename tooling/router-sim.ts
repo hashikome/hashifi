@@ -72,8 +72,8 @@ const LAN = { routerIp: "10.0.2.15", prefix: 24, gatewayIp: "10.0.2.2" } as cons
 const GUEST_LINK = { router: 18100, guest: 18101 } as const;
 /** Host ports forwarded to the router's RouterOS API, SSH and WinBox. */
 const FORWARD = { api: 18728, ssh: 18022, winbox: 18291 } as const;
-/** The host side of 10.0.2.2:8086, where the router fetches its portal pages. */
-const BACKEND_PORT = 8086;
+/** The host side of 10.0.2.2:4006, where the router fetches its portal pages. */
+const BACKEND_PORT = 4006;
 const BACKEND_URL = `http://${LAN.gatewayIp}:${BACKEND_PORT}`;
 const API_USER = "hashifi";
 /**

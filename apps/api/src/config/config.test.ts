@@ -10,7 +10,7 @@ const BASE = {
 describe("loadConfig", () => {
   test("defaults fill everything optional", () => {
     const config = loadConfig(BASE);
-    expect(config.port).toBe(8086);
+    expect(config.port).toBe(4006);
     expect(config.encryptionKey).toHaveLength(32);
     expect(config.routerManagementUrl).toBeNull();
     expect(config.telemetry.sentryDsn).toBeNull();

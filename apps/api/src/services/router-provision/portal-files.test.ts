@@ -21,7 +21,7 @@ describe("every page", () => {
 
   test.each([...PORTAL_FILES])("%s has the backend URL rewritten", async (name) => {
     const html = await rendered(name);
-    // The repo copies carry a hardcoded 192.168.0.15:8086; nothing may survive templating, or the
+    // The repo copies carry a hardcoded 192.168.0.15:4006; nothing may survive templating, or the
     // page would call an address that only exists on one developer's desk (§3.1, §10).
     expect(html).not.toContain("192.168.0.15");
     expect(html).toContain("http://10.0.0.9:9000");
