@@ -44,6 +44,14 @@ not found.
 - Decision: the business is the tenant, the venue a scope inside it.
   Rationale: an owner's "all venues" stays inside one tenant.
   Date/Author: 2026-11-03 / Paul and Claude
+- Decision: one `users` table for everyone who signs in; `memberships` replaces `staff`.
+  Rationale: one sign-in, one invitation flow and one policy; the scope column, not the table,
+  separates platform staff from a business's people, and one membership per person keeps them apart.
+  Date/Author: 2026-11-03 / Paul and Claude
+- Decision: a business profile (name, logo) above each venue's portal brand; the admin keeps
+  HashiFi's design (ADR-0009).
+  Rationale: a business with venues known by different names needs the venue on its portal.
+  Date/Author: 2026-11-03 / Paul and Claude
 - Decision: keep platform operators in the model though none exist yet.
   Rationale: the same ladder in both scopes costs nothing extra and avoids a later migration.
   Date/Author: 2026-11-03 / Paul
@@ -69,7 +77,7 @@ platform owner, so the migration maps rows rather than preserving a live tenant.
 
 ## Plan Of Work
 
-**M1, schema.** Add `Business` (name, status), `Venue.businessId` (required; drop `operatorId`),
+**M1, schema.** Add `Business` (name, logo key, status; the logo stored as ADR-0009 says), `Venue.businessId` (required; drop `operatorId`),
 `Membership` (user id unique, scope `platform` or `business`, business id when business, role
 `owner`, `manager` or `operator`, status), `MembershipVenue` (membership, venue), `Invitation`
 (email, scope, business, role, venues, invited by, expiry, accepted at), and packages owned by a
@@ -89,14 +97,15 @@ guard enforces the authenticator app for platform roles.
 **M3, people.** Invitations: create (only a role below one's own, venues within one's own), email via
 Resend with a code sign-in, accept on first sign-in, revoke, expire after 7 days. Team page per scope.
 Platform staff get "Add a business": name, first venue, owner's email; the owner's invitation goes
-out. Every change audited.
+out. The owner's Business profile page sets the name and logo. Every change audited.
 
 **M4, packages.** Business packages seeded from the platform defaults on creation; venue-limited
 packages for managers; CSV import: parse, validate (name, duration such as `1h`, `24h`, `7d`, devices,
 price in TSh, venues as `all` or names), return a preview of adds and updates, apply on confirm; no
 deletes.
 
-**M5, web.** The scope switcher ("All businesses" for platform roles, "All venues" for an owner of
+**M5, web.** The business's name and logo at the head of the sidebar for its people (HashiFi's
+with the Platform tag for platform staff), the portal's logo fallback (venue, business, HashiFi), the scope switcher ("All businesses" for platform roles, "All venues" for an owner of
 several, none for one venue), navigation per role from the API's capabilities, the one-venue
 overview, Team and Packages screens, in the Hearth design (`docs/exec-plans/active/redesign-admin.md`).
 
