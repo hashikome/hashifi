@@ -18,11 +18,15 @@ get a printed voucher instead.
 
 | User | Context and goals |
 | --- | --- |
-| Platform admin | Runs HashiFi: venues, routers, packages, team, settings, audit |
-| Venue manager | Runs one or more venues: their routers, vouchers, sessions and figures |
+| Platform owner, manager, operator | Hashikome running HashiFi: create businesses and their venues, add and set up routers, onboard and support owners. The owner alone manages platform managers, settings and what businesses pay |
+| Business owner | Sells their WiFi at one or more venues: packages and prices, captive portal, analytics, their team. Asks Hashikome for another venue |
+| Business manager | Runs the venues the owner gave them, with the owner's powers there, except what the owner keeps |
+| Business operator | Works the counter at their venues: vouchers, live sessions, devices, the day's cash |
 | Guest | Joins a venue's WiFi on a phone, often on a slow link, and wants to get online quickly |
 
-Paul's home is the first venue.
+A business is the tenant and owns its venues; roles and what each owner keeps are in
+[ADR-0011](docs/engineering-decisions/0011-platform-and-business-scopes.md). Paul's home is the
+first venue.
 
 ## 3. Principles
 
@@ -86,7 +90,10 @@ calculated by the API.
 
 ### 4.6 Team and audit
 
-Admin and manager roles; managers see only their venues. Sensitive actions are audited.
+Owners, managers and operators, on the platform and in each business (ADR-0011). An owner of
+several venues sees all of them with a venue switcher; a business sees nothing of another. People
+are invited by email from a Team page, only to roles below the inviter's own. Sensitive actions,
+invitations and role changes are audited.
 
 ### 4.7 Selling access: three paths, one mechanism
 
@@ -129,9 +136,9 @@ real payment and a real message (M8).
 
 | Data | Purpose | Visible to |
 | --- | --- | --- |
-| Staff | Sign-in (email and one-time code, an authenticator app for admins), roles, venue scope | Admins |
-| Devices | A guest device's MAC address, name and type, and its sessions (not a person: one guest can be several devices) | Admins; managers for their venues |
-| Customers | A paying guest's mobile number, their devices and payments (from M6) | Admins; managers for their venues |
+| Memberships | Sign-in (email and one-time code, an authenticator app for platform roles), role, scope, venues | Platform owner and managers; a business's owner and managers for their business |
+| Devices | A guest device's MAC address, name and type, and its sessions (not a person: one guest can be several devices) | Platform staff; a business's people for their venues |
+| Customers | A paying guest's mobile number, their devices and payments (from M6) | Platform staff; a business's people for their venues |
 | Router credentials | Configuring routers | Encrypted at rest; never returned to clients |
 
 Development and tests use invented data only.

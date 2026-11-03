@@ -66,6 +66,16 @@ sessions), the packages icon row, the router edit form, dashboard and analytics,
   Set up.
   Date/Author: 2026-11-01 / Claude
 
+- Decision: the Hearth direction: mist ground, white panels, midnight ink, ember on the one action
+  and live data, Figtree, the open ring with the ember in its gap; the captive portal's night top
+  over a white sheet; a vertical, grouped navigation with a scope switcher.
+  Rationale: chosen by the owner from ten variations and two further rounds (3 November 2026).
+  Date/Author: 2026-11-03 / Paul
+- Decision: the overview shows what is happening now and what needs attention; trends move to a
+  new Analytics page.
+  Rationale: the overview was doing the glance and the analysis at once, and repeated Live sessions.
+  Date/Author: 2026-11-03 / Paul and Claude
+
 ## Outcomes & Retrospective
 
 Not started.
