@@ -38,15 +38,16 @@ not found.
 
 ## Decision Log
 
-- Decision: one membership per person (ADR-0011, 7).
-  Rationale: every session has one scope, so a query never has to choose between businesses.
-  Date/Author: 2026-11-03 / Paul and Claude
+- Decision: one email per person, several memberships, one active per session (ADR-0011, 7).
+  Rationale: the platform owner also owns a business, and people should not keep a second identity
+  to change hats; one active membership still keeps every query in one scope.
+  Date/Author: 2026-11-03 / Paul
 - Decision: the business is the tenant, the venue a scope inside it.
   Rationale: an owner's "all venues" stays inside one tenant.
   Date/Author: 2026-11-03 / Paul and Claude
 - Decision: one `users` table for everyone who signs in; `memberships` replaces `staff`.
   Rationale: one sign-in, one invitation flow and one policy; the scope column, not the table,
-  separates platform staff from a business's people, and one membership per person keeps them apart.
+  separates platform staff from a business's people, and only the active membership applies.
   Date/Author: 2026-11-03 / Paul and Claude
 - Decision: a business profile (name, logo) above each venue's portal brand; the admin keeps
   HashiFi's design (ADR-0009).
@@ -78,8 +79,10 @@ platform owner, so the migration maps rows rather than preserving a live tenant.
 ## Plan Of Work
 
 **M1, schema.** Add `Business` (name, logo key, status; the logo stored as ADR-0009 says), `Venue.businessId` (required; drop `operatorId`),
-`Membership` (user id unique, scope `platform` or `business`, business id when business, role
-`owner`, `manager` or `operator`, status), `MembershipVenue` (membership, venue), `Invitation`
+`Membership` (user id, scope `platform` or `business`, business id when business, role `owner`,
+`manager` or `operator`, status; unique per user and scope), the session's active membership (a
+column on Better Auth's session through its additional fields, or `session_memberships`, whichever
+Better Auth supports cleanly), `MembershipVenue` (membership, venue), `Invitation`
 (email, scope, business, role, venues, invited by, expiry, accepted at), and packages owned by a
 business with an optional venue list (`PackageVenue`), plus `PlatformDefaultPackage`. The migration
 creates one business per existing operator (or "Hashikome test" for venues without one), moves each
@@ -89,10 +92,11 @@ business, and seeds the three default packages. `Staff` is renamed `Membership` 
 
 **M2, access.** `apps/api/src/access/policy.ts`: actions as a closed union (`venue.read`,
 `voucher.print`, `package.price.set`, `member.invite.manager`, ...), each mapped to the least role per
-scope and whether it is owner-only. `Principal` carries membership id, scope, business id, role and
-venue ids. `venueScope(principal)` returns `{}` for platform roles, `{ businessId }` for a business
+scope and whether it is owner-only. `Principal` is built from the session's active membership: membership id, scope, business id,
+role and venue ids. `POST /api/me/membership` switches it (only to one of the person's own,
+audited); `GET /api/me` lists the person's memberships for the switcher. `venueScope(principal)` returns `{}` for platform roles, `{ businessId }` for a business
 owner, and `{ businessId, id: { in: venueIds } }` otherwise. `@Can(action)` replaces `@Roles`. The
-guard enforces the authenticator app for platform roles.
+guard enforces the authenticator app for anyone holding a platform membership.
 
 **M3, people.** Invitations: create (only a role below one's own, venues within one's own), email via
 Resend with a code sign-in, accept on first sign-in, revoke, expire after 7 days. Team page per scope.
@@ -119,7 +123,9 @@ From the repository root: `bun run db:migrate` (M1), `bun run verify`, `bun run 
   manager, operator, and a manager of another business), every scoped route answers its data, not
   found, or forbidden as the policy says; a guessed id from another business is not found.
 - Invitation tests: no one invites a role at or above their own, or to a venue they do not hold;
-  expiry and revocation work; the audit log records each.
+  inviting an existing user adds a membership; expiry and revocation work; the audit log records each.
+- Switching tests: a person with a platform and a business membership sees only the active one's
+  data; switching to a membership that is not theirs is refused; each switch is audited.
 - CSV import tests: a valid file previews then applies; a bad row names its line and nothing is saved.
 - Live: a test business in production walks the Purpose's story end to end.
 

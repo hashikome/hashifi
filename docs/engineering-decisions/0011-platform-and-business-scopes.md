@@ -48,15 +48,20 @@ sells vouchers at its counter, and it gives Hashikome's own helpers nothing betw
    one with the scope switcher. Only Hashikome creates businesses and venues and adds routers.
 6. **Nobody gives more than they have.** A person invites only roles below their own, inside their
    own scope: an owner invites managers and operators, a manager invites operators to their venues.
-7. **One membership per person.** A membership is a role in a scope, plus its venues where that
-   applies. A person holds one; a second business or a platform role means another email. This keeps
-   every session in one scope; revisit when someone truly needs two.
-8. **Authorization comes only from memberships**, decided in one policy in the API: may this role
-   take this action in this scope. The web shows what the API returns and never infers access from
+7. **One person, one identity, one active membership.** A membership is a role in a scope, plus its
+   venues where that applies. A person keeps one email and may hold several memberships, at most one
+   per scope: the platform owner may also own their own business, a manager may run venues for two
+   businesses. A session acts as exactly one of them at a time, chosen in the scope switcher and
+   remembered for the next sign-in; switching is audited. Nothing from one membership applies while
+   another is active, so platform powers never reach into a business view or the reverse. Inviting
+   an email that already signs in adds a membership to that person rather than a second identity.
+8. **Authorization comes only from the active membership**, decided in one policy in the API: may
+   this role take this action in this scope. The web shows what the API returns and never infers access from
    what it renders (ADR-0003). Better Auth keeps identity and sessions (ADR-0007); memberships hold
    what HashiFi decides.
-9. **Second factor.** Every platform role must enroll an authenticator app before reaching anything,
-   as admins had to. Business roles may enroll one; once enrolled it is required.
+9. **Second factor.** A person with any platform membership must enroll an authenticator app before
+   reaching anything, whichever membership is active, as admins had to. Others may enroll one; once
+   enrolled it is required.
 10. **Default packages.** A new business starts with the platform's default packages, which the
     platform owner edits: 1 hour for TSh 500, 1 day for TSh 1,500 and 1 week for TSh 7,000. A
     business can change them, add its own, or import them from a CSV file, shown in full before it
@@ -64,7 +69,7 @@ sells vouchers at its counter, and it gives Hashikome's own helpers nothing betw
 
 ## What must hold
 
-- Every API read and write is scoped to the signed-in membership; a record in another business, or
+- Every API read and write is scoped to the session's active membership; a record in another business, or
   at a venue the membership does not hold, answers not found, never forbidden.
 - The policy is the one place that maps a role and scope to an action; no controller compares role
   names.
