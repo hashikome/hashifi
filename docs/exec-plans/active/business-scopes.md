@@ -94,7 +94,7 @@ business, and seeds the three default packages. `Staff` is renamed `Membership` 
 `voucher.print`, `package.price.set`, `member.invite.manager`, ...), each mapped to the least role per
 scope and whether it is owner-only. `Principal` is built from the session's active membership: membership id, scope, business id,
 role and venue ids. `POST /api/me/membership` switches it (only to one of the person's own,
-audited); `GET /api/me` lists the person's memberships for the switcher. `venueScope(principal)` returns `{}` for platform roles, `{ businessId }` for a business
+audited); `GET /api/me` lists the person's memberships for the account menu. `venueScope(principal)` returns `{}` for platform roles, `{ businessId }` for a business
 owner, and `{ businessId, id: { in: venueIds } }` otherwise. `@Can(action)` replaces `@Roles`. The
 guard enforces the authenticator app for anyone holding a platform membership.
 
@@ -108,7 +108,8 @@ packages for managers; CSV import: parse, validate (name, duration such as `1h`,
 price in TSh, venues as `all` or names), return a preview of adds and updates, apply on confirm; no
 deletes.
 
-**M5, web.** The business's name and logo at the head of the sidebar for its people (HashiFi's
+**M5, web.** The account menu at the sidebar's foot (who you are, your workspaces, account and
+sign-out), kept apart from the scope filter at the top. The business's name and logo at the head of the sidebar for its people (HashiFi's
 with the Platform tag for platform staff), the portal's logo fallback (venue, business, HashiFi), the scope switcher ("All businesses" for platform roles, "All venues" for an owner of
 several, none for one venue), navigation per role from the API's capabilities, the one-venue
 overview, Team and Packages screens, in the Hearth design (`docs/exec-plans/active/redesign-admin.md`).

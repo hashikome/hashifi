@@ -44,17 +44,22 @@ sells vouchers at its counter, and it gives Hashikome's own helpers nothing betw
 4. **Venue scope inside a business.** A business owner reaches every venue of the business. A
    business manager or operator reaches only the venues on their membership, at least one. A manager
    may add packages that are sold only at their own venues.
-5. **Platform staff see every business.** Platform roles reach all businesses and venues, choosing
-   one with the scope switcher. Only Hashikome creates businesses and venues and adds routers.
+5. **Platform staff see every business.** Platform roles reach all businesses and venues, narrowing
+   to one with the scope filter at the top of the sidebar, which never changes workspace. Only Hashikome creates businesses and venues and adds routers.
 6. **Nobody gives more than they have.** A person invites only roles below their own, inside their
    own scope: an owner invites managers and operators, a manager invites operators to their venues.
 7. **One person, one identity, one active membership.** A membership is a role in a scope, plus its
    venues where that applies. A person keeps one email and may hold several memberships, at most one
-   per scope: the platform owner may also own their own business, a manager may run venues for two
-   businesses. A session acts as exactly one of them at a time, chosen in the scope switcher and
-   remembered for the next sign-in; switching is audited. Nothing from one membership applies while
-   another is active, so platform powers never reach into a business view or the reverse. Inviting
-   an email that already signs in adds a membership to that person rather than a second identity.
+   per scope: the platform owner may also own their own business, one person may own two
+   businesses, a manager may run venues for two businesses. Switching has two levels:
+   - **Workspace,** in the account menu at the foot of the sidebar: which membership the session acts
+     as, the platform or one business. Remembered for the next sign-in; every switch is audited.
+   - **Scope filter,** at the top of the sidebar: inside the workspace, all businesses or one for
+     platform roles, all venues or one inside a business. It narrows the view and grants nothing.
+
+   Nothing from one membership applies while another is active, so platform powers never reach into
+   a business view or the reverse. Inviting an email that already signs in adds a membership to that
+   person rather than a second identity.
 8. **Authorization comes only from the active membership**, decided in one policy in the API: may
    this role take this action in this scope. The web shows what the API returns and never infers access from
    what it renders (ADR-0003). Better Auth keeps identity and sessions (ADR-0007); memberships hold
