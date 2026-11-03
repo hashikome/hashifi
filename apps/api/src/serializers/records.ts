@@ -100,9 +100,8 @@ export function venueRecord(row: Venue, routerCount: number): VenueRecord {
   return {
     id: row.id,
     name: row.name,
-    address: row.address,
     allowedSites: row.allowedSites,
-    city: row.city,
+    location: row.location,
     operatorId: row.operatorId,
     status: row.status,
     routerCount,

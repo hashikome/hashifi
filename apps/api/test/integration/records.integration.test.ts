@@ -9,7 +9,7 @@ describe("API records from real rows", () => {
     const pkg = await t.db.package.create({
       data: { name: "Day", durationMinutes: 1440, downloadSpeedMbps: 20, priceTsh: "2500.5" },
     });
-    const venue = await t.db.venue.create({ data: { name: "Home", city: "Dar es Salaam" } });
+    const venue = await t.db.venue.create({ data: { name: "Home", location: "Dar es Salaam" } });
     const voucher = await t.db.voucher.create({
       data: {
         code: "WIFI-REC",

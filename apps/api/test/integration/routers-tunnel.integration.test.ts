@@ -24,7 +24,7 @@ describe("bootstrap with the management tunnel", () => {
     await addStaff(t.db, { email: "admin@example.com", name: "Admin", role: "admin" });
     const c = browser(api);
     await enrollAuthenticatorFor(api, c, "admin@example.com");
-    const venue = await t.db.venue.create({ data: { name: "Home", city: "Dar es Salaam" } });
+    const venue = await t.db.venue.create({ data: { name: "Home", location: "Dar es Salaam" } });
     const router = await t.db.router.create({
       data: {
         venueId: venue.id,

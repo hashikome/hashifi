@@ -28,7 +28,7 @@ async function manager(email: string): Promise<{ client: Client; id: string }> {
   return { client, id };
 }
 
-const VENUE = { name: "Home", city: "Dar es Salaam" };
+const VENUE = { name: "Home", location: "Dar es Salaam" };
 
 describe("venues", () => {
   test("nobody signed in gets 401, and an admin without an authenticator 403", async () => {
@@ -56,13 +56,11 @@ describe("venues", () => {
     });
     const created = await c.request("POST", "/api/venues", {
       ...VENUE,
-      address: "",
     });
     expect(created.status).toBe(201);
     const venue = (created.body as { venue: Record<string, unknown> }).venue;
     expect(venue).toMatchObject({
       name: "Home",
-      address: null,
       operatorId: null,
       routerCount: 0,
     });
@@ -126,14 +124,14 @@ describe("venues", () => {
     const c = await admin();
     const bad = await c.request("POST", "/api/venues", {
       name: "Line\nbreak",
-      city: "",
+      location: "",
     });
     expect(bad.status).toBe(400);
     expect(bad.body).toMatchObject({
       code: "VALIDATION_FAILED",
       details: {
         name: "must be one line of text",
-        city: "is required",
+        location: "is required",
       },
     });
     expect((await c.request("GET", "/api/venues/not-a-uuid")).status).toBe(404);

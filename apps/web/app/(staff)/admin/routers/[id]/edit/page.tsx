@@ -240,7 +240,7 @@ export default function EditRouterPage() {
                   <SelectContent>
                     {venues.map((v) => (
                       <SelectItem key={v.id} value={v.id}>
-                        {v.name} — {v.city}
+                        {v.name} — {v.location}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -282,10 +282,10 @@ model Venue {
   id           String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
   operatorId   String?     @map("operator_id") @db.Uuid
   name         String      @db.VarChar(180)
-  address      String?     @db.VarChar(255)
   /// Host names guests can open before paying, such as the venue's own website.
   allowedSites String[]    @default([]) @map("allowed_sites")
-  city         String      @db.VarChar(120)
+  /// Where the venue is, as the owner writes it, such as Mlimani City, Dar es Salaam.
+  location         String      @db.VarChar(255)
   status       VenueStatus @default(active)
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -301,7 +301,6 @@ model Venue {
   dailyStats     DailyUsageStat[]
 
   @@index([operatorId])
-  @@index([city])
   @@index([status])
   @@map("venues")
 }

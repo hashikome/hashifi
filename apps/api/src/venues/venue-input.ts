@@ -32,13 +32,12 @@ const allowedSite = z
 
 export const venueInput = z.object({
   name: line(180).min(1, "is required"),
-  address: optionalLine(255),
   allowedSites: z
     .array(allowedSite)
     .max(20)
     .default([])
     .transform((sites) => [...new Set(sites)]),
-  city: line(120).min(1, "is required"),
+  location: line(255).min(1, "is required"),
   status: z.enum(["active", "inactive", "maintenance"]).default("active"),
 });
 

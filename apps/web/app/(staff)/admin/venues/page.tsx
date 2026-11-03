@@ -102,7 +102,7 @@ export default function VenuesPage() {
                   <span className="min-w-0">
                     <span className="block truncate">{nameCell(venue)}</span>
                     <span className="block truncate text-sm text-muted-foreground">
-                      {venue.city} · {routersLabel(venue.routerCount)}
+                      {venue.location} · {routersLabel(venue.routerCount)}
                     </span>
                   </span>
                   <Badge variant="secondary" className={STATUS[venue.status].pill}>
@@ -116,7 +116,7 @@ export default function VenuesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Venue</TableHead>
-                    <TableHead>City or town</TableHead>
+                    <TableHead>Location</TableHead>
                     <TableHead className="text-right">Routers</TableHead>
                     <TableHead className="text-right">Status</TableHead>
                   </TableRow>
@@ -125,7 +125,7 @@ export default function VenuesPage() {
                   {venues.map((venue) => (
                     <TableRow key={venue.id}>
                       <TableCell>{nameCell(venue)}</TableCell>
-                      <TableCell className="text-muted-foreground">{venue.city}</TableCell>
+                      <TableCell className="text-muted-foreground">{venue.location}</TableCell>
                       <TableCell className="text-right tabular-nums">{venue.routerCount}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant="secondary" className={STATUS[venue.status].pill}>

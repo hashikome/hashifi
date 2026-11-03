@@ -5,7 +5,7 @@
 - Adding a router asks four plain questions, and list screens lead with their list: the same counts
   as a line under the title, named actions, and Devices for what Users listed.
 - A venue can list sites guests may open before paying, such as a hotel's own website.
-- A venue is now a name, a city or town and an optional address; the map and the other fields are gone.
+- A venue is now a name and a location; the map and the other fields are gone.
 - Every router has its own page: connect, set up and serving, with progress and a result that
   survive a refresh. Setup runs in the background, and the setup dialog is gone.
 - Setting up and checking a router work: both always failed, as an absent query flag was refused.

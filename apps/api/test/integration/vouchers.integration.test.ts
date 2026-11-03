@@ -24,7 +24,7 @@ const DAY = { name: "Day", durationMinutes: 1440, downloadSpeedMbps: 10, priceTs
 
 async function setting(operatorId: string | null) {
   const venue = await t.db.venue.create({
-    data: { name: "Home", city: "Dar es Salaam", operatorId },
+    data: { name: "Home", location: "Dar es Salaam", operatorId },
   });
   const pkg = await t.db.package.create({ data: { ...DAY, dataLimitGb: 5 } });
   return { venue, pkg };
@@ -119,7 +119,7 @@ describe("vouchers", () => {
   test("only a package on sale at the venue, and only in the manager's venues", async () => {
     const own = await manager("own@example.com");
     const { venue, pkg } = await setting(own.id);
-    const other = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+    const other = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
     const week = await t.db.package.create({ data: { ...DAY, name: "Week" } });
     const retired = await t.db.package.create({ data: { ...DAY, name: "Old", isActive: false } });
     await t.db.venuePackage.create({ data: { venueId: venue.id, packageId: week.id } });
@@ -142,7 +142,7 @@ describe("vouchers", () => {
     const own = await manager("own@example.com");
     const { venue, pkg } = await setting(own.id);
     const c = await admin();
-    const other = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+    const other = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
     const mine = (
       await own.client.request("POST", "/api/vouchers/batches", {
         venueId: venue.id,
@@ -224,7 +224,7 @@ describe("vouchers", () => {
     const own = await manager("own@example.com");
     const { venue, pkg } = await setting(own.id);
     const c = await admin();
-    const other = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+    const other = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
     const mine = (
       await own.client.request("POST", "/api/vouchers/batches", {
         venueId: venue.id,

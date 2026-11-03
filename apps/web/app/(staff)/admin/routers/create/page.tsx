@@ -122,7 +122,7 @@ export default function CreateRouterPage() {
                 <SelectContent>
                   {(venues ?? []).map((venue) => (
                     <SelectItem key={venue.id} value={venue.id}>
-                      {venue.name}, {venue.city}
+                      {venue.name}, {venue.location}
                     </SelectItem>
                   ))}
                 </SelectContent>

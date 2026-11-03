@@ -75,8 +75,10 @@ describe("live view", () => {
 
   test("a manager gets their venues' hotspots only; admins get everything", async () => {
     const { id } = await addStaff(t.db, { email: "m@example.com", name: "M", role: "manager" });
-    const mine = await t.db.venue.create({ data: { name: "Home", city: "Dar", operatorId: id } });
-    const theirs = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+    const mine = await t.db.venue.create({
+      data: { name: "Home", location: "Dar", operatorId: id },
+    });
+    const theirs = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
     const m = browser(api);
     await signInWithCode(api, m, "m@example.com");
     await addStaff(t.db, { email: "admin@example.com", name: "Admin", role: "admin" });

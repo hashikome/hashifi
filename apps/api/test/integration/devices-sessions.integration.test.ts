@@ -28,8 +28,10 @@ let macs = 0;
  */
 async function world() {
   const own = await manager("own@example.com");
-  const mine = await t.db.venue.create({ data: { name: "Home", city: "Dar", operatorId: own.id } });
-  const theirs = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+  const mine = await t.db.venue.create({
+    data: { name: "Home", location: "Dar", operatorId: own.id },
+  });
+  const theirs = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
   macs += 1;
   const mac = `AA:BB:CC:00:00:${String(macs).padStart(2, "0")}`;
   const phone = await t.db.device.create({ data: { macAddress: mac, deviceName: "Pixel" } });

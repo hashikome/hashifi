@@ -24,7 +24,7 @@ const manager = await staffMember("manager@example.com", "Sim Manager", "manager
 const venue =
   (await db.venue.findFirst({ where: { name: "Home" } })) ??
   (await db.venue.create({
-    data: { name: "Home", city: "Dar es Salaam", region: "Dar es Salaam", operatorId: manager.id },
+    data: { name: "Home", location: "Dar es Salaam", operatorId: manager.id },
   }));
 
 const PACKAGES = [

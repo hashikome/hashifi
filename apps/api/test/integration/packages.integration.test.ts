@@ -144,9 +144,9 @@ describe("packages", () => {
     const c = await admin();
     const own = await manager("own@example.com");
     const venue = await t.db.venue.create({
-      data: { name: "Home", city: "Dar es Salaam", operatorId: own.id },
+      data: { name: "Home", location: "Dar es Salaam", operatorId: own.id },
     });
-    const other = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+    const other = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
     const day = await t.db.package.create({ data: DAY });
     const week = await t.db.package.create({ data: { ...DAY, name: "Week", priceTsh: 9000 } });
     await t.db.package.create({ data: { ...DAY, name: "Old", isActive: false } });

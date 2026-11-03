@@ -14,7 +14,7 @@ async function failure(query: PromiseLike<unknown>): Promise<string | null> {
 }
 
 async function venueAndPackage() {
-  const venue = await t.db.venue.create({ data: { name: "Home", city: "Dar es Salaam" } });
+  const venue = await t.db.venue.create({ data: { name: "Home", location: "Dar es Salaam" } });
   const pkg = await t.db.package.create({
     data: { name: "Hour", durationMinutes: 60, downloadSpeedMbps: 10, priceTsh: "1000" },
   });

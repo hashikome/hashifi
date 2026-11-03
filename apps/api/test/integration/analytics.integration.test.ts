@@ -31,8 +31,8 @@ let codes = 0;
  * payment).
  */
 async function october(operatorId: string | null) {
-  const home = await t.db.venue.create({ data: { name: "Home", city: "Dar", operatorId } });
-  const other = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+  const home = await t.db.venue.create({ data: { name: "Home", location: "Dar", operatorId } });
+  const other = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
   const day = await t.db.package.create({
     data: { name: "Day", durationMinutes: 1440, downloadSpeedMbps: 10, priceTsh: 1000 },
   });

@@ -8,7 +8,7 @@ const t = useTestDatabase();
 const box = new SecretBox(randomBytes(32));
 
 async function routers(count: number): Promise<string[]> {
-  const venue = await t.db.venue.create({ data: { name: "Venue", city: "Arusha" } });
+  const venue = await t.db.venue.create({ data: { name: "Venue", location: "Arusha" } });
   const ids: string[] = [];
   for (let i = 0; i < count; i++) {
     const r = await t.db.router.create({

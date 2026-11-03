@@ -73,7 +73,7 @@ beforeEach(() => {
 });
 
 async function setting(price = "2000") {
-  const venue = await t.db.venue.create({ data: { name: "Cafe", city: "Dar" } });
+  const venue = await t.db.venue.create({ data: { name: "Cafe", location: "Dar" } });
   const router = await t.db.router.create({
     data: { venueId: venue.id, name: "Lobby", ipAddress: "192.168.88.2" },
   });
@@ -144,7 +144,7 @@ describe("buying on the portal", () => {
     const other = await t.db.package.create({
       data: { name: "Hidden", durationMinutes: 60, downloadSpeedMbps: 1, priceTsh: "1000" },
     });
-    const venue2 = await t.db.venue.create({ data: { name: "Other", city: "Dar" } });
+    const venue2 = await t.db.venue.create({ data: { name: "Other", location: "Dar" } });
     await t.db.venuePackage.create({ data: { venueId: venue2.id, packageId: pkg.id } });
     await t.db.venuePackage.create({ data: { venueId: router.venueId, packageId: other.id } });
     expect((await buy(router.id, pkg.id)).body).toMatchObject({ code: "PACKAGE_NOT_ON_SALE" });
@@ -474,7 +474,7 @@ describe("sales and records", () => {
   test("a manager sees their own venues' payments and customers, and sells only there", async () => {
     const c = await adminClient();
     const { venue, pkg } = await setting();
-    const theirs = await t.db.venue.create({ data: { name: "Theirs", city: "Dar" } });
+    const theirs = await t.db.venue.create({ data: { name: "Theirs", location: "Dar" } });
     const { id } = await addStaff(t.db, { email: "m@example.com", name: "M", role: "manager" });
     await t.db.venue.update({ where: { id: theirs.id }, data: { operatorId: id } });
     await c.request("POST", "/api/sales", {

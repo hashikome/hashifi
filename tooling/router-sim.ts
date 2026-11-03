@@ -566,7 +566,7 @@ async function simServices(state: SimState): Promise<SimServices> {
     : await db.router.create({
         data: {
           ...fields,
-          venue: { create: { name: "Router sim venue", city: "Dar es Salaam" } },
+          venue: { create: { name: "Router sim venue", location: "Dar es Salaam" } },
         },
       });
   if (router.id !== state.routerId || encryptionKey !== state.encryptionKey) {

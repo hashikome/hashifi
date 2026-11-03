@@ -9,7 +9,7 @@ const api = useApi({ ROUTER_MANAGEMENT_URL: "http://10.0.2.2:8080" });
 const MAC = "AA:BB:CC:00:00:01";
 
 async function setting(deviceLimit = 1) {
-  const venue = await t.db.venue.create({ data: { name: "Home", city: "Dar" } });
+  const venue = await t.db.venue.create({ data: { name: "Home", location: "Dar" } });
   const router = await t.db.router.create({
     data: { venueId: venue.id, name: "Lobby", ipAddress: "192.168.88.2" },
   });
@@ -151,7 +151,7 @@ describe("the guest portal", () => {
 
   test("a voucher from another venue is refused before its clock starts", async () => {
     const { voucher } = await setting();
-    const other = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+    const other = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
     const elsewhere = await t.db.router.create({
       data: { venueId: other.id, name: "Elsewhere", ipAddress: "192.168.1.2" },
     });
@@ -231,7 +231,7 @@ describe("the guest portal", () => {
     });
     expect(JSON.stringify(reply.body)).not.toContain("WIFI-");
     expect((await session("02:00:00:00:00:01")).body.active).toBe(false);
-    const elsewhere = await t.db.venue.create({ data: { name: "Other", city: "Arusha" } });
+    const elsewhere = await t.db.venue.create({ data: { name: "Other", location: "Arusha" } });
     const other = await t.db.router.create({
       data: { name: "Other", ipAddress: "10.9.0.1", venueId: elsewhere.id },
     });

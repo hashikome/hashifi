@@ -8,7 +8,7 @@ const t = useTestDatabase();
 const api = useApi();
 
 async function setting() {
-  const venue = await t.db.venue.create({ data: { name: "Cafe", city: "Dar" } });
+  const venue = await t.db.venue.create({ data: { name: "Cafe", location: "Dar" } });
   const router = await t.db.router.create({
     data: { venueId: venue.id, name: "Lobby", ipAddress: "192.168.88.2" },
   });

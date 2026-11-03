@@ -7,7 +7,7 @@ const t = useTestDatabase();
 
 describe("business-day grouping in PostgreSQL", () => {
   test("sales either side of 21:00 UTC fall on different business days, as in the app", async () => {
-    const venue = await t.db.venue.create({ data: { name: "Home", city: "Dar es Salaam" } });
+    const venue = await t.db.venue.create({ data: { name: "Home", location: "Dar es Salaam" } });
     const instants = ["2026-10-28T20:59:59Z", "2026-10-28T21:00:00Z", "2026-10-29T10:00:00Z"];
     for (const [i, at] of instants.entries()) {
       await t.db.payment.create({

@@ -36,8 +36,8 @@ async function settle() {
 describe("team", () => {
   test("an admin adds a manager with venues; the manager is told and can sign in", async () => {
     const a = await admin();
-    const home = await t.db.venue.create({ data: { name: "Home", city: "Dar" } });
-    const cafe = await t.db.venue.create({ data: { name: "Cafe", city: "Dar" } });
+    const home = await t.db.venue.create({ data: { name: "Home", location: "Dar" } });
+    const cafe = await t.db.venue.create({ data: { name: "Cafe", location: "Dar" } });
     const created = await a.client.request("POST", "/api/team", {
       name: "Neema",
       email: "Neema@Example.com",
@@ -170,7 +170,7 @@ describe("team", () => {
 
   test("promoting frees the venues and requires an authenticator; resetting one signs out", async () => {
     const a = await admin();
-    const home = await t.db.venue.create({ data: { name: "Home", city: "Dar" } });
+    const home = await t.db.venue.create({ data: { name: "Home", location: "Dar" } });
     const { id } = await addStaff(t.db, { email: "p@example.com", name: "P", role: "manager" });
     await a.client.request("PUT", `/api/team/${id}`, {
       name: "P",
@@ -202,7 +202,7 @@ describe("team", () => {
 
   test("removing someone deletes their sign-in and frees their venues; the audit trail stays", async () => {
     const a = await admin();
-    const home = await t.db.venue.create({ data: { name: "Home", city: "Dar" } });
+    const home = await t.db.venue.create({ data: { name: "Home", location: "Dar" } });
     const created = memberOf(
       await a.client.request("POST", "/api/team", {
         name: "Gone",

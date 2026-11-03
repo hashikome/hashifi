@@ -26,24 +26,21 @@ import { errorMessage } from "@/lib/errors";
 
 interface VenueFormData {
   name: string;
-  city: string;
-  address: string;
+  location: string;
   allowedSites: string;
   status: VenueStatus;
 }
 
 const EMPTY: VenueFormData = {
   name: "",
-  city: "",
-  address: "",
+  location: "",
   allowedSites: "",
   status: "active",
 };
 
 const fromVenue = (venue: VenueRecord): VenueFormData => ({
   name: venue.name,
-  city: venue.city,
-  address: venue.address ?? "",
+  location: venue.location,
   allowedSites: venue.allowedSites.join("\n"),
   status: venue.status,
 });
@@ -81,7 +78,6 @@ export function VenueForm({ mode, venueId }: { mode: "create" | "edit"; venueId?
     setIsSaving(true);
     const body = {
       ...form,
-      address: form.address || null,
       allowedSites: form.allowedSites.split(/\s+/).filter(Boolean),
     };
     try {
@@ -135,24 +131,19 @@ export function VenueForm({ mode, venueId }: { mode: "create" | "edit"; venueId?
                 required
                 autoFocus={!isEdit}
               />
-              <p className="text-xs text-muted-foreground">Guests see this on the WiFi page.</p>
+              <p className="text-xs text-muted-foreground">
+                Guests see this on the captive portal.
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="city">City or town</Label>
+              <Label htmlFor="location">Location</Label>
               <Input
-                id="city"
-                value={form.city}
-                onChange={(e) => set("city", e.target.value)}
+                id="location"
+                value={form.location}
+                onChange={(e) => set("location", e.target.value)}
                 required
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="address">Address (optional)</Label>
-              <Input
-                id="address"
-                value={form.address}
-                onChange={(e) => set("address", e.target.value)}
-              />
+              <p className="text-xs text-muted-foreground">Such as Mlimani City, Dar es Salaam.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="allowedSites">Sites guests can open before paying (optional)</Label>

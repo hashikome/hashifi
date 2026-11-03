@@ -20,7 +20,7 @@ async function admin(): Promise<Client> {
 }
 
 async function venue(name = "Cafe") {
-  return t.db.venue.create({ data: { name, city: "Dar" } });
+  return t.db.venue.create({ data: { name, location: "Dar" } });
 }
 
 /** A PNG with transparency, and metadata that must not survive. */
