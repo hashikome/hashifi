@@ -84,14 +84,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create missing Docker secrets
-        uses: hashikome/actions/docker-secrets@v1.1.0
+        uses: hashikome/actions/docker-secrets@66a6e8f29d643f53b7f3c8b52df175b8eb7971db # v1.1.0
         with:
-          values: ${{ toJSON(secrets) }}
+          # Only the secrets deploy/docker-secrets.json names: never the whole `secrets` context.
+          values: >-
+            {"DATABASE_URL": ${{ toJSON(secrets.DATABASE_URL) }},
+            "MIGRATION_DATABASE_URL": ${{ toJSON(secrets.MIGRATION_DATABASE_URL) }}}
           ssh-key: ${{ secrets.SERVER_SSH_KEY }}
           ssh-target: ${{ vars.SERVER_SSH_TARGET }}
           ssh-host-key: ${{ vars.SERVER_HOST_KEY }}
       - name: Migrate, then promote the application images
-        uses: hashikome/actions/dokploy-release@v1.1.0
+        uses: hashikome/actions/dokploy-release@66a6e8f29d643f53b7f3c8b52df175b8eb7971db # v1.1.0
         with:
           images: |
             API_IMAGE=${{ needs.image.outputs.api }}
