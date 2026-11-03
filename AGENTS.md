@@ -14,6 +14,9 @@ The [build plan](docs/exec-plans/active/build-hashifi.md) tracks the work: read
 it before changing anything under `apps/`. M1 to M5 are done. HashiFi launches on printed vouchers; M6
 (mobile money and SMS) is built and held until its providers' credentials exist: `apps/api` is NestJS on Bun with Prisma on PostgreSQL 18, and `apps/web` runs on it
 through `lib/api.ts` and `@hashifi/types`, including the captive portal and purchases.
+Next: businesses that own venues, with owners, managers and operators (ADR-0011,
+[business-scopes](docs/exec-plans/active/business-scopes.md)), and the admin and portal rebuilt in
+the Hearth design ([redesign-admin](docs/exec-plans/active/redesign-admin.md), which sets the order).
 
 ## Map
 

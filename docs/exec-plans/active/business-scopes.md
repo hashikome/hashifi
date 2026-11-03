@@ -25,10 +25,13 @@ not found.
 - [ ] M1: schema: businesses, memberships, membership venues, invitations, business packages;
   migration of existing rows.
 - [ ] M2: the access policy and the principal; every service scoped through it.
-- [ ] M3: invitations and Team pages for both scopes; the add-business flow for platform staff.
+- [ ] M3: invitations and the people API for both scopes; adding a business for platform staff.
 - [ ] M4: packages per business, the platform defaults and CSV import.
-- [ ] M5: the web: scope switcher, navigation per role, the one-venue view; with the Hearth redesign.
-- [ ] M6: live acceptance against production with a test business.
+- [ ] M5: the business profile: name and logo, stored and served as ADR-0009 says.
+- [ ] M6: live acceptance against production with a test business, once the Hearth screens exist.
+
+The screens are built by [redesign-admin.md](redesign-admin.md), whose "Order across plans" sets the
+sequence of both plans.
 
 ## Surprises & Discoveries
 
@@ -108,11 +111,12 @@ packages for managers; CSV import: parse, validate (name, duration such as `1h`,
 price in TSh, venues as `all` or names), return a preview of adds and updates, apply on confirm; no
 deletes.
 
-**M5, web.** The account menu at the sidebar's foot (who you are, your workspaces, account and
-sign-out), kept apart from the scope filter at the top. The business's name and logo at the head of the sidebar for its people (HashiFi's
-with the Platform tag for platform staff), the portal's logo fallback (venue, business, HashiFi), the scope switcher ("All businesses" for platform roles, "All venues" for an owner of
-several, none for one venue), navigation per role from the API's capabilities, the one-venue
-overview, Team and Packages screens, in the Hearth design (`docs/exec-plans/active/redesign-admin.md`).
+**M5, business profile.** The business's name and logo (owner only), the logo through the same
+checks and store as venue brands, and the portal's fallback (venue, business, HashiFi) served by
+the guest brand route. The screens are H2, H5 and H6 of [redesign-admin.md](redesign-admin.md).
+
+**M2 also returns capabilities.** `GET /api/me` answers the person, their memberships and, for the
+active one, the actions it allows, so the web draws navigation and buttons from them.
 
 ## Concrete Steps
 
