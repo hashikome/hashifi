@@ -56,11 +56,6 @@
     "R2_ACCESS_KEY_ID_SECRET",
     "R2_SECRET_ACCESS_KEY_SECRET"
   ],
-  "inputs": {
-    "BACKEND_NETWORK": "hashikome-network",
-    "DATABASE_URL_SECRET": "hashifi_database_url_20261101_v1",
-    "MIGRATION_DATABASE_URL_SECRET": "hashifi_migration_database_url_20261101_v1"
-  },
   "requiredValues": {
     "PUBLIC_HOST": "hashifi.hashikome.com",
     "INGRESS_NETWORK": "dokploy-network"
