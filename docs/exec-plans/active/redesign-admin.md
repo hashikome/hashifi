@@ -25,7 +25,8 @@ jobs. The look stays: `DESIGN.md`, teal and Figtree are kept, as the brand has i
 - [ ] M4 (vouchers, packages, devices, sessions, venues, routers done; dashboard and analytics open): list screens: the question first, named actions, phones reach the list.
 - [ ] M5: the remaining forms, in plain words.
 - [ ] M6: design-audit on the result; findings fixed; `DESIGN.md` and the runbooks updated.
-- [ ] Finish the production test with CHR: a voucher redeemed from the guest VM.
+- [x] (2026-11-03) Finish the production test with CHR: a guest VM redeemed a voucher, was let
+  through, and showed in Live Sessions, all against production.
 
 Still open in M4 and M5: tables that scroll sideways on phones (vouchers, packages, devices,
 sessions), the packages icon row, the router edit form, dashboard and analytics, and M6's audit.
@@ -42,6 +43,10 @@ sessions), the packages icon row, the router edit form, dashboard and analytics,
   `hashifi.hashikome.com` get the same treatment, which the walled garden must be checked against.
 - Observation: seven venue fields are read only by the form and its serializer.
   Evidence: road, street, ward, district, postal code, latitude and longitude, by search of the code.
+
+- Observation: after a host reboot, `router-sim guest-run` hangs. The guest's shell asks the terminal
+  for its cursor position and waits, and a freshly booted guest has `eth0` down.
+  Evidence: `ESC[6n` on the console; DHCP answered once `ip link set eth0 up` ran.
 
 ## Decision Log
 
