@@ -98,8 +98,9 @@ Not started for H1 to H7.
 - `apps/web/app/(portal)` and `components/portal-view.tsx`: the captive portal and its preview.
 - `apps/web/public/logo.svg`: the mark; `portal_settings` holds the portal's default brand.
 - `apps/api/src/analytics/`: today's figures; the comparisons and ranges of H3 are new.
-- Design reference: the owner's three private review pages (round 1: ten variations; round 2: Hearth
-  with Night Band's portal; round 3: each role). Generated sample data adds up on every page.
+- Design reference: the review pages in git-ignored `ref/hearth-design/` (`round-1-variations/`,
+  `round-2-hearth-and-night-band/`, `round-3-roles/`, and `generator/`). The tokens and layouts this
+  plan needs are written below, so it stands without them.
 
 ## Plan Of Work
 
