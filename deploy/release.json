@@ -4,7 +4,7 @@
   "application": {
     "compose": "NOobVsQuzvyXWWpacldOH",
     "stack": "hashifi-[a-z0-9]{6}",
-    "manifest": "deploy/docker-stack.prod.yml"
+    "manifest": "deploy/docker-stack.yml"
   },
   "migration": {
     "compose": "vWLE0OTlJqbixqlSrRkx5",

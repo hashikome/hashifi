@@ -22,7 +22,7 @@ Production is `hashifi.hashikome.com`: one host, on the shared Dokploy platform
 
 Once, before setting `DEPLOY_ENABLED`:
 
-- Two Dokploy Stacks, raw source with auto-deploy off: `hashifi-xxxxxx` (`deploy/docker-stack.prod.yml`)
+- Two Dokploy Stacks, raw source with auto-deploy off: `hashifi-xxxxxx` (`deploy/docker-stack.yml`)
   and `hashifi-release-xxxxxx` (`deploy/docker-stack.migrate.yml`), named in `deploy/release.json`,
   each with the inputs in
   the stack section of `.env.example`.

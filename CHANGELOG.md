@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The deployment stack file is `deploy/docker-stack.yml`, and the release's Docker actions run on
+  Node 24 (buildx v4.4.1, login v4.7.0, build-push v7.4.0).
 - Local development uses HashiFi's own ports, each service's default plus HashiFi's +6 offset:
   PostgreSQL 5438, API 4006 and web 3006. The database had taken 5437, the ZanLIS processor's. A
   hand-built router lab points at 4006 too.
